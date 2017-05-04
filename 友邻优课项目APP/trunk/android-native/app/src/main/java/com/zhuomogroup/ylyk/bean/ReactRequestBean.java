@@ -1,0 +1,42 @@
+package com.zhuomogroup.ylyk.bean;
+
+/**
+ * Created by xyb on 2017/3/18.
+ */
+
+public class ReactRequestBean {
+
+    /**
+     * code : 401
+     * result : false
+     * response : {"error_code":401,"error_message":"Authorization is illegal."}
+     */
+
+    private int code;
+    private boolean result;
+    private String response;
+
+    public int getCode() {
+        return code;
+    }
+
+    public void setCode(int code) {
+        this.code = code;
+    }
+
+    public boolean isResult() {
+        return result;
+    }
+
+    public void setResult(boolean result) {
+        this.result = result;
+    }
+
+    public String getResponse() {
+        return response;
+    }
+
+    public void setResponse(String response) {
+        this.response = response;
+    }
+}

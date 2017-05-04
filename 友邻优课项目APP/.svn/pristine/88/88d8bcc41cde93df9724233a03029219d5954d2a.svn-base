@@ -1,0 +1,100 @@
+//
+//  FileManager.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/17.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "FileManager.h"
+#include <sys/param.h>
+#include <sys/mount.h>
+
+@interface FileManager ()
+
+@property (nonatomic, copy) NSString *fileCachePath;
+
+@end
+
+@implementation FileManager
+
+- (float)getCacheSize
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:@""];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    
+    //将字节大小转为MB，然后传出去
+    return fileTotalSize/1000.0/1000;
+}
+
+- (void)clearCache
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    for (NSString * fileName in subFilePath)
+    {
+        if (![fileName containsString:@"Pandora"]) {
+            //拼接文件全路径（注意：是文件）
+            NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+            [fileManger removeItemAtPath:filePath error:nil];
+        }
+    }
+}
+
++ (NSString *) freeDiskSpaceInBytes{
+    struct statfs buf;
+    long long freespace = -1;
+    if(statfs("/var", &buf) >= 0){
+        freespace = (long long)(buf.f_bsize * buf.f_bfree);
+    }
+    return [NSString stringWithFormat:@"手机剩余存储空间为：%qi MB" ,freespace/1024/1024];
+}
+
++ (NSString *)getVersion
+{
+    return [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    
+}
+
++ (NSString *)getBuild
+{
+    return [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+}
+
+@end

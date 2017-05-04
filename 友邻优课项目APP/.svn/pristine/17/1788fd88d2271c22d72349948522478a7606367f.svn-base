@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="11762" systemVersion="16B2657" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="11757"/>
+        <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner" customClass="LoginViewController">
+            <connections>
+                <outlet property="dismissBtn" destination="vBm-3s-ynC" id="fEz-Tq-UBF"/>
+                <outlet property="logoImg" destination="a58-dd-aUN" id="bbL-xf-dGK"/>
+                <outlet property="mobilephoneLoginView" destination="FxP-7q-hVu" id="Z5O-is-hW9"/>
+                <outlet property="registerBtn" destination="Ppa-Bo-Tfn" id="qtW-99-gU4"/>
+                <outlet property="userProtocol" destination="rmK-hz-Lg0" id="5Eb-OB-aEj"/>
+                <outlet property="view" destination="i5M-Pr-FkT" id="sfx-zR-JGt"/>
+                <outlet property="wechatBtn" destination="sZ8-wP-xns" id="whC-gn-ZXQ"/>
+            </connections>
+        </placeholder>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <view clearsContextBeforeDrawing="NO" contentMode="scaleToFill" id="i5M-Pr-FkT">
+            <rect key="frame" x="0.0" y="0.0" width="375" height="667"/>
+            <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+            <subviews>
+                <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="FxP-7q-hVu">
+                    <rect key="frame" x="88" y="576" width="200" height="30"/>
+                    <subviews>
+                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="手机登录" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="aN3-aS-unf">
+                            <rect key="frame" x="32" y="5" width="60" height="22"/>
+                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                            <fontDescription key="fontDescription" type="system" pointSize="13"/>
+                            <color key="textColor" red="0.59999999999999998" green="0.59999999999999998" blue="0.59999999999999998" alpha="1" colorSpace="calibratedRGB"/>
+                            <nil key="highlightedColor"/>
+                        </label>
+                        <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" text="(限已绑定手机用户)" textAlignment="natural" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="11A-px-Kqi">
+                            <rect key="frame" x="87" y="6" width="113" height="20"/>
+                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                            <fontDescription key="fontDescription" type="system" pointSize="11"/>
+                            <color key="textColor" red="0.59999999999999998" green="0.59999999999999998" blue="0.59999999999999998" alpha="1" colorSpace="calibratedRGB"/>
+                            <nil key="highlightedColor"/>
+                        </label>
+                        <imageView userInteractionEnabled="NO" contentMode="center" horizontalHuggingPriority="251" verticalHuggingPriority="251" fixedFrame="YES" image="login_icon_phone" translatesAutoresizingMaskIntoConstraints="NO" id="eB0-LX-lWf">
+                            <rect key="frame" x="8" y="3" width="16" height="25"/>
+                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                        </imageView>
+                    </subviews>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="200" id="1ku-GX-09G"/>
+                        <constraint firstAttribute="height" constant="30" id="raq-2K-oat"/>
+                    </constraints>
+                </view>
+                <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" usesAttributedText="YES" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="rmK-hz-Lg0">
+                    <rect key="frame" x="88" y="636" width="200" height="11"/>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="200" id="eRc-ZW-aqn"/>
+                        <constraint firstAttribute="height" constant="11" id="wXB-82-qa6"/>
+                    </constraints>
+                    <attributedString key="attributedText">
+                        <fragment content="登录即同意《友邻优课用户许可协议》">
+                            <attributes>
+                                <color key="NSColor" red="0.36078431372549019" green="0.36078431372549019" blue="0.36078431372549019" alpha="1" colorSpace="calibratedRGB"/>
+                                <font key="NSFont" size="11" name=".AppleSystemUIFont"/>
+                                <paragraphStyle key="NSParagraphStyle" alignment="right" lineBreakMode="wordWrapping" baseWritingDirection="natural" tighteningFactorForTruncation="0.0"/>
+                            </attributes>
+                        </fragment>
+                    </attributedString>
+                    <nil key="highlightedColor"/>
+                </label>
+                <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="vBm-3s-ynC">
+                    <rect key="frame" x="25" y="28" width="25" height="20"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="20" id="gfh-Sv-L4n"/>
+                        <constraint firstAttribute="width" constant="25" id="zkU-uh-RiV"/>
+                    </constraints>
+                    <state key="normal" image="icon_close"/>
+                    <connections>
+                        <action selector="dismissLoginViewController:" destination="-1" eventType="touchUpInside" id="UvH-K1-Vvf"/>
+                    </connections>
+                </button>
+                <imageView userInteractionEnabled="NO" contentMode="scaleAspectFit" horizontalHuggingPriority="251" verticalHuggingPriority="251" image="logo" translatesAutoresizingMaskIntoConstraints="NO" id="a58-dd-aUN">
+                    <rect key="frame" x="107" y="150" width="160" height="80"/>
+                    <constraints>
+                        <constraint firstAttribute="width" constant="160" id="7KG-tC-b2Y"/>
+                        <constraint firstAttribute="height" constant="80" id="nn0-Ax-yIA"/>
+                    </constraints>
+                </imageView>
+                <button opaque="NO" contentMode="scaleToFill" selected="YES" contentHorizontalAlignment="center" contentVerticalAlignment="center" adjustsImageWhenHighlighted="NO" adjustsImageWhenDisabled="NO" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="sZ8-wP-xns">
+                    <rect key="frame" x="103" y="397" width="169" height="90"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="90" id="ffd-Pm-la1"/>
+                    </constraints>
+                    <state key="normal" image="login_button_wechat_highlight"/>
+                    <state key="selected" image="login_button_wechat_default"/>
+                    <connections>
+                        <action selector="weChatLogin:" destination="-1" eventType="touchUpInside" id="Q8t-gO-ciz"/>
+                    </connections>
+                </button>
+                <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Ppa-Bo-Tfn">
+                    <rect key="frame" x="157" y="507" width="62" height="30"/>
+                    <state key="normal" title="点此注册">
+                        <color key="titleColor" white="0.66666666666666663" alpha="1" colorSpace="calibratedWhite"/>
+                    </state>
+                    <connections>
+                        <action selector="openRegisterViewController:" destination="-1" eventType="touchUpInside" id="2dn-l4-JGP"/>
+                    </connections>
+                </button>
+            </subviews>
+            <color key="backgroundColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <constraints>
+                <constraint firstItem="rmK-hz-Lg0" firstAttribute="top" secondItem="FxP-7q-hVu" secondAttribute="bottom" constant="30" id="4VA-0w-gFL"/>
+                <constraint firstItem="sZ8-wP-xns" firstAttribute="centerX" secondItem="i5M-Pr-FkT" secondAttribute="centerX" id="5VR-bt-3d6"/>
+                <constraint firstItem="rmK-hz-Lg0" firstAttribute="centerX" secondItem="i5M-Pr-FkT" secondAttribute="centerX" id="5j5-i4-Onq"/>
+                <constraint firstItem="vBm-3s-ynC" firstAttribute="leading" secondItem="i5M-Pr-FkT" secondAttribute="leading" constant="25" id="B9q-Zo-NDk"/>
+                <constraint firstItem="a58-dd-aUN" firstAttribute="top" secondItem="i5M-Pr-FkT" secondAttribute="top" constant="150" id="Dy2-sH-R8S"/>
+                <constraint firstAttribute="bottom" secondItem="rmK-hz-Lg0" secondAttribute="bottom" constant="20" id="F5m-mb-cIg"/>
+                <constraint firstItem="a58-dd-aUN" firstAttribute="centerX" secondItem="i5M-Pr-FkT" secondAttribute="centerX" id="Nz0-g0-cM1"/>
+                <constraint firstItem="FxP-7q-hVu" firstAttribute="centerX" secondItem="i5M-Pr-FkT" secondAttribute="centerX" id="fEc-bL-TGk"/>
+                <constraint firstItem="Ppa-Bo-Tfn" firstAttribute="centerX" secondItem="i5M-Pr-FkT" secondAttribute="centerX" id="jwH-HW-laj"/>
+                <constraint firstAttribute="bottom" secondItem="sZ8-wP-xns" secondAttribute="bottom" constant="180" id="llZ-sS-YWZ"/>
+                <constraint firstItem="Ppa-Bo-Tfn" firstAttribute="top" secondItem="sZ8-wP-xns" secondAttribute="bottom" constant="20" id="rmb-5I-7x5"/>
+                <constraint firstItem="vBm-3s-ynC" firstAttribute="top" secondItem="i5M-Pr-FkT" secondAttribute="topMargin" constant="20" id="wAl-o4-OPL"/>
+            </constraints>
+            <point key="canvasLocation" x="32.5" y="65.5"/>
+        </view>
+    </objects>
+    <resources>
+        <image name="icon_close" width="14" height="14"/>
+        <image name="login_button_wechat_default" width="169" height="44"/>
+        <image name="login_button_wechat_highlight" width="169" height="44"/>
+        <image name="login_icon_phone" width="10" height="14"/>
+        <image name="logo" width="159" height="53"/>
+    </resources>
+</document>

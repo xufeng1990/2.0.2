@@ -1,0 +1,34 @@
+//
+//  YLYKPlayerSetSkinView.h
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/26.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+/*
+ *选择背景颜色事件
+ */
+typedef NS_ENUM(NSInteger, YLYKPlayerSkinType) {
+    YLYKPlayerSkinType1      = 170450,
+    YLYKPlayerSkinType2      = 170451,
+    YLYKPlayerSkinType3      = 170452,
+    YLYKPlayerSkinType4      = 170453,
+};
+
+
+typedef void(^YLYKPlayerSkinTypeBlock)(YLYKPlayerSkinType skinType);
+
+@interface YLYKPlayerSetSkinView : UIView
+
+/*
+ *选择背景颜色事件
+ */
+@property(nonatomic,copy)YLYKPlayerSkinTypeBlock skinType;
+
+#pragma mark - Public Method 
+
+
+@end

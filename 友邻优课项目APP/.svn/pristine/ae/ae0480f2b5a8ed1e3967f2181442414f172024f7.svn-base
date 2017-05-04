@@ -1,0 +1,119 @@
+//
+//  NativeNetwork.h
+//  TestYlykProject
+//
+//  Created by 友邻优课 on 2016/12/30.
+//  Copyright © 2016年 Facebook. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <React/RCTBridgeModule.h>
+
+@interface NativeNetwork : NSObject <RCTBridgeModule>
+
++ (instancetype)sharedInstance;
+
+- (NSString *)getAuthorization;
+
+- (void)getTokenByMobilephone:(NSString *)mobilephone
+                      success:(void (^)(id))success
+                      failure:(void (^)(NSError *))faliure;
+
+- (void)getTokenByMobilephoneWithCaptcha:(NSString *)mobilephone
+                                 captcha:(NSString *)captcha
+                                 success:(void (^)(id))success
+                                 failure:(void (^)(NSError *))faliure;
+
+- (void)getCourseById:(NSString *)courseId
+              success:(void (^)(id))success
+              failure:(void (^)(NSError *))faliure;
+
+- (void)getAlbumById:(NSString *)albumId
+             success:(void (^)(id))success
+             failure:(void (^)(NSError *))faliure;
+
+- (void)unlikeCourse:(NSString *)courseId
+             success:(void (^)(id responseObject))success
+             failure:(void (^)(NSError *error))faliure;
+
+- (void)likeCourse:(NSString *)courseId
+           success:(void (^)(id responseObject))success
+           failure:(void (^)(NSError *error))faliure;
+
+- (void)postWithURLString:(NSString *)object
+                  success:(void (^)(id responseObject))success
+                  failure:(void (^)(NSError *error))faliure;
+
+- (void)getWithURLString:(NSString *)object
+                 success:(void (^)(id responseObject))success
+                 failure:(void (^)(NSError *error))faliure;
+
+-(void)getTokenFromWechat:(NSString *)code
+                  success:(void (^)(id responseObject))success
+                  failure:(void (^)(NSError *error))faliure;
+
+-(void)getuseInfo:(NSString *)openid
+      accessToken:(NSString *)accessToken
+          unionId:(NSString *)unionId
+          success:(void (^)(id responseObject))success
+          failure:(void (^)(NSError *error))faliure;
+
+- (NSString *)getSystemNetworkState;
+
+- (void)updateUserMobilephone:(NSString *)userId
+                             :(NSDictionary *)parameters
+                      success:(void (^)(id responseObject))success
+                      failure:(void (^)(NSError *error))faliure;
+
+-(void)updateUserMobilephoneWithCaptcha:(NSString *)userId
+                                       :(NSDictionary *)parameters
+                                success:(void (^)(id responseObject))success
+                                failure:(void (^)(NSError *error))faliure;
+
+- (void)getCourseList:(NSDictionary *)parameters
+              success:(void (^)(id))success
+              failure:(void (^)(NSError *))faliure;
+
+- (void)getUserById:(NSString *)userId
+            success:(void (^)(id))success
+            failure:(void (^)(NSError *))faliure;
+
+- (void)getSigninCalendar:(NSDictionary *)parameters
+                  success:(void (^)(id responseObject))success
+                  failure:(void (^)(NSError *error))faliure;
+
+- (void)getUserTraceById:(NSString *)userId
+              parameters:(NSDictionary *)parameters
+                 success:(void (^)(id responseObject))success
+                 failure:(void (^)(NSError *error))faliure;
+- (void)getDownloadURLWithID:(NSString *)courseId
+                     success:(void (^)(id responseObject))success
+                     failure:(void (^)(NSError *error))faliure;
+
+- (NSString *)getSecurtyUrlString: (NSString *)urlstring
+                   withParameters: (NSDictionary *)parameters;
+
+- (void)getNoteList:(NSDictionary *)parameters
+            success:(void (^)(id responseObject))success
+            failure:(void (^)(NSError *error))faliure;
+
+- (void)createOrderWithParameters:(NSDictionary *)parameters
+                          success:(void (^)(id responseObject))success
+                          failure:(void (^)(NSError *error))faliure;
+
+- (void)getOrderById:(NSString *)orderId
+             success:(void (^)(id responseObject))success
+             failure:(void (^)(NSError *error))faliure;
+
+- (void)getReward:(NSDictionary *)parameters
+          success:(void (^)(id responseObject))success
+          failure:(void (^)(NSError *error))faliure;
+
+- (void)getSystemVersionsuccess:(void (^)(id responseObject))success
+                        failure:(void (^)(NSError *error))faliure;
+
+- (void)put:(NSString *)object
+    success:(void (^)(id responseObject))success
+    failure:(void (^)(NSError *error))faliure;
+
+@end

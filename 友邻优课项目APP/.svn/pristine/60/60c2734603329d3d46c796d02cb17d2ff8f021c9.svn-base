@@ -1,0 +1,36 @@
+package com.zhuomogroup.ylyk.base;
+
+/**
+ * Created by xyb on 2017/2/20 at 友邻优课 2017
+ */
+
+public class YLBaseUrl {
+    public static final String BASE_URL_HEAD = "http://api.youlinyouke.com/v1/";
+    public static final String LICENSE = "http://m.youlinyouke.com/app/license.html";
+    public static final String BASE_URL_HEAD_IMG = "http://dev-api.youlinyouke.com/v1/";
+    public static final String BASE_APP_KEY = "398374a3b6bb1d1238a1e3dd1af6bcf2";
+    public static final String USER_INFO = "USER_INFO";
+    public static final String VIEW_PAGER_IS_GONE = "VIEW_PAGER_IS_GONE";
+    public static final String WRITE_TIPS_STRING = "WRITE_TIPS_STRING";
+    public static final String SELECT_IMGS = "SELECT_IMGS";
+    public static final String WRITE_TIPS_ISALSO_SHOW = "WRITE_TIPS_ISALSO_SHOW";
+    public static final String COURSEID = "COURSEID";
+    public static final String IS_LOGIN = "IS_LOGIN";
+    public static final String LOCAL_LISTEN = "LOCAL_LISTEN";
+    public static final String LAST_AUDIO_ID = "LAST_AUDIO_ID";
+    public static final String WEBVIEW_TEXT_SIZE = "WEBVIEW_TEXT_SIZE";
+    public static final String BASE_AUTHORIZATION = "NjFhNDI1ZTYwMjdjNDY4Yzg3NWVmNjIyZWY0ZDcxY2I6YW5vbnltb3VzOi0x";
+    public static final String BASE_SERVICE_CODE = BASE_URL_HEAD + "system/version";
+    public static final String LOCAL_FOR_WIFI_TOAST = "LOCAL_FOR_WIFI_TOAST";
+    public static final String IS_FIRST_OPEN_APP = "IS_FIRST_OPEN_APP";
+    public static final String USERID_AUTHORIZATION = "USERID_" + "Authorization";
+    public static final String CSS = "<link rel=\"stylesheet\" href=\"file:///android_asset/my.css\"  type=\"text/css\"/><style>html,body{background:transparent;color:#5a5a5a;}*{-webkit-user-select:text!important;-moz-user-select:text!important;-ms-user-select: text!important;}</style>";
+
+
+
+    public static final String PLAY_POSITION = "PLAY_POSITION";
+    public static final String PLAY_TYPE = "PLAY_TYPE";
+    public static final String PUSH_TRUE = "PUSH_TRUE";
+    public static final int ERROR_CODE_401 = 401;
+    public static final String OTHER_PASS = "OTHER_PASS";
+}

@@ -1,0 +1,21 @@
+
+
+#import <QuartzCore/QuartzCore.h>
+#import <UIKit/UIKit.h>
+@class CBLYesOrNoShapeLayer;
+
+@protocol CBLYesOrNoShapeLayerDelegate <NSObject>
+
+- (void)yesOrNoShapeLayer:(CBLYesOrNoShapeLayer *)CBLYesOrNoShapeLayer animationDidCompleteWithType:(BOOL)yesOrNo;
+
+@end
+
+@interface CBLYesOrNoShapeLayer : CAShapeLayer
+
+@property (nonatomic, weak) id<CBLYesOrNoShapeLayerDelegate> animationDelegate;
+
+@property (nonatomic, readonly, assign) BOOL type;
+
+- (void)startAnimationWithType:(BOOL)type;
+
+@end

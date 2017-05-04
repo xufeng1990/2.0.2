@@ -1,0 +1,127 @@
+//Search搜索功能实现
+import React, {Component, PropTypes} from 'react';
+import {
+    StyleSheet,
+    Dimensions,
+    Platform,
+    View,
+    TextInput,
+    TouchableOpacity,
+    Animated,
+    Image,
+    Text,
+    NativeModules,
+    DeviceEventEmitter,
+} from 'react-native';
+import {filter, some, includes} from 'lodash/collection';
+import g_AppValue from '../../configs/AppGlobal.js';
+import {debounce} from 'lodash/function';
+import Service from '../../configs/Service.js';
+
+const searchResult = NativeModules.NativeNetwork;
+export default class Search extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            input: '',
+        };
+    }
+    componentDidMount() {
+    }
+//输入改变
+    _onChangeText = (input) => {
+        const {handleChangeText, handleSearch, handleResults} = this.props;
+        this.setState({input});
+        if (handleChangeText) {
+            handleChangeText(input);
+        }
+        if (handleSearch) {
+            handleSearch(input);
+        } else {
+            debounce(() => {
+                // use internal search logic (depth first)!
+                if (handleResults) {
+                    const results = this._internalSearch(input);
+                    handleResults(results);
+                }
+            }, 500)();
+        }
+    }
+    render = () => {
+        return (
+            <View style={styles.container}>
+                <View style={styles.inputView}>
+                    <View style={styles.searchImageView}>
+                        <Image style={styles.searchImage} source={require('./search.png')}/>
+                    </View>
+                    <TextInput
+                        style={styles.input}
+                        placeholder='搜索'
+                        placeholderTextColor='red'
+                        returnKeyType='search'
+                    />
+                </View>
+                <TouchableOpacity style={styles.backButtonAction} onPress={this.props.goBack}>
+                    <Text style={styles.backButton}>取消</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+}
+const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        zIndex: 10,
+        position: 'absolute',
+        shadowRadius: 5,
+        shadowOpacity: 0.7,
+        elevation: 2,
+        width: g_AppValue.screenWidth,
+        height: 64 * g_AppValue.precent,
+        flexDirection: 'row',
+    },
+    inputView: {
+        width: 295 * g_AppValue.precent,
+        height: 28 * g_AppValue.precent,
+        backgroundColor: '#f2f5f6',
+        marginTop: 28 * g_AppValue.precent,
+        marginLeft: 12 * g_AppValue.precent,
+        borderRadius: 5 * g_AppValue.precent,
+        flexDirection: 'row',
+    },
+    searchImageView: {
+        width: 28 * g_AppValue.precent,
+        height: 28 * g_AppValue.precent,
+        justifyContent: 'center',
+        alignItems: 'center',
+        //backgroundColor:'black',
+    },
+    searchImage: {
+        width: 14 * g_AppValue.precent,
+        height: 14 * g_AppValue.precent,
+        //backgroundColor:'red',
+    },
+    input: {
+        // ...Platform.select({
+        //     ios: { height: 30 },
+        //     android: { height: 50 },
+        // }),
+        width: 267 * g_AppValue.precent,
+        fontSize: 16 * g_AppValue.precent,
+        height: 28 * g_AppValue.precent,
+        backgroundColor: '#f2f5f6',
+        borderRadius: 5 * g_AppValue.precent,
+    },
+    backButtonAction: {
+        position: 'absolute',
+        top: 35 * g_AppValue.precent,
+        right: 12 * g_AppValue.precent,
+    },
+    backButtonAction: {
+        position: 'absolute',
+        top: 35 * g_AppValue.precent,
+        right: 12 * g_AppValue.precent,
+        fontSize: 14 * g_AppValue.precent,
+        color: '#5a5a5a',
+    },
+});

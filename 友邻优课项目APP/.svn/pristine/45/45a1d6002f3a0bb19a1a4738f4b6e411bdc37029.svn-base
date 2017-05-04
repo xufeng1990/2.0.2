@@ -1,0 +1,113 @@
+package com.reactmodules.userinfo;
+
+import android.content.Context;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.zhuomogroup.ylyk.utils.SharedPreferencesUtil;
+
+import org.greenrobot.eventbus.EventBus;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Set;
+
+import javax.annotation.Nullable;
+
+import cn.jpush.android.api.JPushInterface;
+import cn.jpush.android.api.TagAliasCallback;
+
+import static com.reactmodules.consts.ModuleName.YLYK_OAUTH_MODULE;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USERID_AUTHORIZATION;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USER_INFO;
+
+/**
+ * Created by xyb on 2017/4/19.
+ */
+
+public class YLYKOAuthModule extends ReactContextBaseJavaModule {
+    private final ReactApplicationContext reactContext;
+    private final Context mContext;
+
+    public YLYKOAuthModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        this.reactContext = reactContext;
+        mContext = reactContext.getApplicationContext();
+    }
+
+    @Override
+    public String getName() {
+        return YLYK_OAUTH_MODULE;
+    }
+
+    /**
+     * 获得用户的userid
+     */
+    @ReactMethod
+    public void getUserID(Promise promise) {
+        try {
+            String user_info = (String) SharedPreferencesUtil.get(mContext, USER_INFO, "");
+            if ("".equals(user_info)) {
+                promise.resolve(0 + "");
+            } else {
+                JSONObject object = new JSONObject(user_info);
+                int userId = object.getInt("id");
+                promise.resolve(userId + "");
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+
+    }
+
+    /**
+     * 获得用户的userid
+     */
+    @ReactMethod
+    public void getUserInfo(Promise promise) {
+            String user_info = (String) SharedPreferencesUtil.get(mContext, USER_INFO, "");
+            if ("".equals(user_info)) {
+                promise.resolve(0 + "");
+            } else {
+                promise.resolve(user_info + "");
+            }
+    }
+
+    /**
+     * 注销登录方法
+     */
+    @ReactMethod
+    public void logout(Promise promise) {
+        SharedPreferencesUtil.remove(mContext, USER_INFO);
+        SharedPreferencesUtil.remove(mContext, USERID_AUTHORIZATION);
+        EventBus.getDefault().post("logout");
+        WritableNativeMap writableNativeMap = new WritableNativeMap();
+        writableNativeMap.putBoolean("LogoutSuccess", true);
+        sendTransMisson(reactContext, "LogoutSuccess", writableNativeMap);
+        JPushInterface.setAlias(mContext, "-1", new TagAliasCallback() {
+            @Override
+            public void gotResult(int i, String s, Set<String> set) {
+
+            }
+        });
+    }
+    /**
+     * @param reactContext 上下文
+     * @param eventName    事件名
+     * @param params       传惨
+     */
+    public void sendTransMisson(ReactContext reactContext, String eventName, @Nullable WritableMap params) {
+        reactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+
+                .emit(eventName, params);
+
+    }
+}

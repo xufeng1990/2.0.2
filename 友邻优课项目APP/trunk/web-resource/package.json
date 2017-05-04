@@ -1,0 +1,36 @@
+{
+	"name": "YLYK.App_WebResource",
+	"version": "1.0.0",
+	"description": "",
+	"homepage": "",
+	"repository": {
+		"type": "git",
+		"url": "https://git.oschina.net/xxxx"
+	},
+	"author": "Beijing Zhuomo Culture Media Co., Ltd.",
+	"devDependencies": {
+		"babel-core": "latest",
+		"babel-preset-es2015": "latest",
+		"gulp": "latest",
+		"gulp-autoprefixer": "latest",
+		"gulp-cheerio": "latest",
+		"gulp-concat": "latest",
+		"gulp-cssnano": "latest",
+		"gulp-htmlmin": "latest",
+		"gulp-imagemin": "latest",
+		"gulp-jscs": "latest",
+		"gulp-json-editor": "latest",
+		"gulp-less": "latest",
+		"gulp-minify-css": "latest",
+		"gulp-plumber": "latest",
+		"gulp-rename": "latest",
+		"gulp-replace": "latest",
+		"gulp-rev": "latest",
+		"gulp-rev-collector": "latest",
+		"gulp-rimraf": "latest",
+		"gulp-strip-debug": "latest",
+		"gulp-uglify": "latest",
+		"gulp-util": "latest",
+		"q": "latest"
+	}
+}

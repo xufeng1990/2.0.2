@@ -1,0 +1,19 @@
+//
+//  Album.h
+//  YLYK-App
+//
+//  Created by 友邻优课 on 2017/2/2.
+//  Copyright © 2017年 Beijing Zhuomo Culture Media Co., Ltd. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface Album : NSObject
+
+@property (nonatomic,assign) NSInteger albumId;
+
+@property (nonatomic,assign) BOOL is_free;
+
+@property (nonatomic,copy) NSString * name;
+
+@end

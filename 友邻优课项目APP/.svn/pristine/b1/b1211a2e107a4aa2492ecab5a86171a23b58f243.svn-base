@@ -1,0 +1,281 @@
+//
+//  ImagePickerController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/11.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "ImagePickerController.h"
+#import "TZImagePickerController.h"
+#import "ImageListCell.h"
+#import "DetailImageViewCell.h"
+
+float scale = 315.0 / 450.0 ;
+@interface ImagePickerController () <TZImagePickerControllerDelegate,UIGestureRecognizerDelegate,UITableViewDelegate,UITableViewDataSource,UIScrollViewDelegate>
+
+@property (nonatomic, strong) UIImageView * detailImageView;
+
+@property (nonatomic, strong) UITableView *detailScrollView;
+
+@property (nonatomic, strong) UITableView *imageScrollView;
+
+@property (nonatomic, strong) UIButton *addImgBtn;
+
+@property (nonatomic, assign) NSInteger currentIndex;
+
+@end
+
+@implementation ImagePickerController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor colorWithRed:242 / 255.0 green:245/255.0 blue:246/255.0 alpha:1.0];
+    [[UINavigationBar appearance] setBackgroundImage:[[UIImage alloc] init]
+                                      forBarPosition:UIBarPositionAny
+                                          barMetrics:UIBarMetricsDefault];
+    
+    [[UINavigationBar appearance] setShadowImage:[[UIImage alloc] init]];
+    [self.navigationController.navigationBar setBackgroundColor:[UIColor whiteColor]];
+    UIImageView *imageView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"upload_picture"]];
+    imageView.contentMode = UIViewContentModeScaleAspectFit;
+    imageView.center = self.view.center;
+    [self.view  addSubview:imageView];
+    UIImage *image = [UIImage imageNamed:@"nav_back"];
+    image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithTitle:@"完成" style:UIBarButtonItemStyleDone target:self action:@selector(finish)];
+    self.navigationController.navigationBar.translucent = NO;
+    [self.navigationItem.rightBarButtonItem setTintColor:[UIColor blackColor]];
+    self.navigationItem.title = [NSString stringWithFormat:@"1/%lu",(unsigned long)self.imageArray.count];
+    self.currentIndex = 1;
+    [self createUI];
+}
+
+- (void)createUI
+{
+    [self creatTableView];
+}
+
+- (void)creatTableView
+{
+    self.detailScrollView.rowHeight = SCREEN_WIDTH;
+    self.imageScrollView.rowHeight = 90;
+    self.imageScrollView.backgroundColor = [UIColor colorWithRed:242 / 255.0 green:245/255.0 blue:246/255.0 alpha:1.0];
+    [self.view addSubview:self.imageScrollView];
+    [self.view addSubview:self.detailScrollView];
+}
+
+#pragma mark -datasource
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 1;
+}
+
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    if (tableView == self.imageScrollView) {
+        if (self.imageArray.count >= 9) {
+            return self.imageArray.count;
+        } else {
+            return self.imageArray.count + 1;
+        }
+    } else
+    {
+        return self.imageArray.count;
+    }
+    
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (tableView == self.imageScrollView) {
+        static  NSString *CellIdentifier = @ "identifier" ;
+        ImageListCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+        cell.backgroundColor = [UIColor colorWithRed:242 / 255.0 green:245/255.0 blue:246/255.0 alpha:1.0];
+        if  (cell == nil) {
+            cell = [[[NSBundle mainBundle] loadNibNamed:@ "ImageListCell"  owner:self options:nil] lastObject];
+        }
+        if (indexPath.row == 0 && self.imageArray.count < 9) {
+            if (self.imageArray.count  == 0) {
+                 cell.imageView.image = [UIImage imageNamed:@"icon_addpictures_nopicture"];
+            } else {
+                cell.imageView.image = [UIImage imageNamed:@"icon_addpictures"];
+            }
+           
+            cell.deleteBtn.hidden = YES;
+        } else {
+            if (self.imageArray.count > 8) {
+                cell.imageView.image = self.imageArray[indexPath.row];
+            } else {
+                cell.imageView.image = self.imageArray[indexPath.row - 1];
+            }
+        }
+        // cell顺时针旋转90度
+        cell.contentView.transform = CGAffineTransformMakeRotation(M_PI / 2);
+        [cell.deleteBtn addTarget:self action:@selector(deleteBtnImage:) forControlEvents:UIControlEventTouchUpInside];
+        cell.deleteBtn.tag = 1000 + indexPath.row;
+        return cell;
+    } else {
+        static  NSString *CellIdentifier = @ "cell" ;
+        DetailImageViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
+        cell.backgroundColor = [UIColor colorWithRed:242 / 255.0 green:245/255.0 blue:246/255.0 alpha:1.0];
+        if  (cell == nil) {
+            cell = [[[NSBundle mainBundle] loadNibNamed:@ "DetailImageViewCell"  owner:self options:nil] lastObject];
+        }
+        
+        // cell顺时针旋转90度
+        cell.contentView.transform = CGAffineTransformMakeRotation(M_PI / 2);
+        cell.imageView.contentMode = UIViewContentModeScaleAspectFit;
+        cell.imageView.image = self.imageArray[indexPath.row];
+        return cell;
+    }
+}
+
+#pragma mark -delegate
+
+- (void)scrollViewDidEndDecelerating:(UIScrollView *)scrollView
+{
+    if (scrollView == self.detailScrollView) {
+        NSUInteger idx = scrollView.contentOffset.y / scrollView.bounds.size.height + 1;
+        self.navigationItem.title = [NSString stringWithFormat:@"%lu/%lu",idx ,(unsigned long)self.imageArray.count];
+        self.currentIndex = idx;
+    }
+}
+
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    if (tableView == self.imageScrollView) {
+        if (indexPath.row == 0 ) {
+            if (self.imageArray.count < 9) {
+                [self showImage];
+            } else{
+                self.navigationItem.title = [NSString stringWithFormat:@"%ld/%lu",(long)indexPath.row + 1 ,(unsigned long)self.imageArray.count];
+                [self.detailScrollView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:YES];
+                self.currentIndex = indexPath.row;
+            }
+        } else {
+            if (self.imageArray.count == 9) {
+                self.navigationItem.title = [NSString stringWithFormat:@"%ld/%lu",(long)indexPath.row + 1,(unsigned long)self.imageArray.count];
+                [self.detailScrollView scrollToRowAtIndexPath:indexPath atScrollPosition:UITableViewScrollPositionTop animated:YES];
+                self.currentIndex = indexPath.row;
+            } else {
+                self.navigationItem.title = [NSString stringWithFormat:@"%ld/%lu",(long)indexPath.row ,(unsigned long)self.imageArray.count];
+                [self.detailScrollView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:indexPath.row-1 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:YES];
+                self.currentIndex = indexPath.row;
+            }
+        }
+    } else
+    {
+        DetailImageViewCell *cell = [tableView cellForRowAtIndexPath:indexPath];
+        cell.imageView.contentMode = UIViewContentModeScaleAspectFit;
+    }
+}
+
+- (void)deleteBtnImage:(UIButton *)btn
+{
+    NSInteger index = btn.tag - 1000;
+    if (self.imageArray.count == 9) {
+        [self.imageArray removeObjectAtIndex:index];
+    } else {
+        [self.imageArray removeObjectAtIndex:index - 1];
+    }
+    [self.imageScrollView reloadData];
+    [self.detailScrollView reloadData];
+    self.navigationItem.title =  [NSString stringWithFormat:@"%ld/%lu",(long)self.currentIndex ,(unsigned long)self.imageArray.count];
+    if (self.imageArray.count < self.currentIndex) {
+            self.navigationItem.title = [NSString stringWithFormat:@"%ld/%lu",(unsigned long)(unsigned long)self.imageArray.count ,(unsigned long)self.imageArray.count];
+    }
+}
+
+- (void)showImage
+{
+    
+    TZImagePickerController *imagePickerVc = [[TZImagePickerController alloc] initWithMaxImagesCount:(9- self.imageArray.count) delegate:self];
+    imagePickerVc.navigationBar.tintColor = [UIColor colorWithRed:90/255.0 green:90/255.0 blue:90/255.0 alpha:1.0];
+    imagePickerVc.barItemTextColor = [UIColor colorWithRed:90/255.0 green:90/255.0 blue:90/255.0 alpha:1.0];
+    imagePickerVc.takePictureImageName = @"camera";
+    // 选中与未选择两种状态
+    imagePickerVc.photoSelImageName = @"choosed";
+    imagePickerVc.photoDefImageName = @"choose_default";
+    // 完成旁边的小红点
+    imagePickerVc.photoNumberIconImageName = @"number";
+    //预览界面 原图旁边的选中按钮
+    // imagePickerVc.photoPreviewOriginDefImageName = @"choosed";
+    // 原图旁边选择原图的样式
+    imagePickerVc.photoOriginSelImageName = @"photo_select";
+    // 原图旁默认未选择原图的样式
+    // imagePickerVc.photoOriginDefImageName = @"choosed";
+    
+    // 完成按钮的样子
+    imagePickerVc.oKButtonTitleColorDisabled = [UIColor colorWithRed:(178/255.0) green:(29/255.0) blue:(51/255.0) alpha:0.5];
+    imagePickerVc.oKButtonTitleColorNormal = [UIColor colorWithRed:(178/255.0) green:(29/255.0) blue:(51/255.0) alpha:1.0];
+
+    [self presentViewController:imagePickerVc animated:YES completion:nil];
+}
+
+- (void)imagePickerController:(TZImagePickerController *)picker didFinishPickingPhotos:(NSArray<UIImage *> *)photos sourceAssets:(NSArray *)assets isSelectOriginalPhoto:(BOOL)isSelectOriginalPhoto
+{
+    [self.imageArray addObjectsFromArray:photos];
+    [self.imageScrollView reloadData];
+    [self.detailScrollView reloadData];
+}
+
+- (void)didReceiveMemoryWarning
+{
+    [super didReceiveMemoryWarning];
+}
+
+- (void)finish
+{
+    [self dismissViewControllerAnimated:YES completion:nil];
+     self.imageArrayBlock(self.imageArray);
+}
+
+- (void)back
+{
+    [self dismissViewControllerAnimated:YES completion:nil];
+     self.imageArrayBlock(self.imageArray);
+}
+
+#pragma mark -layz load
+- (NSMutableArray *)imageArray
+{
+    if (!_imageArray) {
+        _imageArray = [NSMutableArray array];
+    }
+    return _imageArray;
+}
+
+- (UIScrollView *)imageScrollView
+{
+    if (!_imageScrollView) {
+        _imageScrollView = [[UITableView alloc] initWithFrame:CGRectMake(0,0, 90, SCREEN_WIDTH)];
+        _imageScrollView.center = CGPointMake(SCREEN_WIDTH * 0.5, SCREEN_HEIGHT - 45 - 64 - 20);
+        _imageScrollView.dataSource = self;
+        _imageScrollView.delegate = self;
+        _imageScrollView.separatorStyle = UITableViewCellSeparatorStyleNone;
+        _imageScrollView.contentSize = CGSizeMake(SCREEN_WIDTH, 0);
+        _imageScrollView.showsVerticalScrollIndicator = NO;
+        _imageScrollView.transform = CGAffineTransformMakeRotation(-M_PI / 2);
+    }
+    return _imageScrollView;
+}
+
+- (UITableView *)detailScrollView
+{
+    if (!_detailScrollView) {
+        _detailScrollView = [[UITableView alloc] initWithFrame:CGRectMake(0, 0 ,SCREEN_HEIGHT - 64 - 110, SCREEN_WIDTH )];
+        _detailScrollView.pagingEnabled = YES;
+        _detailScrollView.separatorStyle = UITableViewCellSeparatorStyleNone;
+        _detailScrollView.showsVerticalScrollIndicator = NO;
+        _detailScrollView.transform = CGAffineTransformMakeRotation(-M_PI / 2);
+        _detailScrollView.center = CGPointMake(SCREEN_WIDTH * 0.5, (SCREEN_HEIGHT-64-110) *0.5);
+        _detailScrollView.contentSize = CGSizeMake(SCREEN_WIDTH, 0);
+        _detailScrollView.dataSource = self;
+        _detailScrollView.delegate = self;
+    }
+    return _detailScrollView;
+}
+
+@end

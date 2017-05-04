@@ -1,0 +1,24 @@
+@white      : #fefefe;
+@black      : #2b2d30;
+
+@grey       : #c8c8c8;
+@red        : #b41930;
+@yellow     : #fecd40;
+@orange     : #ffac20;
+@blue       : #0fabfa;
+@green      : #09bb07;
+
+@grey-dark  : #333;
+@red-dark   : #e2574d;
+@yellow-dark: #ffae20;
+@orange-dark: #b9790b;
+@blue-dark  : #0a81d5;
+@green-dark : #50b400;
+
+@border-color:#e1e1e1;
+@title-color: #2b2d30;
+
+@padding-lr : 12px; // 左右内留白
+@padding-tb : 10px; // 上下内留白
+@margin-lr  : 12px; // 左右外留白
+@margin-tb  : 10px; // 上下外留白

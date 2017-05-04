@@ -1,0 +1,342 @@
+//  "ProgileTabBar"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2017
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component } from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  Alert,
+  NativeModules,
+  DeviceEventEmitter,
+  Modal,
+  NativeAppEventEmitter,
+  NativeEventEmitter,
+    Platform,
+
+} from 'react-native';
+import NavigationView from '../../component/Navigator/NavigationView.js';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import Child from '../../component/tabs/Qasd.js';
+import ProfileView from './ProfileView.js';
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import MyFans from './MyFans.js';
+import FoucsClass from './FocusClass.js';
+import MyNoteList from './MyNoteList.js';
+import MeEdit from '../MeEdit/MeEdit.js'
+import Setting from '../Setting/Setting.js';
+import Service from '../../configs/Service.js';
+import Icon from '../../common/Icon.js';
+import CachedImage from 'react-native-cached-image';
+import DetailsHeaderView from '../../component/AlbumCell/DetailsHeaderView.js';
+import VipState from './VipState.js';
+import Util from '../../common/util.js';
+import Test from "../Course/NoteListView.js";
+
+var Bridges = NativeModules.BridgeEvents;
+const myEvent = new NativeEventEmitter(Bridges);
+var subscription;
+
+var LoginEvents = NativeModules.LoginEvent;
+const myLoginEvent = new NativeEventEmitter(LoginEvents);
+var loginSubscription;
+
+
+export default class Profile extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      //个人页面数据
+      userData: '',
+      visible: true,
+      loginStatus: false,
+      isVip:false,
+      isPlayingOrPause:0,
+      isExistPlayedTrace:1,
+    };
+    this.refreshFunction = this.refreshFunction.bind(this);
+  }
+
+  componentWillMount() {
+    RnNativeModules.isExistPlayedTrace()
+    .then((data)=>{
+      console.log('99999999999999' + data)
+      this.setState({isExistPlayedTrace:data})
+    })
+    this.showNoteTabBar = DeviceEventEmitter.addListener('showNoteTabBar',(res)=>{
+       if (res[0] == 1) {
+          RnNativeModules.hideTabBar('show');
+       }else {
+         return;
+       }
+
+     });
+
+  this.showProfileTabBar =  DeviceEventEmitter.addListener('showProfileTabBar',()=>{
+      RnNativeModules.hideTabBar('show');
+    });
+
+this.loginSubscription = myLoginEvent.addListener('LoginSuccess',(reminder)=>{
+      console.log(reminder.LoginSuccess + "loginsuccess");
+      this.refreshFunction();
+    });
+    if (!g_AppValue.isConnected) {
+      console.log('个人页没有网络')
+      this.refreshFunction();
+    }
+
+  };
+  //返回更新数据
+  refreshFunction() {
+    console.log('esresersesesresres刷新成功')
+    RnNativeModules.getUserInfo().then((data) => {
+
+      var resultData = JSON.parse(data);
+console.log('userID个人页' + resultData.id)
+      if (data== '0' || data  == 0) {
+         this.setState({ loginStatus:false,profileloginStatus:'0',});
+
+      } else {
+        this.setState({ loginStatus:true ,profileloginStatus:'0',})
+        //个人页面数据
+          let isVip = Util.isVip(resultData);
+          if (isVip == false) {
+            this.setState({
+              userData: resultData ,
+              isVip:false,
+            })
+          }else {
+                this.setState({
+                   userData: resultData ,
+                   isVip:true,
+                 })
+          }
+
+
+      }
+
+    }).catch((err) => {
+      console.log('获取失败' + err)
+    })
+
+  }
+
+  // 加载完成
+  componentDidMount() {
+      this.refreshFunction();
+    this.refresh = DeviceEventEmitter.addListener('refreshData', this.refreshFunction);
+
+    subscription = myEvent.addListener('playOrPauseToRN',(reminder)=>{
+      this.setState({isPlayingOrPause:reminder.isPlayingOrPause})}
+    );
+
+    Service.loginServer.isPlayingOrPause()
+    .then((data) =>{
+
+      this.setState({isPlayingOrPause:data.isPlayingOrPause})
+    }).catch((err)=>{
+      console.log('错误' + err)
+    })
+  }
+
+  // view卸载
+  componentWillUnmount() {
+    this.refresh && this.refresh.remove();
+    this.showProfileTabBar && this.showProfileTabBar.remove();
+    this.loginSubscription && this.loginSubscription.remove();
+    this.showNoteTabBar && this.showNoteTabBar.remove();
+
+
+
+  }
+
+  _goToPlayerView(id, is, is2) {
+    RnNativeModules.goToPlayerView(id, is, is2);
+  }
+
+  _gotoFansView(user_id) {
+
+    RnNativeModules.hideTabBar('hide')
+    this.props.navigator.push({
+      component: MyFans,
+      params: {
+        user_id: user_id,
+        fansData: this.state.fansData,
+        isVip:this.state.isVip,
+      }
+
+    })
+  }
+  _gotoFoucesView(user_id) {
+
+    RnNativeModules.hideTabBar('hide')
+    this.props.navigator.push({
+      component: FoucsClass,
+      params: {
+        user_id: user_id,
+        FoucsData: this.state.FoucsData,
+        isVip:this.state.isVip,
+      }
+    })
+  }
+  //跳转登录页面
+  _goToLoginView() {
+    Service.loginServer.openLoginViewController()
+    .then((res) => {
+      //console.log('登陆传id' + res)
+      this.refreshFunction();
+      RnNativeModules.hideTabBar('show');
+
+    })
+
+  }
+  //跳转我的心得
+  _goToMyNoteList(user_id) {
+    RnNativeModules.hideTabBar('hide')
+    this.props.navigator.push({
+      component: MyNoteList,
+      params: {
+        user_id: user_id
+      }
+    })
+  }
+  //个人编辑界面
+  _gotoMeEditView(user_id) {
+
+    RnNativeModules.hideTabBar('hide')
+    this.props.navigator.push({
+      component: MeEdit,
+      params: {
+        userId: user_id
+      }
+    })
+  }
+
+  //设置页面
+  _settingView() {
+    RnNativeModules.hideTabBar('hide')
+    this.props.navigator.push({
+      component: Setting,
+      params: {
+        userInfo: this.state.userData
+      }
+    })
+  }
+
+  _VipState(){
+  //  console.log('跳转同学权益')
+    alert('rtdydytty')
+    // this.props.navigator.push({
+    //   component:VipState,
+    // })
+  }
+
+
+
+
+
+
+  render() {
+  //  console.log('状态' + this.state.loginStatus)
+
+                //  headerImage = {require('../../imgs/logo.png')}
+    if (!this.state.userData) {
+      return (
+        <View style={{backgroundColor: '#ffffff',height: Platform.OS == 'ios' ? g_AppValue.screenHeight - 114 * g_AppValue.precent :  g_AppValue.screenHeight - 54 * g_AppValue.precent}}><View>
+        <NavigationView
+          leftItemTitle = {Icon.setting}
+          leftItemFunc = {() => {this._goToLoginView()}}
+          rightItemFunc = {() => {this._goToLoginView()}}
+          rightImageSource = {this.state.isExistPlayedTrace ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png')  : require ('../../imgs/play.gif') : null}
+           />
+            <ScrollView >
+                <DetailsHeaderView
+                  bullyText = ''
+                  headerFunc = {() => {this._goToLoginView()}}
+                    headerImage = {require('./imgs/nologinImage.png') }
+                  nameText = '点击登录'
+                  editorFunc = {() => {this._goToLoginView()}}
+                  editorImage = {require('../Course/images/g.png')}
+                  contentText = ''
+                  fansFunc = {() => {this._goToLoginView()}}
+                  fansNumber = '-'
+                  fansText = '粉丝'
+                  focusFunc = {() => {this._goToLoginView()}}
+                  focusNumber = '-'
+                  focusText = '关注'
+                  noteFunc = {() => {this._goToLoginView()}}
+                  noteNumber = '-'
+                  noteText = '心得'
+
+                  />
+                <ProfileView navigator={this.props.navigator} />
+            </ScrollView>
+          </View>
+
+        </View>
+      )
+    } else {
+      let user_id = this.state.userData.id;
+      // setingFunc = {this.state.loginStatus == false? () => {this._goToLoginView()}: () => {this._settingView()}}
+      // setText = {Icon.setting}
+      // playFunc = {this.state.loginStatus ==false ? () => {this._goToLoginView()} : () => this._goToPlayerView("0", false, "[]")}
+      // playImage = {this.state.i sPlayingOrPause == 0 ? require('../../imgs/play1.png')  : require ('../../imgs/play.gif')}
+      return (
+        <View style={{  backgroundColor: '#f2f5f6',height: Platform.OS == 'ios' ? g_AppValue.screenHeight - 114 * g_AppValue.precent :  g_AppValue.screenHeight - 54 * g_AppValue.precent }}>
+          <NavigationView
+            navigator = {this.props.navigator}
+            leftItemTitle = {Icon.setting}
+            leftItemFunc = {this.state.loginStatus == false ? () => {this._goToLoginView()} :() => {this._settingView()}}
+            rightItemFunc = {this.state.loginStatus == false ? () => {this._goToLoginView()} :() => this._goToPlayerView("0", false, "[]") }
+            rightImageSource = {this.state.isExistPlayedTrace ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png')  : require ('../../imgs/play.gif') : null }
+             />
+
+          <View>
+            <ScrollView
+              >
+              <DetailsHeaderView
+                bullyText = { this.state.isVip ? this.state.userData.vip.title : '普通用户'}
+                headerFunc = {this.state.loginStatus  ? () => { this._gotoMeEditView(user_id)}: () => {this._goToLoginView()}}
+                headerImage = {this.state.loginStatus ? { uri: ImgUrl.baseImgUrl + 'user/' + this.state.userData.id + '/avatar' } :require('./imgs/nologinImage.png') }
+                nameText = {this.state.loginStatus ?  this.state.userData.info.nickname:'点击登录'}
+                editorFunc = {this.state.loginStatus ? () => { this._gotoMeEditView(user_id)} :() => { this._goToLoginView() }}
+                editorImage = {require('../Course/images/g.png')}
+                contentText = {this.state.loginStatus ?  this.state.userData.info.intro : ''}
+                fansFunc = {this.state.loginStatus  ?  () => { this._gotoFansView(user_id) } :() => {this._goToLoginView()}}
+                fansNumber = {this.state.loginStatus  ? this.state.userData.stat.fans_count :'-' }
+                fansText = '粉丝'
+                focusFunc = {this.state.loginStatus ? () => {this._gotoFoucesView(user_id)}: () => { this._goToLoginView() } }
+                focusNumber = {this.state.loginStatus ? this.state.userData.stat.followee_count : '-'}
+                focusText = '关注'
+                noteFunc = {this.state.loginStatus? () => { this._goToMyNoteList(user_id) } :() => { this._goToLoginView() }}
+                noteNumber = {this.state.loginStatus ?this.state.userData.stat.note_count : '-' }
+                noteText = '心得'
+
+                />
+              <ProfileView isVip = {this.state.isVip} navigator={this.props.navigator} loginStatus = {this.state.loginStatus} umoney = {this.state.userData.stat.umoney} wechat = {this.state.userData.info.wechat}/>
+            </ScrollView>
+          </View>
+
+        </View>
+      );
+    }
+
+  }
+  // 自定义方法区域
+  // your method
+
+}
+
+var styles = StyleSheet.create({
+
+});

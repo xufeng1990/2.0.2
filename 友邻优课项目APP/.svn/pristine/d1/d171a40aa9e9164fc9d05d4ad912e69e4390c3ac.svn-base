@@ -1,0 +1,336 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    NativeModules,
+    InteractionManager,
+} from 'react-native';
+
+import g_AppValue from '../../../configs/AppGlobal.js';
+import Until from '../../../common/util.js';
+import * as ImgUrl from '../../../configs/BaseImgUrl.js';
+import * as RnNativeModules from '../../../configs/RnNativeModules.js';
+import Service from '../../../configs/Service.js';
+import BlankPages from '../../../component/AlbumCell/BlankPages.js';
+import Loading from '../../../component/Loading/Loading.js';
+import Icon from '../../../common/Icon.js';
+import Pay from '../../Pay/pay.js';
+// 类
+import UltimateListView from "react-native-ultimate-listview";
+
+export default class MyThumbShow extends Component {
+
+    _dataSource = new ListView.DataSource({rowHasChanged: (row1, row2) => row1 !== row2});
+    _alldata = [];
+    _followeeArr = [];
+    constructor(props) {
+        super(props);
+        this.state = {
+            dataSource: this._dataSource.cloneWithRows(this._alldata),
+            isLoading: true,
+            hideNoVip: false,
+        }
+    }
+    // 加载完成
+    componentDidMount() {
+
+        this._onListRefersh();
+
+        this._getUserID();
+    }
+
+    _getUserID() {
+
+        RnNativeModules.getUserInfo().then((data) => {
+
+            var resultData = JSON.parse(data);
+
+            if (data == 0 || data == '0') {
+
+                this.setState({ noLogin: false });
+
+            } else {
+
+                this.setState({ noLogin: true });
+
+                let isVip = Until.isVip(resultData);
+
+                if (isVip == false) {
+
+                    this.setState({
+
+                        hideNoVip: false,
+                    });
+
+                } else {
+
+                    this.setState({
+                        hideNoVip: true,
+                    });
+                }
+            }
+        }).catch((err) => {
+
+        })
+    }
+
+    _deleteShow(showId, sectionID, rowID) {
+
+        Service.service.unlikeCourse(showId + '')
+        .then((data) => {
+
+            this._alldata.splice(rowID, 1)
+
+            this.setState({
+
+                dataSource: this._dataSource.cloneWithRows(this._alldata),
+            });
+
+        }).catch((err) => {
+
+            if (err.code == '401' || err.code == 401) {
+
+                Until.AppToast('登录失效,请重新登陆')
+            }
+        });
+    }
+
+    _goToPlayView(showId, is, is2) {
+
+        if (this.state.hideNoVip == false) {
+
+            this._alert();
+        } else {
+            RnNativeModules.goToPlayerView(showId + '', false, '[]');
+        }
+    }
+    //咨询页面
+    goToQiView() {
+
+        RnNativeModules.goToQiYu();
+    }
+
+    goToPayView() {
+
+        RnNativeModules.hideTabBar('hide');
+
+        this.props.navigator.push({
+            component: Pay,
+        })
+    }
+
+
+    _alert() {
+
+        Until.alertDialog({
+            msg: '成为友邻学员即可收听此课程',
+            oneBtn: '立即入学',
+            okBtn: '咨询阿树老师',
+            cancelBtn: '取消',
+            okFun: () => { this.goToQiView() },
+            oneFun: () => { this.goToPayView() },
+        })
+    }
+
+    // view卸载
+    componentWillUnmount() {
+        //
+    }
+
+    _rowRow(rowData, sectionID, rowID) {
+        if (!rowData) {return (<View></View>);}
+        var showId = rowData.id;
+
+        return (
+            <TouchableOpacity activeOpacity={1} onPress={() => this._goToPlayView(showId)}>
+                <View style={styles.backgroundView}>
+                    <Image source={!rowData.id ? require('../../../imgs/43.png') : {
+                        uri: ImgUrl.baseImgUrl + 'course/' + rowData.id + '/cover'
+                    }} style={styles.leftImage} />
+                    <View style={styles.rightBigView}>
+                        <Text numberOfLines={1} style={styles.titleText}>{rowData.name}</Text>
+                        <Text style={styles.contentText}>{rowData.album.name}</Text>
+                        <Text style={styles.teacherNameText}>{rowData.teachers.name}</Text>
+                        <View style={styles.bottomView}>
+                            <Text style={styles.timeText}>{Until.timeFormat(rowData.duration)}</Text>
+                        </View>
+                    </View>
+                    <TouchableOpacity activeOpacity={1} onPress={() => { this._deleteShow(showId, sectionID, rowID) }}>
+                        <View style={styles.deleteView}>
+                            <Text style={styles.deleteImage}> {Icon.delete}</Text>
+                            <View style={styles.lineView} />
+                        </View>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        );
+    }
+
+
+    _noDataView() {
+
+        return (
+            <BlankPages ImageUrl={require('../../../imgs/couse.png')} titleText='课程' contentText='喜欢的课程 值得反复学习' />
+        )
+    }
+
+    render() {
+        return (
+            <View style={{ flex: 1, backgroundColor: '#f2f5f6' }}>
+                {this.state.isLoading ? null : (!g_AppValue.isConnected
+                    ? <BlankPages ImageUrl={require('../../../imgs/none.png')} contentText='无法连接到服务器,请检查你的网络设置' />
+                    : <UltimateListView
+                        ref='listView'
+                        onFetch={this._onListRefersh.bind(this)}
+                        enableEmptySections
+                        //----Normal Mode----
+                        separator={false}
+                        rowView={this._rowRow.bind(this)}
+                        refreshableTitleWillRefresh="下拉刷新..."
+                        refreshableTitleInRefreshing="下拉刷新..."
+                        refreshableTitleDidRefresh="Finished"
+                        refreshableTitleDidRefreshDuration={10000}
+                        emptyView={this._noDataView.bind(this)}
+                        allLoadedText=''
+                        waitingSpinnerText=''
+                    />)
+                }
+            </View>
+        );
+    }
+
+    _getCourseList(page, callback, options) {
+
+        let that = this;
+
+        const pageLimit = 10;
+        InteractionManager.runAfterInteractions(() => {
+
+            Service.service.getCourseList({ 'is_liked': 'true', 'limit': pageLimit, 'page': page })
+            .then((data) => {
+
+                var resultData = JSON.parse(data);
+
+                if (page === 1) {
+
+                    that._alldata = [];
+
+                    that._alldata = resultData;
+
+                } else {
+
+                    that._alldata = that._alldata.concat(resultData);
+                }
+
+                that.setState({
+                    isShowLoadMore: true,
+                    isLoading: false,
+                });
+
+                options.pageLimit = pageLimit;
+                callback(resultData, options);
+
+            }).catch((err) => {
+              
+                this.setState({ isLoading: false, })
+            })
+        })
+    }
+
+    _onListRefersh(page = 1, callback, options) {
+        this._getCourseList(page, callback, options);
+    }
+}
+
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#ffffff'
+    },
+    listView: {
+        backgroundColor: '#f2f5f6'
+    },
+    backgroundView: {
+        height: 110 * g_AppValue.precent,
+        width: g_AppValue.screenWidth,
+        marginTop: 10 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        flexDirection: 'row'
+    },
+    leftImage: {
+        width: 120 * g_AppValue.precent,
+        height: 90 * g_AppValue.precent,
+        marginTop: 10 * g_AppValue.precent,
+        marginLeft: 13 * g_AppValue.precent
+    },
+    rightBigView: {
+        marginLeft: 15 * g_AppValue.precent,
+        marginTop: 17 * g_AppValue.precent,
+        width: 170 * g_AppValue.precent,
+    },
+    titleText: {
+        fontSize: 14 * g_AppValue.precent,
+        fontWeight: 'bold',
+        color: '#5a5a5a'
+    },
+    teacherNameText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c',
+        marginTop: 4 * g_AppValue.precent
+    },
+    timeText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c'
+    },
+    contentText: {
+        fontSize: 13 * g_AppValue.precent,
+        marginTop: 17 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    bottomView: {
+        width: 200 * g_AppValue.precent,
+        flexDirection: 'row',
+        marginTop: 4 * g_AppValue.precent
+    },
+    bigText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c',
+        marginLeft: 5 * g_AppValue.precent
+    },
+    deleteView: {
+        marginTop: 17 * g_AppValue.precent,
+        marginRight: 0 * g_AppValue.precent,
+        height: 83 * g_AppValue.precent,
+        width: 56 * g_AppValue.precent,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    deleteImage: {
+        fontSize: 18 * g_AppValue.precent,
+        fontFamily: 'iconfont',
+        color: '#9a9b9c',
+    },
+    lineView: {
+        position: 'absolute',
+        top: 0 * g_AppValue.precent,
+        left: 0 * g_AppValue.precent,
+        width: 1 * g_AppValue.precent,
+        height: 83 * g_AppValue.precent,
+        backgroundColor: '#f2f5f6'
+    }
+})

@@ -1,0 +1,456 @@
+package com.zhuomogroup.ylyk.activity;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.support.v7.app.AlertDialog;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.View;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.base.YLBaseActivity;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhuomogroup.ylyk.utils.OtherUtils;
+import com.zhuomogroup.ylyk.utils.SharedPreferencesUtil;
+import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.callback.StringCallback;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+import static com.zhuomogroup.ylyk.MainApplication.BASE_AUTHORIZATION;
+import static com.zhuomogroup.ylyk.consts.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.base.YLHTTPCodeBase.HTTP_CODE_200;
+import static com.zhuomogroup.ylyk.base.YLHTTPCodeBase.HTTP_CODE_300;
+import static com.zhuomogroup.ylyk.base.YLHTTPCodeBase.HTTP_CODE_401;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.OTHER_PASS;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USERID_AUTHORIZATION;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USER_INFO;
+import static com.zhuomogroup.ylyk.consts.YLUrlSetting.APPLICATION_JSON;
+import static com.zhuomogroup.ylyk.consts.YLUrlSetting.CONTENT_TYPE;
+import static com.zhuomogroup.ylyk.consts.YLUrlSetting.JSON_MEDIA_TYPE;
+
+/**
+ * Created by xyb on 2017/3/6.
+ */
+
+public class YLTelephoneChangeActivity extends YLBaseActivity implements View.OnClickListener, View.OnFocusChangeListener, TextWatcher {
+    public static final String AUTHORIZATION = "Authorization";
+    public static final int TELEPHONE_LENGTH = 11;
+    private TextView titleCenterText;
+    private TextView codeText;
+    private TextView loginButton;
+    private ImageView backImg;
+    private RelativeLayout window;
+    private EditText telephone;
+    private EditText password;
+    private TextView otherPass;
+
+    private boolean tag = true;
+    private int waitTime = 120;
+    private String id = "0";
+    private String mobilephone;
+    private boolean also;
+
+    @Override
+    public int bindLayout() {
+        return R.layout.activity_telephonechange;
+    }
+
+    @Override
+    public void initView(View view) {
+        titleCenterText = (TextView) view.findViewById(R.id.title_center_text);
+        loginButton = (TextView) view.findViewById(R.id.login_button);
+        codeText = (TextView) view.findViewById(R.id.code_text);
+        otherPass = (TextView) view.findViewById(R.id.other_pass);
+        backImg = (ImageView) view.findViewById(R.id.back_img);
+        window = (RelativeLayout) view.findViewById(R.id.window);
+        telephone = (EditText) view.findViewById(R.id.telephone);
+        password = (EditText) view.findViewById(R.id.password);
+    }
+
+    @Override
+    public void doBusiness(Context mContext) {
+        String user_info = (String) SharedPreferencesUtil.get(this, USER_INFO, "");
+        if (!"".equals(user_info)) {
+            try {
+                JSONObject jsonObject = new JSONObject(user_info);
+                id = jsonObject.getInt("id") + "";
+                mobilephone = jsonObject.getString("mobilephone");
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        if ("".equals(mobilephone)) {
+            titleCenterText.setText("绑定手机号");
+            Toast.makeText(mContext, "请先绑定手机号码", Toast.LENGTH_SHORT).show();
+        } else {
+            titleCenterText.setText("修改绑定手机");
+        }
+
+        Intent intent = getIntent();
+        also = intent.getBooleanExtra("also", false);
+
+
+        loginButton.setOnClickListener(this);
+        codeText.setOnClickListener(this);
+        backImg.setOnClickListener(this);
+        otherPass.setOnClickListener(this);
+        window.setOnClickListener(this);
+        telephone.addTextChangedListener(this);
+        telephone.setOnFocusChangeListener(this);
+        password.setOnFocusChangeListener(this);
+    }
+
+    @Override
+    public void resume() {
+
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+
+    @Override
+    public void onClick(View v) {
+        String telNum;
+        switch (v.getId()) {
+            case R.id.login_button:
+
+                telNum = telephone.getText().toString();
+                String code = password.getText().toString();
+
+                goToChange(telNum, code);
+
+
+                break;
+            case R.id.back_img:
+                finish();
+                break;
+            case R.id.code_text:
+
+                window.setFocusable(true);
+                window.setFocusableInTouchMode(true);
+                window.requestFocus();
+                telNum = telephone.getText().toString();
+                getTelephoneCode(telNum);
+                break;
+            case R.id.window:
+                window.setFocusable(true);
+                window.setFocusableInTouchMode(true);
+                window.requestFocus();
+                break;
+            case R.id.other_pass:
+                SharedPreferencesUtil.put(this, OTHER_PASS, true);
+                Intent intent = new Intent(this, YLMainActivity.class);
+                startActivity(intent);
+                finish();
+
+                break;
+
+        }
+
+    }
+
+    private void goToChange(final String telNum, String code) {
+        if (!OtherUtils.checkPhoneNumber(telNum)) {
+            Toast.makeText(this, R.string.please_put_telphone, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (code.equals("")) {
+            Toast.makeText(this, R.string.please_put_code, Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("mobilephone", telNum);
+            jsonObject.put("captcha", code);
+            String content = jsonObject.toString();
+
+            RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE,
+                    content);
+
+            String Authorization = (String) SharedPreferencesUtil.get(this, USERID_AUTHORIZATION, BASE_AUTHORIZATION);
+            OkHttpUtils.put()
+                    .url(BASE_URL_HEAD + "user/" + id + "/mobilephone" + Signature.UrlSignature())
+                    .addHeader(CONTENT_TYPE, APPLICATION_JSON)
+                    .addHeader(AUTHORIZATION, "USERID " + Authorization)
+                    .requestBody(requestBody)
+                    .build().execute(new StringCallback() {
+                @Override
+                public void onError(Call call, Exception e, int id) {
+                    e.printStackTrace();
+                    Toast.makeText(YLTelephoneChangeActivity.this, "网络出错，请稍后再试", Toast.LENGTH_SHORT).show();
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+                    try {
+                        JSONObject object = new JSONObject(response);
+
+                        int code = object.getInt("code");
+                        response = object.getString("response");
+                        if (code >= HTTP_CODE_200 && code <= HTTP_CODE_300) {
+                            JSONObject object1 = new JSONObject(response);
+                            boolean result = object1.getBoolean("result");
+                            if (result) {
+                                Toast.makeText(YLTelephoneChangeActivity.this, "绑定成功", Toast.LENGTH_SHORT).show();
+                                MainApplication application = (MainApplication) getApplication();
+                                ReactContext reactContext = application.getReactContext();
+                                if (reactContext != null) {
+                                    WritableMap params = new WritableNativeMap();
+                                    params.putString("mobilephone", telNum);
+                                    reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("MobilePhone", params);
+                                }
+                                if (also) {
+                                    startActivity(new Intent(YLTelephoneChangeActivity.this, YLMainActivity.class));
+                                    finish();
+                                }
+
+                            } else {
+                                Toast.makeText(YLTelephoneChangeActivity.this, "验证码不正确或已过期", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+
+                            if (code == HTTP_CODE_401) {
+                                showDialog(YLTelephoneChangeActivity.this);
+                            }
+
+                            Toast.makeText(YLTelephoneChangeActivity.this, "登陆失效请重新登录", Toast.LENGTH_SHORT).show();
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                @Override
+                public boolean validateReponse(Response response, int id) {
+                    return true;
+                }
+
+                @Override
+                public String parseNetworkResponse(Response response, int id) throws IOException {
+
+                    JSONObject jsonResponse = new JSONObject();
+                    try {
+                        jsonResponse.put("code", response.code());
+                        String string = response.body().string();
+                        jsonResponse.put("response", string);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    return jsonResponse.toString();
+                }
+            });
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+
+        }
+
+    }
+
+    public void getTelephoneCode(String telNum) {
+        if (!OtherUtils.checkPhoneNumber(telNum)) {
+            Toast.makeText(this, R.string.please_put_telphone, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        changeBtnGetCode();
+        codeText.setClickable(false);
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("mobilephone", telNum);
+            String content = jsonObject.toString();
+            String Authorization = (String) SharedPreferencesUtil.get(this, USERID_AUTHORIZATION, BASE_AUTHORIZATION);
+            OkHttpUtils.postString()
+                    .url(BASE_URL_HEAD + "user/" + id + "/mobilephone" + Signature.UrlSignature())
+                    .addHeader(CONTENT_TYPE, APPLICATION_JSON)
+                    .addHeader(AUTHORIZATION, "USERID " + Authorization)
+                    .content(content)
+                    .mediaType(JSON_MEDIA_TYPE)
+                    .build().execute(new StringCallback() {
+                @Override
+                public void onError(Call call, Exception e, int id) {
+                    e.printStackTrace();
+                    Toast.makeText(YLTelephoneChangeActivity.this, "网络出错，请稍后再试", Toast.LENGTH_SHORT).show();
+
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+                    try {
+                        JSONObject object = new JSONObject(response);
+                        int code = object.getInt("code");
+                        response = object.getString("response");
+                        if (code >= HTTP_CODE_200 && code <= HTTP_CODE_300) {
+                            JSONObject object1 = new JSONObject(response);
+                            boolean result = object1.getBoolean("result");
+                            if (!result) {
+                                waitTime = 5;
+                                Toast.makeText(YLTelephoneChangeActivity.this, "手机号已绑定过其他账号", Toast.LENGTH_SHORT).show();
+                            }
+                        } else {
+                            if (code == HTTP_CODE_401) {
+                                if (waitTime > 5) {
+                                    waitTime = 5;
+                                }
+                                showDialog(YLTelephoneChangeActivity.this);
+                            }
+                        }
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+
+                @Override
+                public boolean validateReponse(Response response, int id) {
+                    return true;
+                }
+
+                @Override
+                public String parseNetworkResponse(Response response, int id) throws IOException {
+
+                    JSONObject jsonResponse = new JSONObject();
+                    try {
+                        jsonResponse.put("code", response.code());
+                        String string = response.body().string();
+                        jsonResponse.put("response", string);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    return jsonResponse.toString();
+                }
+            });
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+
+        }
+
+    }
+
+    private void showDialog(final Activity activity) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle("登陆失效");
+        builder.setMessage("您的登录已失效，请重新登录");
+        builder.setNeutralButton("重新登录", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                Intent intent = new Intent(activity, YLLoginActivity.class);
+                startActivity(intent);
+                dialog.dismiss();
+            }
+        });
+        builder.setPositiveButton("注销", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+            }
+        });
+        AlertDialog alertDialog = builder.create();
+        if (!alertDialog.isShowing()) {
+            alertDialog.show();
+        }
+    }
+
+
+    private void changeBtnGetCode() {
+        Thread thread = new Thread() {
+            @Override
+            public void run() {
+                if (tag) {
+                    while (waitTime > 0) {
+                        waitTime--;
+                        if (null == YLTelephoneChangeActivity.this) {
+                            break;
+                        }
+
+                        YLTelephoneChangeActivity.this
+                                .runOnUiThread(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        codeText.setText("" + waitTime);
+                                        codeText
+                                                .setClickable(false);
+                                        codeText.setSelected(false);
+                                    }
+                                });
+                        try {
+                            Thread.sleep(1000);
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    tag = false;
+                }
+                waitTime = 120;
+                tag = true;
+                if (YLTelephoneChangeActivity.this != null) {
+                    YLTelephoneChangeActivity.this.runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            codeText.setText("获取验证码");
+                            codeText.setClickable(true);
+                            codeText.setSelected(true);
+                        }
+                    });
+                }
+            }
+        };
+        thread.start();
+    }
+
+    @Override
+    public void onFocusChange(View v, boolean hasFocus) {
+        if (!hasFocus) {
+            InputMethodManager imm = (InputMethodManager)
+                    getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(window.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+        }
+    }
+
+    @Override
+    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+    }
+
+    @Override
+    public void onTextChanged(CharSequence s, int start, int before, int count) {
+
+    }
+
+    @Override
+    public void afterTextChanged(Editable s) {
+        int length = s.length();
+        if (length == TELEPHONE_LENGTH) {
+            if (OtherUtils.checkPhoneNumber(s.toString())) {
+                codeText.setSelected(true);
+            }
+        } else {
+            codeText.setSelected(false);
+
+        }
+    }
+}

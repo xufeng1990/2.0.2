@@ -1,0 +1,12 @@
+package com.zhuomogroup.ylyk;
+
+/**
+ * Created by xyb on 2017/2/16.
+ */
+
+public class MyFragment extends ReactBaseFragment {
+    @Override
+    protected String getMainPageName() {
+        return "ylykFragment";
+    }
+}

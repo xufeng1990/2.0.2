@@ -1,0 +1,34 @@
+/**
+ * Sample React Native App
+ * https://github.com/facebook/react-native
+ * @flow
+ */
+
+import React, {
+  Component
+} from 'react';
+import {
+  AppRegistry,
+  StyleSheet,
+  Text,
+  View
+} from 'react-native';
+import Root from './Root.js';
+import g_AppValue from './js/configs/AppGlobal.js';
+export default class ylyk_rn extends Component {
+
+  componentWillMount() {
+    g_AppValue.init_type = this.props.tab_type;
+    g_AppValue.courseInfo = this.props.courseInfo;
+     //console.log('rrrrrrrrrrrr' +this.props.courseInfo )
+  }
+  render() {
+
+    return (
+      <Root />
+    );
+  }
+}
+
+
+AppRegistry.registerComponent('ylyk_rn', () => ylyk_rn);

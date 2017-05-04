@@ -1,0 +1,1265 @@
+
+//
+//  NativeNetwork.m
+//  TestYlykProject
+//
+//  Created by 友邻优课 on 2016/12/30.
+//  Copyright © 2016年 Facebook. All rights reserved.
+//
+
+#import "NativeNetwork.h"
+#import <React/RCTEventDispatcher.h>
+#import <React/RCTBridge.h>
+#import "XXZQNetwork.h"
+#import "NSStringTools.h"
+#import "WeChat.h"
+#import "CBLProgressHUD.h"
+#import "WXApi.h"
+#import "AppDelegate.h"
+
+
+
+typedef void (^RCTPromiseResolveBlock)(id result);
+typedef void (^RCTPromiseRejectBlock)(NSString *code, NSString *message, NSError *error);
+
+@interface NativeNetwork()
+
+@property (nonatomic, copy) NSDictionary * responseDict;
+@property (nonatomic, copy) NSString * captcha;
+
+
+@end
+
+@implementation NativeNetwork {
+    RCTPromiseResolveBlock _resolveBlock;
+    RCTPromiseRejectBlock _rejectBlock;
+}
+
+@synthesize bridge = _bridge;
+
+static id _instance = nil;
++ (instancetype)sharedInstance
+{
+    return [[self alloc] init];
+}
+
++ (instancetype)allocWithZone:(struct _NSZone *)zone
+{
+    
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _instance = [super allocWithZone:zone];
+    });
+    return _instance;
+    
+}
+
+//导出模块
+RCT_EXPORT_MODULE();    //此处不添加参数即默认为这个OC类的名字
+
+- (NSString *)getSecurtyUrlString: (NSString *)urlstring withParameters: (NSDictionary *)parameters {
+  
+  // 获得时间参数与随机数
+  NSString * timeString = [NSStringTools getTimeString];
+  NSString * randomStr = [NSStringTools getRandomString];
+  
+  // 拼接字典 ，并按照ascii排序
+  NSMutableDictionary * dict = [NSMutableDictionary dictionary];
+  [dict setObject:timeString forKey:@"timestamp"];
+  [dict setObject:randomStr forKey:@"nonce"];
+  [dict addEntriesFromDictionary:parameters];
+  NSArray* arr = [dict allKeys];
+  arr = [arr sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2){
+    NSComparisonResult result = [obj1 compare:obj2];
+    return result==NSOrderedDescending;
+  }];
+  
+  NSString * parastr;
+  NSString * string = nil;
+  for (int i=0; i<arr.count; i++) {
+    NSString * value = [dict valueForKey:arr[i]];
+    parastr = [NSString stringWithFormat:@"%@=%@",arr[i],value];
+    if (string != nil) {
+      string = [NSString stringWithFormat:@"%@&%@",string,parastr];
+    } else {
+      string = [NSString stringWithFormat:@"%@",parastr];
+    }
+    
+  }
+  // 将拼接好的字符串MD5运算
+  NSString * md5String = [NSStringTools getMD5String:string];
+  // 将运算好的MD5值拼接到url中
+  md5String = [NSString stringWithFormat:@"timestamp=%@&nonce=%@&signature=%@",timeString,randomStr,md5String];
+  return md5String;
+  
+}
+
+// 判断是否登录 如果登录通过用户的userid,app_token,app_key来获取请求头部的另一个内容
+- (NSString *)getAuthorization {
+  
+  NSString * jsonString = [[NSUserDefaults standardUserDefaults] objectForKey:@"has_login"];
+  
+    if (jsonString == nil) {
+        NSString * authorization = @"USERID NjFhNDI1ZTYwMjdjNDY4Yzg3NWVmNjIyZWY0ZDcxY2I6YW5vbnltb3VzOi0x";
+        return authorization;
+    }
+    
+  NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:jsonString];
+  
+  NSLog(@"%@",self.responseDict);
+  
+  NSString * userID = dict[@"user_id"];
+//  NSUserDefaults * userDefault = [NSUserDefaults standardUserDefaults];
+//  [userDefault setObject:userID forKey:@"user_id"];
+  
+  NSString * apptoken = dict[@"app_token"];
+  NSString * app_key = dict[@"app_key"];
+  
+  NSString * str = [NSString stringWithFormat:@"%@:%@:%@",app_key,apptoken,userID];
+  
+  NSData *data = [str dataUsingEncoding:NSUTF8StringEncoding];
+  NSString *base64String = [data base64EncodedStringWithOptions:0];
+  NSString * authorization = [NSString stringWithFormat:@"USERID %@",base64String];
+    [[NSUserDefaults standardUserDefaults] setObject:authorization forKey:@"authorization"];
+  return authorization;
+}
+
+#pragma mark -拆分字典将参数拼接
+- (NSString *)getParametersWithDictionary:(NSDictionary *)dict
+{
+    NSArray* arr = [dict allKeys];
+    arr = [arr sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2){
+        NSComparisonResult result = [obj1 compare:obj2];
+        return result==NSOrderedDescending;
+    }];
+    
+    NSString * parastr;
+    NSString * string = nil;
+    for (int i=0; i<arr.count; i++) {
+        NSString * value = [dict valueForKey:arr[i]];
+        parastr = [NSString stringWithFormat:@"%@=%@",arr[i],value];
+        if (string != nil) {
+            string = [NSString stringWithFormat:@"%@&%@",string,parastr];
+        } else {
+            string = [NSString stringWithFormat:@"%@",parastr];
+        }
+    }
+    return string;
+}
+
+#pragma mark -解析url，拼接url
+- (NSString *)getPathUrlWithObj:(id)obj
+{
+    NSString * path = @"";
+    if ([obj isKindOfClass: [NSArray class]]) {
+        NSArray * urlPath = obj;
+        for (int i=0; i<urlPath.count;i++) {
+            path = [NSString stringWithFormat:@"%@/%@",path,urlPath[i]];
+        }
+    }
+    return path;
+}
+
+
+- (void)getWithURLString:(NSString *)object  success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"query"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * urlString = nil;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@%@?%@&%@",BASEURLSTRING,path,string,dicturl];
+    }
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+
+#pragma mark -GET请求
+RCT_EXPORT_METHOD(get:(NSString *)object resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"query"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * urlString = nil;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@%@?%@&%@",BASEURLSTRING,path,string,dicturl];
+    }
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)postWithURLString:(NSString *)object success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"body"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+
+#pragma mark -POST请求
+RCT_EXPORT_METHOD(post:(NSString *)object  resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"body"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -DELETE请求
+RCT_EXPORT_METHOD(delete:(NSString *)object resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"body"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError * error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -PUT请求
+RCT_EXPORT_METHOD(put:(NSString *)object resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"body"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError * error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)put:(NSString *)object success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+ {
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:object];
+    NSString * authorization = [self getAuthorization];
+    NSDictionary * parameters = [dict objectForKey:@"body"];
+    NSString * path = [self getPathUrlWithObj:[dict objectForKey:@"url"]];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@%@?%@",BASEURLSTRING,path,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError * error) {
+        faliure(error);
+    }];
+}
+
+
+#pragma mark -获取微信登录token
+-(void)getTokenFromWechat:(NSString *)code  success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * urlString = [NSString stringWithFormat:@"https://api.weixin.qq.com/sns/oauth2/access_token?appid=%@&secret=%@&code=%@&grant_type=authorization_code",WECHATAPPID,WECHATAPPSECRECT,code];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:nil success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+#pragma mark - 从服务器取数据
+-(void)getuseInfo:(NSString *)openid accessToken:(NSString *)accessToken unionId:(NSString *)unionId success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@token?%@",BASEURLSTRING,dicturl];
+    NSDictionary * requestBody = [NSDictionary dictionaryWithObjectsAndKeys:APPKEY,@"app_key",unionId,@"union_id",openid,@"open_id",accessToken,@"access_token", nil];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:requestBody authorization:nil success:^(id responseObject) {
+        [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:@"has_login"];
+        [self getAuthorization];
+        success(responseObject);
+    } failure:^(NSError *error) {
+            faliure(error);
+    }];
+     
+}
+
+RCT_EXPORT_METHOD(getTokenFromWechat:(NSString *)code resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSString * urlString = [NSString stringWithFormat:@"https://api.weixin.qq.com/sns/oauth2/access_token?appid=%@&secret=%@&code=%@&grant_type=authorization_code",WECHATAPPID,WECHATAPPSECRECT,code];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:nil success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+#pragma mark -获取手机登录验证码
+
+- (void)getTokenByMobilephone:(NSString *)mobilephone success:(void (^)(id))success
+                      failure:(void (^)(NSError *))faliure {
+    
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@token?%@",BASEURLSTRING,dicturl];
+    NSDictionary * requestBody = [NSDictionary dictionaryWithObjectsAndKeys:@"398374a3b6bb1d1238a1e3dd1af6bcf2",@"app_key",mobilephone,@"mobilephone", nil];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:requestBody authorization:nil success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getTokenByMobilephone:(NSString *)mobilephone resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@token?%@",BASEURLSTRING,dicturl];
+    NSDictionary * requestBody = [NSDictionary dictionaryWithObjectsAndKeys:@"398374a3b6bb1d1238a1e3dd1af6bcf2",@"app_key",mobilephone,@"mobilephone", nil];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:requestBody authorization:nil success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+#pragma mark -手机验证码登录获取token
+- (void)getTokenByMobilephoneWithCaptcha:(NSString *)mobilephone
+                                       captcha:(NSString *)captcha
+                                       success:(void (^)(id))success
+                                       failure:(void (^)(NSError *))faliure
+{
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@token?%@",BASEURLSTRING,dicturl];
+    NSDictionary * requestBody = [NSDictionary dictionaryWithObjectsAndKeys:@"398374a3b6bb1d1238a1e3dd1af6bcf2",@"app_key",mobilephone,@"mobilephone",captcha,@"captcha", nil];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:requestBody authorization:nil success:^(id responseObject) {
+        [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:@"has_login"];
+        [self getAuthorization];
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getTokenByMobilephoneWithCaptcha:(NSString *)mobilephone captcha:(NSString *)captcha resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@token?%@",BASEURLSTRING,dicturl];
+    NSDictionary * requestBody = [NSDictionary dictionaryWithObjectsAndKeys:@"398374a3b6bb1d1238a1e3dd1af6bcf2",@"app_key",mobilephone,@"mobilephone",captcha,@"captcha", nil];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:requestBody authorization:nil success:^(id responseObject) {
+        [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:@"has_login"];
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+#pragma mark -获取用户推荐列表
+RCT_EXPORT_METHOD(getUserHotList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+      NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+     NSString * string = [self getParametersWithDictionary:parameters];
+     NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@user?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@user?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+#pragma mark -获取指定用户信息
+
+- (void)getUserById:(NSString *)userId success:(void (^)(id))success
+            failure:(void (^)(NSError *))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+
+}
+
+RCT_EXPORT_METHOD(getUserById:(NSString *)userId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getXdyById:(NSString *)xdyId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@xdy/%@?%@",BASEURLSTRING,xdyId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -修改指定用户信息
+RCT_EXPORT_METHOD(updateUser:(NSString *)userId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+//  Todo
+#pragma mark -修改用户头像
+RCT_EXPORT_METHOD(updateUserAvatar:(NSString *)userId image:(UIImage *)image resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] uploadImageWithURLString:urlString parameters:nil image:image authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError * error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+#pragma mark -修改指定用户的绑定手机获得验证码
+RCT_EXPORT_METHOD(updateUserMobilephone:(NSString *)userId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/mobilephone?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)updateUserMobilephone:(NSString *)userId :(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/mobilephone?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+#pragma mark -修改指定用户的绑定手机 传验证码
+RCT_EXPORT_METHOD(updateUserMobilephoneWithCaptcha:(NSString *)userId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/mobilephone?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+-(void)updateUserMobilephoneWithCaptcha:(NSString *)userId :(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure {
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/mobilephone?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+        if ([[self getErrorCodeWithError:error] isEqualToString:@"401"]) {
+            [CBLProgressHUD showTextHUDInWindowWithText:@"验证码不正确或已过期"];
+        }
+        
+    }];
+}
+
+#pragma mark -修改指定用户的代言人
+RCT_EXPORT_METHOD(updateUserDealer:(NSString *)userId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/dealer?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -获取指定用户的学习记录
+RCT_EXPORT_METHOD(getUserTraceById:(NSString *)userId parameters:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/trace?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)getUserTraceById:(NSString *)userId parameters:(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+     NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/trace?%@&%@",BASEURLSTRING,userId,string,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+
+#pragma mark -获取指定用户的任务
+RCT_EXPORT_METHOD(getUserTaskById:(NSString *)userId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@user/%@/task?%@",BASEURLSTRING,userId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -获取收货地址列表
+RCT_REMAP_METHOD(getAddressList, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@address?%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -创建新的收货地址
+RCT_EXPORT_METHOD(createAddress:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@address?%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -修改指定的收货地址
+RCT_EXPORT_METHOD(updateAddress:(NSString *)addressId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@address/%@?%@",BASEURLSTRING,addressId,dicturl];
+    [[XXZQNetwork sharedInstance] putWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -删除指定的收货地址
+RCT_EXPORT_METHOD(deleteAddress:(NSString *)addressId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    
+    NSString * urlString = [NSString stringWithFormat:@"%@address/%@?%@",BASEURLSTRING,addressId,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+#pragma mark -获取指定用户的粉丝列表
+RCT_EXPORT_METHOD(getFansList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@fans?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@fans?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -获取指定用户的关注列表
+RCT_EXPORT_METHOD(getFolloweeList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@followee?%@",BASEURLSTRING,dicturl];
+    } else {
+         urlString = [NSString stringWithFormat:@"%@followee?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -关注指定用户
+RCT_EXPORT_METHOD(createFollowee:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+//    NSString * string = [self getParametersWithDictionary:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@followee?&%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark -取消关注指定的用户
+RCT_EXPORT_METHOD(deleteFollowee:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+//    NSString * string = [self getParametersWithDictionary:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@followee?&%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+       reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark  -获取指定教师的信息
+RCT_EXPORT_METHOD(getTeacherById:(NSString *)teacherId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+//    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@teacher/%@?%@",BASEURLSTRING,teacherId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getTeacherList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = nil;
+    if (string==nil) {
+        urlString =  [NSString stringWithFormat:@"%@teacher?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@teacher?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark - 获取专辑列表（）
+RCT_EXPORT_METHOD(getAlbumList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString =  [NSString stringWithFormat:@"%@album?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@album?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+  
+    NSString *key = [NSString stringWithFormat:@"%@album?%@",BASEURLSTRING,string];
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        
+        [self writeToFileWithKey:key andResponseObj:responseObject];
+        
+//          [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:key];
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+- (void)getAlbumById:(NSString *)albumId success:(void (^)(id))success failure:(void (^)(NSError *))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@album/%@?%@",BASEURLSTRING,albumId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+
+}
+
+RCT_EXPORT_METHOD(getAlbumById:(NSString *)albumId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+//    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@album/%@?%@",BASEURLSTRING,albumId,dicturl];
+    
+    NSString *key = [NSString stringWithFormat:@"%@album/%@",BASEURLSTRING,albumId];
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        [self writeToFileWithKey:key andResponseObj:responseObject];
+//    [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:key];
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(likeAlbum:(NSString *)albumId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@album/%@/like?%@",BASEURLSTRING,albumId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+RCT_EXPORT_METHOD(getAlbumCommentList:(NSString *)albumId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@album/%@/comment?%@",BASEURLSTRING,albumId,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@album/%@/comment?%@&%@",BASEURLSTRING,albumId,string,dicturl];
+    }
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+
+RCT_EXPORT_METHOD(createAlbumComment:(NSString *)albumId :(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+        NSString * urlString = [NSString stringWithFormat:@"%@album/%@/comment?%@",BASEURLSTRING,albumId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getCourseList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@course?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@course?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    
+    NSString *key = [NSString stringWithFormat:@"%@course?%@",BASEURLSTRING,string];
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        [self writeToFileWithKey:key andResponseObj:responseObject];
+//        [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:key];
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)getCourseList:(NSDictionary *)parameters success:(void (^)(id))success failure:(void (^)(NSError *))faliure
+
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@course?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@course?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    urlString = [urlString stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+
+
+- (void)getCourseById:(NSString *)courseId  success:(void (^)(id))success failure:(void (^)(NSError *))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getCourseById:(NSString *)courseId  resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+- (void)likeCourse:(NSString *)courseId success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@/like?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+RCT_EXPORT_METHOD(likeCourse:(NSString *)courseId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@/like?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)unlikeCourse:(NSString *)courseId success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@/like?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+RCT_EXPORT_METHOD(unlikeCourse:(NSString *)courseId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@/like?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+- (void)getNoteList:(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@note?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@note?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    
+    
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+       
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+
+}
+
+RCT_EXPORT_METHOD(getNoteList:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@note?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@note?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    NSString *key = [NSString stringWithFormat:@"%@note?%@",BASEURLSTRING,string];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+         [self writeToFileWithKey:key andResponseObj:responseObject];
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getNoteById:(NSString *)noteId  resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@note/%@?%@",BASEURLSTRING,noteId,dicturl];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+         reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+//TODO 创建新的笔记
+
+
+RCT_EXPORT_METHOD(deleteNote:(NSString *)noteId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    
+    NSString * urlString = [NSString stringWithFormat:@"%@note/%@?%@",BASEURLSTRING,noteId,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+       reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(likeNote:(NSString *)noteId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@note/%@/like?%@",BASEURLSTRING,noteId,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+    reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+RCT_EXPORT_METHOD(unlikeNote:(NSString *)noteId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    
+    NSString * urlString = [NSString stringWithFormat:@"%@note/%@/like?%@",BASEURLSTRING,noteId,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+//  对外提供调用方法,演示Promise使用
+RCT_REMAP_METHOD(createSignin,
+                 resolveBlock:(RCTPromiseResolveBlock)resolve
+                 rejecteBlock:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    //    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString = [NSString stringWithFormat:@"%@signin?%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+
+RCT_EXPORT_METHOD(getSigninCalendar:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@signin?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@signin?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+    }];
+}
+
+#pragma mark 打卡日历
+- (void)getSigninCalendar:(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:parameters];
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString * urlString;
+    if (string==nil) {
+        urlString = [NSString stringWithFormat:@"%@signin?%@",BASEURLSTRING,dicturl];
+    } else {
+        urlString = [NSString stringWithFormat:@"%@signin?%@&%@",BASEURLSTRING,string,dicturl];
+    }
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+RCT_REMAP_METHOD(getBannerList, resolve:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@banner?%@",BASEURLSTRING,dicturl];
+    NSString *key = [NSString stringWithFormat:@"%@banner",BASEURLSTRING];
+    
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        [self writeToFileWithKey:key andResponseObj:responseObject];
+        resolve(responseObject);
+    } failure:^(NSError *error) {
+       
+        reject([self getErrorCodeWithError:error],[self getErrorMessageWithError:error],error);
+        
+    }];
+}
+
+- (void)getDownloadURLWithID:(NSString *)courseId success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@course/%@/media?%@",BASEURLSTRING,courseId,dicturl];
+    [[XXZQNetwork sharedInstance]
+     redirectURLString:urlString authorization:authorization parameters:nil success:^(id responseObject) {
+        
+    } failure:^(NSError * error) {
+        
+    } redirectURL:^(NSURL * URL) {
+        NSLog(@"%@",URL);
+        success(URL);
+    }];
+}
+
+- (void)createOrderWithParameters:(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    NSString * urlString = [NSString stringWithFormat:@"%@order?%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+- (void)getOrderById:(NSString *)orderId success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    
+    NSString * urlString = [NSString stringWithFormat:@"%@order/%@/like?%@",BASEURLSTRING,orderId,dicturl];
+    [[XXZQNetwork sharedInstance] deleteWithURLString:urlString parameters:nil authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+- (void)getReward:(NSDictionary *)parameters success:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * authorization = [self getAuthorization];
+    NSString * dicturl = [self getSecurtyUrlString:BASEURLSTRING withParameters:nil];
+    
+    NSString * urlString = [NSString stringWithFormat:@"%@umoney/reward?%@",BASEURLSTRING,dicturl];
+    [[XXZQNetwork sharedInstance] postWithURLString:urlString parameters:parameters authorization:authorization success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+- (void)getSystemVersionsuccess:(void (^)(id responseObject))success failure:(void (^)(NSError *error))faliure
+{
+    NSString * urlString = [NSString stringWithFormat:@"%@system/version",BASEURLSTRING];
+    [[XXZQNetwork sharedInstance] getWithURLString:urlString parameters:nil authorization:nil success:^(id responseObject) {
+        success(responseObject);
+    } failure:^(NSError *error) {
+        faliure(error);
+    }];
+}
+
+- (NSString *)getErrorMessageWithError:(NSError *)error {
+    NSData * errmessageData = [error.userInfo objectForKey:@"com.alamofire.serialization.response.error.data"];
+    NSString * errorString = [[NSString alloc] initWithData:errmessageData encoding:NSUTF8StringEncoding];
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:errorString];
+    NSString *errorMessage = [dict objectForKey:@"error_message"];
+    return errorMessage;
+}
+
+- (NSString *)getErrorCodeWithError:(NSError *)error {
+    NSData * errmessageData = [error.userInfo objectForKey:@"com.alamofire.serialization.response.error.data"];
+    NSString * errorString = [[NSString alloc] initWithData:errmessageData encoding:NSUTF8StringEncoding];
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:errorString];
+    NSString * errorCode = [dict objectForKey:@"error_code"];
+    return errorCode;
+}
+
+RCT_EXPORT_METHOD(getSystemNetworkState:(RCTResponseSenderBlock)callback){
+    NSString * networkstate = [self getSystemNetworkState];
+    callback(@[[NSNull null], networkstate]);
+}
+
+- (void)writeToFileWithKey:(NSString *)key andResponseObj:(id)responseObject
+{
+    key = [NSStringTools getMD5String:key];
+    NSArray *arr = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+    NSString *cachePath = [arr lastObject];
+    NSString *filePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.txt",key]];
+    [responseObject writeToFile:filePath atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
+
+- (NSString *)getSystemNetworkState
+{
+        // 状态栏是由当前app控制的，首先获取当前app
+        UIApplication *app = [UIApplication sharedApplication];
+        
+        NSArray *children = [[[app valueForKeyPath:@"statusBar"] valueForKeyPath:@"foregroundView"] subviews];
+        
+        int type = 0;
+        for (id child in children) {
+            if ([child isKindOfClass:[NSClassFromString(@"UIStatusBarDataNetworkItemView") class]]) {
+                type = [[child valueForKeyPath:@"dataNetworkType"] intValue];
+            }
+        }
+        
+        NSString *stateString = @"wifi";
+        
+        switch (type) {
+            case 0:
+                stateString = @"notReachable";
+                break;
+                
+            case 1:
+                stateString = @"2G";
+                break;
+                
+            case 2:
+                stateString = @"3G";
+                break;
+                
+            case 3:
+                stateString = @"4G";
+                break;
+                
+            case 4:
+                stateString = @"LTE";
+                break;
+                
+            case 5:
+                stateString = @"wifi";
+                break;
+                
+            default:
+                break;
+        }
+        
+        return stateString;
+}
+
+
+@end
+

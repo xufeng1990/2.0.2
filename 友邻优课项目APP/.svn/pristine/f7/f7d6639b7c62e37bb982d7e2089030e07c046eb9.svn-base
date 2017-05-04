@@ -1,0 +1,43 @@
+//
+//  YLYKPrefixHeader.pch
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/3.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#ifndef YLYKPrefixHeader_pch
+#define YLYKPrefixHeader_pch
+#import "MBProgressHUD.h"
+#import "YLYKNavigationController.h"
+#import "CBLProgressHUD.h"
+#define BASEURLSTRING @"https://dev-api.youlinyouke.com/v1/"
+#define APPKEY @"398374a3b6bb1d1238a1e3dd1af6bcf2"
+#define WECHATAPPID @"wxf56d7d93bc226f2e"
+#define WECHATAPPSECRECT @"15dc6a4d1b4e9f8f3037c01f1acfbc1e"
+#define SCREEN_WIDTH [UIScreen mainScreen].bounds.size.width
+#define SCREEN_HEIGHT [UIScreen mainScreen].bounds.size.height
+//#define RNURL @"http://192.168.99.188:8081/index.ios.bundle?platform=ios"
+#define RNURL @"http://192.168.10.228:8081/index.ios.bundle?platform=ios"
+//#define RNURL @"http://192.168.1.103:8081/index.ios.bundle?platform=ios"
+#define USERID [[NSUserDefaults standardUserDefaults] objectForKey:@"user_id"]
+#define XDY_ID [[NSUserDefaults standardUserDefaults] objectForKey:@"xdy_id"]
+#define USER_INFO [[NSUserDefaults standardUserDefaults] objectForKey:@"userInfo"]
+#define AUTHORIZATION [[NSUserDefaults standardUserDefaults] objectForKey:@"authorization"]
+#define FONT_SIZE [[NSUserDefaults standardUserDefaults] objectForKey:@"fontSize"]
+#define IS_VIP [[NSUserDefaults standardUserDefaults] boolForKey:@"isVip"]
+//#define JS_CODE_LOCATION  [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"]
+#define JS_CODE_LOCATION  [NSURL URLWithString:RNURL]
+
+
+#ifdef DEBUG
+#ifndef XXZQLog
+#define XXZQLog(...) NSLog(__VA_ARGS__)
+#endif
+#else
+#ifndef XXZQLog
+#define XXZQLog(...) do { } while (0)  /* */
+#endif
+#endif
+
+#endif /* YLYKPrefixHeader_pch */

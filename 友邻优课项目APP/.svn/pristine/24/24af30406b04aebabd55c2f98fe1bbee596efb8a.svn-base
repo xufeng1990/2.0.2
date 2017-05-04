@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/qamaster_popupwindow_background">
+
+    <ImageButton
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingLeft="80dp"
+        android:paddingRight="80dp"
+        android:paddingTop="56dp"
+        android:paddingBottom="40dp"
+        android:background="@color/qamaster_transparent"
+        android:scaleType="fitCenter"
+        android:src="@drawable/success" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="32dp"
+        android:gravity="center"
+        android:text="@string/qamaster_report_success"
+        android:textColor="@color/qamaster_lightGrey"
+        android:textSize="14sp" />
+
+</LinearLayout>

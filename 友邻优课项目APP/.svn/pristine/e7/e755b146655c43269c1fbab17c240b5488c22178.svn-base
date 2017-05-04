@@ -1,0 +1,359 @@
+'use strict';
+import React, {Component} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    PanResponder,
+    DeviceEventEmitter,
+    Animated,
+    Platform,
+    NativeModules,
+    NativeEventEmitter,
+    Modal
+} from 'react-native';
+//common
+import Util from '../../../common/util.js';
+import Icon from '../../../common/Icon.js';
+//configs
+import g_AppValue from '../../../configs/AppGlobal.js';
+import * as ImgUrl from '../../../configs/BaseImgUrl.js';
+import YLYKNatives from '../../../configs/ylykbridges/YLYKNatives.js';
+import YLYKServices from '../../../configs/ylykbridges/YLYKServices.js';
+import YLYKStorages from '../../../configs/ylykbridges/YLYKStorages.js';
+//component
+import AlbumDetailsTab from '../../../component/tabs/AlbumDetailsTab.js';
+import NavigationView from '../../../component/Navigator/NavigationView.js';
+import VideoView from '../../../component/Video/VideoView.js';
+//pages
+import Introduce from '../Introduce/Introduce.js';
+import AlbumShows from './AlbumShows.js';
+import AlbumNote from '../AlbumNote/AlbumNote.js';
+import Pay from '../../Pay/pay.js';
+import NoVipDetailsView from '../NoVipDetails.js';
+//组件
+import ScrollableTabView from 'react-native-scrollable-tab-view';
+import CachedImage from 'react-native-cached-image';
+
+const tabNames = ['简介', '课程', '评价'];
+
+//登陆监听
+var LoginEvents = NativeModules.LoginEvent;
+const myLoginEvent = new NativeEventEmitter(LoginEvents);
+var loginSubscription;
+
+//退出登录成功
+var LogoutEvents = NativeModules.LogoutEvent;
+const myLogoutEvent = new NativeEventEmitter(LogoutEvents);
+var logoutSubscription;
+
+var Bridges = NativeModules.BridgeEvents;
+const myEvent = new NativeEventEmitter(Bridges);
+var subscription;
+
+export default class AlbumDetails extends Component {
+    // 构造函数
+    _viewType = 0
+    _teacher = [];
+    constructor(props) {
+
+        super(props);
+        this.state = {
+            noVip: false, //非会员
+            albumDetails: '',
+            isPlayingOrPause: 0,
+            modalVisible: false,
+            noLogin: false,
+            isExistPlayedTrace: 1,
+
+            //开始高度
+        };
+
+    }
+    componentDidMount() {
+
+        //获取指定专辑信息
+        YLYKServices.$album.getAlbumById(this.props.album + '')
+        .then((data) => {
+            var resultData = JSON.parse(data);
+            this.setState({albumDetails: resultData});
+        }).catch((err) => {
+        });
+
+        this.subscription = myEvent.addListener('playOrPauseToRN', (reminder) => {
+            this.setState({isPlayingOrPause: reminder.isPlayingOrPause, isExistPlayedTrace: 1})
+        });
+
+        YLYKNatives.$player.isPlayingOrPause()
+        .then((data) => {
+            this.setState({isPlayingOrPause: data.isPlayingOrPause})
+        }).catch((err) => {
+            Util.AppToast('网络出错,请稍后再试')
+        })
+
+    }
+
+    componentWillMount() {
+        this._getUserID();
+        YLYKNatives.$player.isExistPlayedTrace().then((data) => {
+            this.setState({isExistPlayedTrace: data})
+        });
+
+
+        this.showNoteTabBar = DeviceEventEmitter.addListener('showNoteTabBar', (res) => {
+            if (res[0] == 1) {
+               YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+            } else {
+                return;
+            }
+
+        });
+
+        //登陆成功监听
+        this.loginSubscription = myLoginEvent.addListener('LoginSuccess', (reminder) => {
+            this._getUserID();
+        });
+        //注销成功
+        this.logoutSubscription = myLogoutEvent.addListener('LogoutSuccess', (reminder) => {
+            if (reminder.LogoutSuccess) {
+                this._getUserID();
+            }
+        })
+
+    }
+
+    //获取用户信息
+    _getUserID() {
+        YLYKNatives.$oauth.getUserInfo().then((data) => {
+            var resultData = JSON.parse(data);
+            if (data == 0 || data == '0') {
+                this.setState({noLogin: false, noVip: false});
+            } else {
+                this.setState({noLogin: true});
+                let isVip = Util.isVip(resultData);
+                if (isVip == false) {
+                    this.setState({noVip: false});
+                } else {
+                    this.setState({noVip: true});
+                }
+            }
+        }).catch((err) => {
+        })
+    }
+
+    // view卸载
+    componentWillUnmount() {
+        this._listtenner2 && this._listtenner2.remove()
+        this.modal && this.modal.remove();
+        if (this.props.hideTabbar == 'show') {
+          DeviceEventEmitter.emit('showCourseTabBar', '1');
+        }
+        this.showNoteTabBar && this.showNoteTabBar.remove();
+        this.subscription && this.subscription.remove();
+        DeviceEventEmitter.emit('showHomeTabber', '1');
+    }
+
+    //跳转小答应
+    goToQiView() {
+        YLYKNatives.$qiyu.goToQiyu();
+    }
+
+    //跳转支付页面
+    goToPayView() {
+          YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({component: Pay})
+    }
+
+      //提示
+    _alert() {
+        Util.alertDialog({
+            msg: '成为友邻学员即可收听此课程',
+            oneBtn: '立即入学',
+            okBtn: '咨询阿树老师',
+            cancelBtn: '取消',
+            okFun: () => {
+                this.goToQiView()
+            },
+            oneFun: () => {
+                this.goToPayView()
+            }
+        })
+    }
+
+    //播放页面
+    _goToPlayerView(is1, is, is2) {
+        if (this.state.noLogin == false) {
+            Util.AppToast('请先登录');
+        } else {
+            this.setState({noLogin: true});
+            if (this.state.noVip == false) {
+                this._alert();
+            } else {
+              YLYKNatives.$player.openPlayerController(is1, is, is2);
+
+            }
+        }
+    }
+
+    //返回
+    _goBack() {
+      if (this.props.hideTabbar == 'show') {
+        YLYKNatives.$showOrHideTabbar.showOrHideTabbar('show');
+      }else {
+          YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+      }
+
+        this.props.navigator.pop();
+    }
+    //视频播放按钮
+    _playButtonView() {
+        this.props.navigator.push({
+            component: VideoView,
+            params: {
+                albumName:this.state.albumDetails.name,
+                videoSource: this.state.albumDetails.video_url,
+                navigator:this.props.navigator,
+                hideTabBar: 0,
+            }
+        })
+    }
+
+    render() {
+
+        var course_count = this.state.albumDetails.course_count;
+        return (
+            <View style={styles.container}>
+
+                <View style={[styles.naviView, {backgroundColor: '#fff'}]}>
+
+                    <TouchableOpacity activeOpacity ={1} style ={styles.leftImageTouch} onPress={this._goBack.bind(this)}>
+                        <Image style={styles.leftImage} source={require('../../../imgs/courseBack.png')}/>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity activeOpacity ={1}  onPress={()=> {this._goToPlayerView('0', false, '[]')}}>
+                      <Image style={styles.rightImage} source={this.state.isPlayingOrPause == 0 ? require('../../../imgs/courseplay.png') : require('../../../imgs/coursegit.gif')}/>
+                </TouchableOpacity>
+
+            </View>
+
+            <CachedImage
+              defaultSource={require('../../../imgs/169.png')}
+              style={styles.HeaderImage}
+              source={{uri: ImgUrl.baseImgUrl + 'album/' + this.props.album + '/cover'}}>
+
+                <View style={[styles.naviView, {backgroundColor: !this.state.albumDetails.video_url? 'transparent': 'rgba(0,0,0,0.2)'}]}>
+
+                    <TouchableOpacity activeOpacity ={1} style ={styles.leftImageTouch} onPress={this._goBack.bind(this)}>
+                        <Image style={styles.leftImage} source={require('../../../imgs/courseBack.png')}/>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity activeOpacity ={1} onPress={() => this._goToPlayerView('0', false, '[]')}>
+                        <Image style={styles.rightImage} source={this.state.isExistPlayedTrace == 1 ? this.state.isPlayingOrPause == 0 ? require('../../../imgs/courseplay.png') : require('../../../imgs/coursegit.gif') : null}/>
+                    </TouchableOpacity>
+
+                </View>
+
+                {!this.state.albumDetails.video_url ? null
+                    : <View style={styles.headerPalyView}>
+
+                        <TouchableOpacity activeOpacity ={1} onPress={() => {this._playButtonView()}}>
+                            <Text style={{marginTop: 22 * g_AppValue.precent,fontSize: 38 * g_AppValue.precent,fontFamily: 'iconfont',color: '#fff'}}>{Icon.play}</Text>
+                        </TouchableOpacity>
+
+                    </View>
+                    }
+                    <View style={styles.headerListenView} >
+                      <Text style={[styles.headerListenText,{marginRight:9 *g_AppValue.precent}]}>{this.state.albumDetails.like_count}</Text>
+                      <Text style={[styles.headerListenText,{marginRight:6 *g_AppValue.precent,fontFamily:'iconfont'}]}>{Icon.likeFill}</Text>
+                      <Text style={[styles.headerListenText,{marginRight:20 *g_AppValue.precent}]}>{this.state.albumDetails.user_count + '人'} </Text>
+                      <Text style={[styles.headerListenText,{marginRight:6 *g_AppValue.precent,fontFamily:'iconfont'}]}>{Icon.headset}</Text>
+                    </View>
+            </CachedImage>
+
+            <ScrollView showsVerticalScrollIndicator={false} scrollEnabled = {false} ref='tempScrollView'>
+
+                <ScrollableTabView initialPage={1} locked={true} renderTabBar={() => <AlbumDetailsTab tabNames={tabNames}/>}>
+                    <Introduce tabLabel='简介' noVip={this.state.noVip} album={this.props.album} navigator={this.props.navigator} rowData={this.state.albumDetails}/>
+                    <AlbumShows tabLabel='节目' noVip={this.state.noVip} rowID={this.props.rowID} albumName={this.props.albumName} navigator={this.props.navigator} course_id={this.props.album} course_count={course_count} is_finished={this.state.albumDetails.is_finished}/>
+                    <AlbumNote tabLabel='心得' noVip={this.state.noVip} navigator={this.props.navigator} course_id={this.props.album}/>
+
+                </ScrollableTabView>
+
+            </ScrollView>
+
+            {this.state.noVip == false ? <NoVipDetailsView navigator={this.props.navigator}/> : null}
+
+        </View>
+
+        );
+    }
+
+
+}
+
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f2f5f6'
+    },
+    HeaderImage: {
+        width: g_AppValue.screenWidth,
+        marginTop: -64 * g_AppValue.precent,
+        height: 211 * g_AppValue.precent,
+        backgroundColor: 'black',
+        minHeight: 64 * g_AppValue.precent
+        //resizeMode:'cover'
+    },
+    headerPalyView: {
+        //marginTop: -64 * g_AppValue.precent,
+        width: g_AppValue.screenWidth,
+        height: 147 * g_AppValue.precent,
+        backgroundColor: "rgba(0,0,0,0.2)",
+        // justifyContent: 'center',
+        alignItems: 'center'
+    },
+    naviView: {
+        width: g_AppValue.screenWidth,
+        height: 64 * g_AppValue.precent,
+        flexDirection: 'row',
+        justifyContent: 'space-between'
+    },
+    leftImageTouch:{
+      marginTop: 30 * g_AppValue.precent,
+      justifyContent:'center',
+      alignItems:'center',
+      width:25* g_AppValue.precent,
+      height:25* g_AppValue.precent,
+    },
+    leftImage: {
+        width: 10 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent
+    },
+    rightImage: {
+        marginTop: 30 * g_AppValue.precent,
+        width: 18 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+        marginRight: 12 * g_AppValue.precent
+    },
+    headerListenView:{
+      width:g_AppValue.screenWidth,
+      height:29 *g_AppValue.precent,
+      alignItems:'center',
+      flexDirection:'row-reverse',
+      position:'absolute',
+      bottom:0,
+      backgroundColor:'rgba(0,0,0,0.30)'
+    },
+    headerListenText:{
+      color:'#ffffff',
+      fontSize:11*g_AppValue.precent,
+    },
+})

@@ -1,0 +1,163 @@
+package com.reactutils.setting;
+
+import android.app.Activity;
+import android.widget.Toast;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.tbruyelle.rxpermissions2.RxPermissions;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.utils.DataCleanManager;
+import com.zhuomogroup.ylyk.utils.FileSizeUtil;
+import com.zhuomogroup.ylyk.utils.UserAgentUtils;
+
+import io.reactivex.functions.Consumer;
+
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+
+/**
+ * Created by xyb on 2017/3/16.
+ */
+
+public class YLSettingModule extends ReactContextBaseJavaModule {
+
+    public static final String SETTING_MODULE = "SettingModule";
+
+    public YLSettingModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return SETTING_MODULE;
+    }
+
+    /**
+     * 获得缓存大小
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheSize(final Promise promise) {
+        try {
+            RxPermissions.getInstance(getCurrentActivity())
+                    .request(WRITE_EXTERNAL_STORAGE).subscribe(new Consumer<Boolean>() {
+                @Override
+                public void accept(Boolean aBoolean) throws Exception {
+                    if (aBoolean) {
+                        long folderSize = DataCleanManager.getFolderSize(getCurrentActivity().getCacheDir());
+                        long folderSize1 = DataCleanManager.getFolderSize(getCurrentActivity().getExternalCacheDir());
+                        long l = folderSize + folderSize1;
+                        String formatSize = DataCleanManager.getFormatSize(l);
+                        promise.resolve(formatSize);
+                    } else {
+                        promise.resolve("0 MB");
+                        Toast.makeText(getCurrentActivity(), R.string.toast_licenten, Toast.LENGTH_SHORT).show();
+                    }
+                }
+            });
+
+        } catch (Exception e) {
+            promise.reject(e);
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * 清楚缓存方法
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void clearCache(final Promise promise) {
+        try {
+            RxPermissions.getInstance(getCurrentActivity())
+                    .request(WRITE_EXTERNAL_STORAGE).subscribe(new Consumer<Boolean>() {
+                @Override
+                public void accept(Boolean aBoolean) throws Exception {
+                    if (aBoolean) {
+                        DataCleanManager.cleanInternalCache(getCurrentActivity());
+                        Toast.makeText(getCurrentActivity(), "删除成功", Toast.LENGTH_SHORT).show();
+                        promise.resolve("删除成功");
+                    } else {
+                        Toast.makeText(getCurrentActivity(), R.string.toast_licenten, Toast.LENGTH_SHORT).show();
+                    }
+
+                }
+            });
+
+        } catch (Exception e) {
+            promise.reject(e);
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * 获得构建版本code号
+     *
+     * @param promise
+     */
+
+    @ReactMethod
+    public void getVersionCode(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity == null) {
+            promise.reject("999", "activity null");
+            return;
+        }
+        int versionCode = UserAgentUtils.getVersionCode(currentActivity);
+        promise.resolve(versionCode + "");
+    }
+
+    /**
+     * 获得构建版本name
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getVersionName(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity == null) {
+            promise.reject("999", "activity null");
+            return;
+        }
+        String versionName = UserAgentUtils.getVersionName(currentActivity);
+        promise.resolve(versionName);
+    }
+
+    /**
+     * 获取总的存储空间
+     *
+     * @return
+     */
+    @ReactMethod
+    public void getTotalMemorySize(Promise promise) {
+        long availableInternalMemorySize = FileSizeUtil.getTotalInternalMemorySize();
+        if (FileSizeUtil.externalMemoryAvailable()) {
+            availableInternalMemorySize += FileSizeUtil.getTotalExternalMemorySize();
+        }
+        String totalMemorySize = FileSizeUtil.formatFileSize(availableInternalMemorySize, false);
+        promise.resolve(totalMemorySize);
+    }
+
+    /**
+     * 获取剩余的 存储空间
+     *
+     * @return
+     */
+    @ReactMethod
+    public void getAvailableMemorySize(Promise promise) {
+        long availableInternalMemorySize = FileSizeUtil.getAvailableInternalMemorySize();
+        if (FileSizeUtil.externalMemoryAvailable()) {
+            availableInternalMemorySize += FileSizeUtil.getAvailableExternalMemorySize();
+        }
+        String totalMemorySize = FileSizeUtil.formatFileSize(availableInternalMemorySize, false);
+        promise.resolve(totalMemorySize);
+    }
+
+
+}

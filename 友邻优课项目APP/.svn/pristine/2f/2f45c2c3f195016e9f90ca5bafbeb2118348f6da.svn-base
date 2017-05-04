@@ -1,0 +1,908 @@
+/**
+ * Sample React Native App
+ * https://github.com/facebook/react-native
+ * @flow
+ */
+
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    NativeAppEventEmitter,
+    Alert,
+    NativeModules,
+    Modal,
+    DeviceEventEmitter,
+    NativeEventEmitter,
+    Platform,
+    WebView,
+    NetInfo,
+    InteractionManager,
+
+} from 'react-native';
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import Util from '../../common/util.js';
+import * as ImageUrl from '../../configs/BaseImgUrl.js';
+import * as RnNativeModules from '../../configs/RnNativeModules.js'
+import AlbumDetails from '../Course/AlbumDetails/AlbumDetails.js';
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import Service from '../../configs/Service.js';
+import Icon from '../../common/Icon.js';
+import Video from 'react-native-video';
+import VideoView from '../../component/Video/VideoView.js';
+import CachedImage from 'react-native-cached-image';
+import Loading from '../../component/Loading/Loading.js';
+import Pay from '../Pay/pay.js';
+import AppToast from '../../component/Toast/Toast.js';
+//git监听
+var Bridges = NativeModules.BridgeEvents;
+const myEvent = new NativeEventEmitter(Bridges);
+var subscription;
+//登陆监听
+var LoginEvents = NativeModules.LoginEvent;
+const myLoginEvent = new NativeEventEmitter(LoginEvents);
+var loginSubscription;
+//退出登录成功
+var LogoutEvents = NativeModules.LogoutEvent;
+const myLogoutEvent = new NativeEventEmitter(LogoutEvents);
+var logoutSubscription;
+//支付成功
+var PaySuccessEvents = NativeModules.PayEvent;
+const myPaySuccessEvents = new NativeEventEmitter(PaySuccessEvents);
+var paySuccessSubscription;
+
+const CACHE_KEY = "__CACHE_HOME_1";
+const USERINFO = "userInfo ";
+
+var SplashScreen = NativeModules.SplashScreen;
+var Birge = NativeModules.BridgeNative;
+
+export default class Home extends Component {
+    _allData = [];
+    _topCourse = [];
+    _play = false;
+    constructor(props) {
+        super(props);
+        this._allData = [];
+        this.state = {
+            allData: this._allData,
+            modalVisible: false,
+            user_id: 0,
+            //非会员和未登录
+            hideNoVip: false,
+            //非会员
+            hideNoVip1: false,
+            isPlayingOrPause: 0,
+            isLoading: true,
+            noLogin: false,
+            isExistPlayedTrace: 1,
+            newDate: false,
+            PaySuccess:g_AppValue.PaySuccess,
+            //网络判断
+            //isConnected:true,
+        };
+
+        this._getUserID = this._getUserID.bind(this);
+    }
+
+    _leftItemAction() {
+        RnNativeModules.searchView();
+    }
+
+    _rightItemAction() {
+        if (this.state.noLogin == false) {
+            Util.AppToast('请先登录')
+        } else {
+            if (this.state.hideNoVip1 == false) {
+                this._alertHome();
+            } else {
+                RnNativeModules.goToPlayerView('0', false, '[]')
+
+            }
+        }
+
+
+    }
+
+    //获取数据
+    _getData() {
+        let that = this;
+        let getCoursesModel = function (arrCourse = []) {
+            let index = arrCourse.findIndex((c) => c.album.id === 6);
+            if (index < 0) {
+                return { courses: arrCourse };
+            } else {
+                let topCourse = arrCourse[index];
+                arrCourse.splice(index, 0, );
+                return { courses: arrCourse, topCourse: topCourse };
+            }
+        };
+        let startTime = Util.getBaseTime(),
+            endTime = Util.getBaseTime() + 24 * 60 * 60,
+            uploadTimestamp = new Date().getTime();
+        let getCourseList = function (data) {
+            let getNextDayCourseList = function () {
+                if (that._allData.filter((cm) => cm.updateTime == uploadTimestamp).length <= 5) {
+                    startTime -= 24 * 60 * 60;
+                    endTime -= 24 * 60 * 60;
+                    Service.service.getCourseList({ 'start_time': startTime, 'end_time': endTime, 'limit': 100, 'is_free': 'false' }).then(function (data) {
+                        getCourseList(data);
+                    }).catch(function (err) {
+                        console.log(err);
+                    });
+                } else {
+                    that._allData.sort((a, b) => b.date - a.date);
+                    while (that._allData.length > 5) {
+                        that._allData.pop();
+                    }
+                    that.setState({
+                        allData: that._allData,
+                        isLoading: false,
+                    });
+                    //  console.log('首页全部数据' + JSON.stringify(that._allData))
+                    Service.storage.setItem(CACHE_KEY, JSON.stringify(that._allData));
+                }
+            }
+
+            data = JSON.parse(data);
+            if (data.length > 0) {
+                let curIndex = -1,
+                    curDate = dateFormat(data[0].in_time * 1000, 'yyyyMMdd');
+                let courseModel = getCoursesModel(data);
+
+                let setModel = function (courseModel) {
+                    that._allData.forEach((c, i) => (c.date >= curDate) && (curIndex = i));
+                    if (curIndex < 0 || that._allData[curIndex].date !== curDate) {
+                        // 缓存中所有日期都比当前日期小，说明为最新的一天；
+                        // 缓存中有的日期比当前日期大，但不存在当前日期，说明历史数据有新增的天数变化
+                        that._allData.splice(curIndex < 0
+                            ? 0
+                            : curIndex, 0, {
+                                date: curDate,
+                                courses: courseModel.courses,
+                                topCourse: courseModel.topCourse,
+                                updateTime: uploadTimestamp,
+                                listenedMinutes: courseModel.listenedMinutes
+                            });
+                    } else {
+                        // 更新缓存中已有日期的数据
+                        that._allData[curIndex].courses = courseModel.courses;
+                        that._allData[curIndex].topCourse = courseModel.topCourse;
+                        that._allData[curIndex].updateTime = uploadTimestamp;
+                        that._allData[curIndex].listenedMinutes = courseModel.listenedMinutes;
+                    }
+                }
+
+                RnNativeModules.getLearnTimeWithStartTime(startTime, endTime).then(function (data) {
+                    courseModel.listenedMinutes = Math.min(parseInt(+data / 60), 999);
+                    setModel(courseModel);
+                    getNextDayCourseList();
+                }).catch(function (err) {
+
+                    setModel(courseModel);
+                    getNextDayCourseList();
+                });
+
+            } else {
+                getNextDayCourseList();
+            }
+        }
+
+        Service.service.getCourseList({ 'start_time': startTime, 'end_time': endTime, 'limit': 100, 'is_free': 'false' }).then(function (data) {
+            getCourseList(data);
+        }).catch(function (err) {
+            console.log(err);
+            Util.AppToast('网络出错,请稍后再试')
+            this.setState({ isLoading: false, });
+        });
+    }
+    //咨询页面
+    goToQiView() {
+        RnNativeModules.goToQiYu();
+    }
+
+    goToPayView() {
+        RnNativeModules.hideTabBar('hide');
+        this.props.navigator.push({
+            component: Pay,
+        })
+    }
+    //非会员弹alert
+    _alertHome() {
+        Util.alertDialog({
+            msg: '成为友邻学员即可收听此课程',
+            oneBtn: '立即入学',
+            okBtn: '咨询阿树老师',
+            cancelBtn: '取消',
+            okFun: () => { this.goToQiView() },
+            oneFun: () => { this.goToPayView() },
+        })
+    }
+    //跳转播放页
+    _goToEveryPlayView(playId, is, is2) {
+
+        if (this.state.noLogin == false) {
+            Util.AppToast('请先登录');
+
+        } else {
+            if (this.state.hideNoVip1 == false) {
+                this._alertHome();
+            } else {
+                RnNativeModules.goToPlayerView(playId + '', is, is2)
+            }
+        }
+
+
+
+
+    }
+    //跳转学习日历
+    _openCalendarView(start_time) {
+        RnNativeModules.hideTabBar('show');
+        RnNativeModules.goToListenTraceWithStartTime(start_time);
+    }
+
+    componentWillMount() {
+        let that = this;
+        //获取缓存数据
+        Service.storage.getItem(CACHE_KEY).then(function (data) {
+            that._allData = JSON.parse(data);
+            that.setState({ allData: that._allData, isLoading: false, });
+        });
+        //git接受监听
+        this.subscription = myEvent.addListener('playOrPauseToRN', (reminder) => {
+            this.setState({
+              isPlayingOrPause: reminder.isPlayingOrPause ,
+              isExistPlayedTrace:1,
+            })
+
+
+        }
+        );
+        //登陆成功监听
+        this.loginSubscription = myLoginEvent.addListener('LoginSuccess', (reminder) => {
+            this._getUserID();
+
+        });
+
+        //登陆成功监听
+        this.loginSubscription = myLoginEvent.addListener('LoginSuccess', (reminder) => {
+            this._getUserID();
+
+        });
+        this.showNoteTabBar = DeviceEventEmitter.addListener('showNoteTabBar', (res) => {
+
+            if (res[0] == 1) {
+                RnNativeModules.hideTabBar('show');
+            } else {
+                return;
+            }
+        })
+
+        RnNativeModules.isExistPlayedTrace()
+            .then((data) => {
+              console.log('监听隐藏' + data)
+                this.setState({ isExistPlayedTrace: data })
+            })
+
+        this.showCourseTabBar = DeviceEventEmitter.addListener('showHomeTabber', () => {
+            RnNativeModules.hideTabBar('show');
+        });
+
+        this.paySuccessSubscription = myPaySuccessEvents.addListener('PayEvent', (reminder) => {
+          if (reminder.PaySuccess) {
+            this.interval = setInterval(()=>{
+              this._getUserID();
+
+            },5000);
+          }
+        })
+
+    }
+
+    componentDidUpdate() {
+
+    }
+
+    componentDidMount() {
+        // 该页加载完毕，隐藏启动页
+        if (Platform.OS == 'ios') {
+            SplashScreen.hide();
+        }else{
+            Birge.dismiss();
+        }
+        this._getData();
+        this._getUserID();
+        // 获取git状态
+      // this.playOrPauseToRN =   NativeAppEventEmitter.addListener('playOrPauseToRN', (message) => {
+      //       console.log("playGif" + message);
+      //   })
+        Service.loginServer.isPlayingOrPause()
+            .then((data) => {
+                this.setState({ isPlayingOrPause: data.isPlayingOrPause })
+            }).catch((err) => {
+                console.log('错误' + err)
+            })
+
+        this.modal = DeviceEventEmitter.addListener('hideModal', () => {
+            this.setState({ modalVisible: false })
+        })
+
+
+    }
+
+
+    componentWillUnmount() {
+        this.subscription && this.subscription.remove();
+        // DeviceEventEmitter && DeviceEventEmitter.remove();
+        this.logoutSubscription && this.logoutSubscription.remove();
+        this.loginSubscription && this.loginSubscription.remove();
+        this.modal && this.modal.remove();
+        this.showNoteTabBar && this.showNoteTabBar.remove();
+        this.showCourseTabBar && this.showCourseTabBar.remove();
+        this.showCourseTabBar && this.showCourseTabBar.remove();
+        this.PaySuccess && this.PaySuccess.remove();
+        this.paySuccessSubscription && this.paySuccessSubscription.remove();
+
+    }
+    //获取userID
+    _getUserID() {
+        // console.log('注销刷新成功')
+        RnNativeModules.getUserInfo().then((data) => {
+        //   console.log('getUserInfo' + data)
+            var resultData = JSON.parse(data);
+            if (data == 0 || data == '0') {
+                this.setState({
+                    hideNoVip: false,
+                    noLogin: false,
+                })
+            } else {
+                this.setState({ noLogin: true, })
+                let isVip = Util.isVip(resultData)
+                if (isVip == false) {
+                    this.setState({
+                        hideNoVip: false,
+                        hideNoVip1: false,
+                    })
+                } else {
+
+                    this.setState({
+                        hideNoVip: true,
+                        hideNoVip1: true,
+                    })
+
+                      this.interval && this.interval.remove();
+                }
+
+            }
+        }).catch((err) => {
+            console.log('albunShow获取userID失败' + err)
+        })
+
+
+    }
+    //跳转详情页
+    _goToAlbumDetails(album) {
+        RnNativeModules.hideTabBar('hide');
+        this.props.navigator.push({
+            component: AlbumDetails,
+            params: {
+                album: album
+            }
+        })
+    }
+
+
+    ToastView() {
+        Util.AppToast('首页Toast');
+    }
+
+    playVideoView() {
+        this.setState({ modalVisible: true })
+    }
+    _goBackVideo() {
+        this.setState({ modalVisible: false })
+    }
+
+    _renderHeader(item, dataList) {
+        let that = this;
+        // var album = item.topCourse.album.id;
+
+        //console.log("JSON里的数据是"+JSON.stringify(this._allData[0]))
+        var getNewDate = new Date();
+        var getday = getNewDate.getDate();
+
+        var itemDAY = item.date;
+        itemDAY = itemDAY.substring(0, 4) + "-" + itemDAY.substring(4, 6) + "-" + itemDAY.substring(6, 8);
+        var day = new Date(itemDAY);
+        var strTimeDay = Util.dateFormat(day.getTime() / 1000, 'yyyy-MM-dd').split("-");
+
+        if (!item.topCourse) {
+
+
+            return (
+                <View style={styles.timeView}>
+                    <View >
+
+                        <Text style={styles.daysText}>{getday == strTimeDay[2] ? '今天'  :  strTimeDay[1] + '月' + strTimeDay[2] + '日'  }</Text>
+
+                        <Text style={styles.updatealbumText}>{item.courses.length}个专辑更新</Text>
+                    </View>
+                    <TouchableHighlight underlayColor='transparent' onPress={() => { this._openCalendarView(itemDAY+"") }}>
+                        <View style={styles.learningTimeView}>
+                            <Text style={styles.learningTimeText}>{item.listenedMinutes || 0}</Text>
+                            <Text style={styles.timeText}>min</Text>
+                        </View>
+                    </TouchableHighlight>
+
+                </View>
+
+            );
+        }
+
+
+        var baseTime = Util.dateFormat(item.topCourse.in_time, 'yyyy-MM-dd');
+        var strTime = baseTime.split("-");
+        var baseTime1 = new Date(item.topCourse.in_time * 1000);
+        var getMonthTime = baseTime1.getMonth();
+        var getDayTime = baseTime1.getDay();
+
+        var playId = item.topCourse.id;
+
+        return (
+            <View>
+                <View style={styles.timeView}>
+                    <View>
+
+
+                        <Text style={styles.daysText}>{ getday == strTime[2] ? '今天' : strTime[1] + '月' + strTime[2] + '日'}</Text>
+
+
+                        <Text style={styles.updatealbumText}>{item.courses.length}个专辑更新</Text>
+                    </View>
+                    <TouchableHighlight underlayColor='transparent' onPress={() => { this._openCalendarView(itemDAY+"") }}>
+                        <View style={styles.learningTimeView}>
+                            <Text style={styles.learningTimeText}>{item.listenedMinutes || 0}</Text>
+                            <Text style={styles.timeText}>min</Text>
+                        </View>
+                    </TouchableHighlight>
+                </View>
+                <TouchableHighlight underlayColor='transparent' onPress={() => { this._goToEveryPlayView(playId, true, dataList) }}>
+                    <CachedImage  defaultSource = {require('../../imgs/169.png')} style={styles.bannerImage} source={{
+                        uri: ImageUrl.baseImgUrl + 'course/' + item.topCourse.id + '/cover'
+                    }}>
+                        <View style={styles.topImageView}>
+                            <Text style={styles.titleText}>
+                                {item.topCourse.name}
+                            </Text>
+                            <View style={styles.bannerBottom}>
+                                <Text style={styles.bannerTeacherName}>{item.topCourse.teachers[0].name}</Text>
+                                <Text style={[
+                                    styles.bannerTeacherName, {
+                                        marginLeft: 20 * g_AppValue.precent
+                                    }
+                                ]}>{Util.timeFormat(item.topCourse.duration)}</Text>
+                                <View style={styles.bannerBottomView}>
+                                    <TouchableHighlight underlayColor='transparent' onPress={() => this._goToAlbumDetails(item.topCourse.album.id)}>
+                                        <Text style={[styles.bannerTeacherName, Platform.OS == 'ios' ? { margin: 2 * g_AppValue.precent } : { padding: 2 * g_AppValue.precent }]}>{item.topCourse.album.name}</Text>
+                                    </TouchableHighlight>
+                                </View>
+                            </View>
+                        </View>
+                    </CachedImage>
+                </TouchableHighlight>
+
+            </View>
+        );
+
+    }
+
+    _renderItem(item) {
+        var dataList = [];
+        for (var i = 0; i < item.courses.length; i++) {
+            dataList.push(item.courses[i])
+        }
+        //去除重复cell
+        var itemCourse = [];
+        if (item.topCourse) {
+            for (var i = 0; i < item.courses.length; i++) {
+                if (!(item.courses[i].id == item.topCourse.id)) {
+                    itemCourse.push(item.courses[i])
+                }
+            }
+        } else {
+            for (var i = 0; i < item.courses.length; i++) {
+                itemCourse.push(item.courses[i])
+            }
+        }
+
+
+        return (
+            <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.bigView}>
+                    {this._renderHeader(item, dataList)}
+                    {itemCourse.map((item) => {
+
+                        return (
+                            <TouchableHighlight underlayColor='transparent' onPress={() => this._goToEveryPlayView(item.id, true, dataList)}>
+                                <View style={styles.contentView}>
+                                    <View style={styles.cellView}>
+                                        <View style={styles.lineView} />
+                                        <CachedImage  defaultSource = {require('../../imgs/43.png')} style={styles.cellImage} source={{
+                                            uri: ImageUrl.baseImgUrl + 'course/' + item.id + '/cover'
+                                        }} />
+                                        <View style={styles.cellRightView}>
+                                            <Text numberOfLines={1} style={styles.cellTitle}>{item.name}</Text>
+                                            <View style={styles.cellTeather}>
+                                                <Text style={styles.cellTeacherName}>{item.teachers[0].name}</Text>
+                                                <Text style={styles.cellTime}>{Util.timeFormat(item.duration)}</Text>
+                                            </View>
+                                            <View style={styles.cellRightTitle}>
+                                                <TouchableHighlight underlayColor='transparent' onPress={() => this._goToAlbumDetails(item.album.id)}>
+                                                    <Text numberOfLines={1} style={styles.cellRightTitleText}>
+                                                        {item.album.name}
+                                                    </Text>
+                                                </TouchableHighlight>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </View>
+                            </TouchableHighlight>
+                        )
+                    })
+                    }
+
+                </View>
+            </ScrollView>
+        );
+    }
+    //<Image style={styles.videoImagePaly}/>
+    _NoVip() {
+        return (
+            <View style={styles.videoView}>
+                <View style={styles.contentView1}>
+                    <Image style={styles.imageTitle} source={require('./title.png')} />
+                    <View style={{
+                        backgroundColor: 'black',
+                        width: 35 * g_AppValue.precent,
+                        height: 1 * g_AppValue.precent,
+                        marginTop: 29 * g_AppValue.precent
+                    }} />
+                    <Text style={styles.contentText}>终身学习者的英语课堂从阅读经典开始</Text>
+                    <Image style={styles.videoImage} source={require('../../imgs/xialaoshi.png')}>
+                        <View style={styles.videoImageTwo}>
+                            <TouchableOpacity onPress={() => {
+                                this.playVideoView()
+                            }}>
+                                <Text style={{ fontSize: 38 * g_AppValue.precent, fontFamily: 'iconfont', color: '#ffffff' }}>{Icon.play}</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                    </Image>
+                </View>
+            </View>
+        );
+
+    }
+
+    render() {
+
+
+        if (!this.state.allData) {
+            return (
+                <View></View>
+            );
+        }
+
+        // <Loading visible = {this.state.isLoading}/>
+        return (
+
+            <View style={{
+                flex: 1,
+                backgroundColor: '#f2f5f6'
+            }}>
+
+
+                <NavigationBar title='最新' leftItemTitle={Icon.search} leftItemFunc={this._leftItemAction.bind(this)} rightImageSource={this.state.isExistPlayedTrace == 1 ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png') : require('../../imgs/play.gif') : require('../../imgs/noImage.png')}
+                  rightItemFunc={ this.state.isExistPlayedTrace == 1 ? this._rightItemAction.bind(this) : null} />
+                {this.state.isConnected ? null
+                    : <ScrollView showsHorizontalScrollIndicator={false} contentContainerStyle={{
+                        height: Platform.OS == 'ios'
+                            ? 560 * g_AppValue.precent
+                            : 550 * g_AppValue.precent
+                    }} horizontal={true} pagingEnabled={true}>
+                        {this.state.hideNoVip ? null : this._NoVip()}
+                        {this.state.allData.map((item, i) => this._renderItem(item, i))}
+
+                    </ScrollView>
+                }
+
+                <Modal style={{
+                    backgroundColor: 'black'
+                }} animationType={"fade"} transparent={false} visible={this.state.modalVisible}>
+
+                    <VideoView />
+
+                </Modal>
+            </View>
+        );
+    }
+    //
+    //   _backPage(){
+    //     this.props.navigator.pop();
+    // }
+
+}
+
+const styles = StyleSheet.create({
+    bigView: {
+        borderRadius: 12 * g_AppValue.precent,
+        width: 351 * g_AppValue.precent,
+        marginTop: 12 * g_AppValue.precent,
+        marginLeft: 12 * g_AppValue.precent,
+        marginRight: 12 * g_AppValue.precent,
+        marginBottom: 12 * g_AppValue.precent,
+        backgroundColor: '#ffffff'
+    },
+    timeView: {
+
+        width: 320 * g_AppValue.precent,
+        marginTop: 20 * g_AppValue.precent,
+        marginLeft: 16 * g_AppValue.precent,
+        marginRight: 14 * g_AppValue.precent,
+        marginBottom: 17 * g_AppValue.precent,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        //backgroundColor:'red'
+    },
+    daysText: {
+        fontSize: 28 * g_AppValue.precent,
+        color: '#5a5a5a',
+        textAlign: 'left'
+    },
+    updatealbumText: {
+        marginTop: 4 * g_AppValue.precent,
+        fontSize: 13 * g_AppValue.precent,
+        color: '#9a9b9c',
+        textAlign: 'left'
+    },
+    learningTimeView: {
+        //  marginLeft:200 * g_AppValue.precent,
+        //  marginTop: 5 * g_AppValue.precent,
+        right: 14 * g_AppValue.precent,
+        width: 46 * g_AppValue.precent,
+        height: 46 * g_AppValue.precent,
+        borderRadius: 23 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderColor: '#979797',
+        alignSelf: 'flex-end',
+        borderWidth: 1 * g_AppValue.precent,
+        marginTop: 4 * g_AppValue.precent,
+        marginLeft: 20 * g_AppValue.precent,
+    },
+    learningTimeText: {
+        fontSize: 13 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    timeText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    bannerImage: {
+        width: 320 * g_AppValue.precent,
+        height: 180 * g_AppValue.precent,
+        //backgroundColor:'black',
+        //marginTop: 17 * g_AppValue.precent,
+        marginLeft: 16 * g_AppValue.precent,
+        marginBottom: 20 * g_AppValue.precent
+    },
+    bannerView: {
+        flex: 1
+    },
+    topImageView: {
+        position: 'absolute',
+        backgroundColor: 'rgba(0,0,0,0.4)',
+        width: 320 * g_AppValue.precent,
+        height: 180 * g_AppValue.precent,
+        top: 0 * g_AppValue.precent,
+        left: 0 * g_AppValue.precent,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    titleText: {
+        fontSize: 20 * g_AppValue.precent,
+        color: '#ffffff',
+        textAlign: 'center'
+    },
+    bannerBottom: {
+        position: 'absolute',
+        width: 296 * g_AppValue.precent,
+        height: 23 * g_AppValue.precent,
+        //  backgroundColor:'green',
+        bottom: 8 * g_AppValue.precent,
+        left: 18 * g_AppValue.precent,
+        flexDirection: 'row',
+        alignItems: 'center'
+    },
+    bannerTeacherName: {
+
+        fontSize: 11 * g_AppValue.precent,
+        color: '#ffffff'
+    },
+    bannerBottomView: {
+        position: 'absolute',
+        height: 23 * g_AppValue.precent,
+        //backgroundColor:'black',
+        right: 0 * g_AppValue.precent,
+        borderWidth: 0.5 * g_AppValue.precent,
+        borderColor: '#ffffff',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 2 * g_AppValue.precent
+    },
+    contentView: {
+        width: 320 * g_AppValue.precent,
+        //backgroundColor:'red',
+        marginLeft: 16 * g_AppValue.precent
+    },
+    lineView: {
+        position: 'absolute',
+        width: 320 * g_AppValue.precent,
+        height: 1 * g_AppValue.precent,
+        backgroundColor: '#c8c8c8',
+        opacity: 0.5
+    },
+    cellView: {
+        width: 320 * g_AppValue.precent,
+        height: 112 * g_AppValue.precent,
+        //backgroundColor:'red',
+        alignItems: 'center',
+        flexDirection: 'row'
+    },
+    cellImage: {
+        width: 96 * g_AppValue.precent,
+        height: 72 * g_AppValue.precent
+    },
+    cellRightView: {
+        width: 207 * g_AppValue.precent,
+        height: 72 * g_AppValue.precent,
+        //  backgroundColor:'green',
+        marginLeft: 10 * g_AppValue.precent
+    },
+    cellTitle: {
+        marginTop: 10 * g_AppValue.precent,
+        fontSize: 16 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    cellTeather: {
+        marginTop: Platform.OS == 'ios'
+            ? 24 * g_AppValue.precent
+            : 20 * g_AppValue.precent,
+        flexDirection: 'row',
+        alignItems: 'center',
+        //backgroundColor:'red',
+    },
+    cellTeacherName: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    cellTime: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c',
+        marginLeft: 10 * g_AppValue.precent
+    },
+    cellRightTitle: {
+        position: 'absolute',
+        height: 23 * g_AppValue.precent,
+        //backgroundColor:'black',
+
+        right: 0 * g_AppValue.precent,
+        bottom: 0 * g_AppValue.precent,
+        borderWidth: 0.3 * g_AppValue.precent,
+        borderColor: '#9a9b9c',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 2 * g_AppValue.precent
+    },
+    cellRightTitleText: {
+        margin: 2 * g_AppValue.precent,
+        fontSize: 11 * g_AppValue.precent,
+        //backgroundColor:'red',
+        color: '#9a9b9c'
+    },
+
+    headerView: {
+        width: g_AppValue.screenWidth,
+        height: 64 * g_AppValue.precent,
+        backgroundColor: '#ffffff'
+    },
+    headerContentView: {
+        width: g_AppValue.screenWidth,
+        height: 20 * g_AppValue.precent,
+        marginTop: 33 * g_AppValue.precent,
+        //backgroundColor: 'red',
+        flexDirection: 'row'
+    },
+    headerTitle: {
+        marginLeft: 130 * g_AppValue.precent,
+        fontSize: 18 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+
+    leftImage: {
+        width: 10 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+        marginLeft: 12 * g_AppValue.precent,
+        //backgroundColor: 'black',
+
+    },
+    rightImage: {
+        width: 24 * g_AppValue.precent,
+        height: 24 * g_AppValue.precent,
+        //backgroundColor: 'black',
+    },
+    videoView: {
+        height: 24 * g_AppValue.precent,
+        borderRadius: 12 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        height: 520 * g_AppValue.precent,
+        width: 343 * g_AppValue.precent,
+        marginRight: 17 * g_AppValue.precent,
+        marginBottom: 12 * g_AppValue.precent,
+        marginTop: 12 * g_AppValue.precent,
+        marginLeft: 15 * g_AppValue.precent
+    },
+    contentView1: {
+        height: 446 * g_AppValue.precent,
+        width: 285 * g_AppValue.precent,
+        //backgroundColor:'green',
+        marginTop: 50 * g_AppValue.precent,
+        marginLeft: 29 * g_AppValue.precent,
+        marginRight: 29 * g_AppValue.precent,
+        marginBottom: 40 * g_AppValue.precent
+    },
+    imageTitle: {
+        width: 103 * g_AppValue.precent,
+        height: 24 * g_AppValue.precent
+    },
+    contentText: {
+        width: 180 * g_AppValue.precent,
+        height: 48 * g_AppValue.precent,
+        fontSize: 18 * g_AppValue.precent,
+        marginTop: 12 * g_AppValue.precent,
+        color: '#9a9b9c'
+    },
+    videoImage: {
+        marginTop: 35 * g_AppValue.precent,
+        width: 285 * g_AppValue.precent,
+        height: 285 * g_AppValue.precent,
+        //resizeMode:'contain',
+    },
+    videoImageTwo: {
+        width: 285 * g_AppValue.precent,
+        height: 285 * g_AppValue.precent,
+        opacity: 0.3,
+        backgroundColor: 'black',
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    videoImagePaly: {
+        width: 39 * g_AppValue.precent,
+        height: 39 * g_AppValue.precent,
+        backgroundColor: 'red'
+    },
+    touchColor: {
+        backgroundColor: '#ffffff',
+    }
+});

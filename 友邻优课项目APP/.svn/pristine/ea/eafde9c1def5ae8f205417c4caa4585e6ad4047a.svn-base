@@ -1,0 +1,47 @@
+//
+//  LogoutEvent.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/4.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "LogoutEvent.h"
+@implementation LogoutEvent
+
+RCT_EXPORT_MODULE();
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[@"LogoutSuccess"];
+}
+
+
+- (void)startObserving
+{
+    for (NSString *event in [self supportedEvents]) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleNotification:)
+                                                     name:event
+                                                   object:nil];
+    }
+}
+
++ (BOOL)application:(UIApplication *)application withLogout:(NSDictionary *)logout
+{
+    [self postNotificationName:@"LogoutSuccess" withLogout:logout];
+    return YES;
+}
+
++ (void)postNotificationName:(NSString *)name withLogout:(NSDictionary *)object
+{
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:name
+                                                        object:self
+                                                      userInfo:object];
+}
+
+- (void)handleNotification:(NSNotification *)notification {
+    [self sendEventWithName:@"LogoutSuccess" body:notification.userInfo];
+}
+
+@end

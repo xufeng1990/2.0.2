@@ -1,0 +1,49 @@
+@import "style.00-variables";
+
+.ui-feed {
+    position: relative;
+    display: flex;
+    overflow: hidden;
+}
+
+.ui-feed-meta {
+    @width: 64px;
+    width: @width;
+    flex:0 0 @width;
+}
+
+.ui-feed-avatar {
+    @width: 48px;
+    width: @width;
+    padding-right: 12px;
+    flex:0 0 @width;
+}
+
+.ui-feed-box {
+    flex: 1;
+    min-width: 0; /* 解决blink显示溢出 */
+    word-wrap: break-word;
+    
+    .ui-image {
+        display: block;
+        padding-top: 6px;
+        padding-right: 6px;
+        width: 33.33%!important;
+        height: 100vw;
+        max-height: 80px!important;
+        max-width: 80px!important;
+        float: left;
+        
+        &.ui-image-single {
+            width: auto!important;
+            height: auto;
+            max-height: 120px!important;
+            max-width: 90%!important;
+        }
+    }
+    
+    .ui-icon {
+        margin-left: 6px;
+        margin-right: 6px;
+    }
+}

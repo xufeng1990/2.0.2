@@ -1,0 +1,111 @@
+package com.zhuomogroup.ylyk.activity;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+
+import com.RNFetchBlob.RNFetchBlobPackage;
+import com.actionsheet.ActionSheetPackage;
+import com.brentvatne.react.ReactVideoPackage;
+import com.facebook.react.ReactInstanceManager;
+import com.facebook.react.ReactRootView;
+import com.facebook.react.bridge.NativeModuleCallExceptionHandler;
+import com.facebook.react.common.LifecycleState;
+import com.facebook.react.modules.core.DefaultHardwareBackBtnHandler;
+import com.facebook.react.shell.MainReactPackage;
+import com.growingio.plugin.rnsdk.rnPackge.GrowingIOPackage;
+import com.reactutils.encryption.EncryptionReactPackage;
+import com.rnfs.RNFSPackage;
+import com.zhuomogroup.ylyk.BuildConfig;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import ca.jaysoo.extradimensions.ExtraDimensionsPackage;
+
+/**
+ * Created by xyb on 2017/3/25.
+ */
+
+public class YLExpActivity extends Activity implements DefaultHardwareBackBtnHandler {
+
+
+    public static YLExpActivity ylExpActivity;
+
+    JSONObject courseInfo;
+    private ReactRootView mReactRootView;
+    private ReactInstanceManager mReactInstanceManager;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        ylExpActivity = this;
+        Intent intent = getIntent();
+        if (intent != null) {
+            String courseInfo = intent.getStringExtra("courseInfo");
+            if (courseInfo != null) {
+                try {
+                    JSONObject jsonObject = new JSONObject(courseInfo);
+                    this.courseInfo = jsonObject;
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+
+//        ReactRootView mReactRootView = new ReactRootView(this);
+        Bundle bundle = new Bundle();
+        bundle.putString("tab_type", "NoteListView");
+        if (courseInfo != null) {
+            bundle.putString("courseInfo", courseInfo.toString());
+        }
+//        MainApplication application = (MainApplication) getApplication();
+//        ReactNativeHost reactNativeHost = application.getReactNativeHost();
+//        if (reactNativeHost != null) {
+//            ReactInstanceManager reactInstanceManager = reactNativeHost.getReactInstanceManager();
+//            mReactRootView.startReactApplication(reactInstanceManager, "ylyk_rn", bundle);
+//            setContentView(mReactRootView);
+//        }
+
+
+        mReactRootView = new ReactRootView(this);
+        mReactInstanceManager = ReactInstanceManager.builder()
+                .setApplication(this.getApplication())
+                .setBundleAssetName("index.android.bundle")
+                .setJSMainModuleName("index.android")
+                .setNativeModuleCallExceptionHandler(new NativeModuleCallExceptionHandler() {
+                    @Override
+                    public void handleException(Exception e) {
+                        e.printStackTrace();
+                    }
+                })
+                .addPackage(new MainReactPackage())
+                .addPackage(new EncryptionReactPackage())
+                .addPackage(new GrowingIOPackage())
+                .addPackage(new ActionSheetPackage())
+                .addPackage(new RNFSPackage())
+                .addPackage(new RNFetchBlobPackage())
+                .addPackage(new ReactVideoPackage())
+                .addPackage(new ExtraDimensionsPackage())
+                .setUseDeveloperSupport(BuildConfig.DEBUG)
+                .setInitialLifecycleState(LifecycleState.RESUMED)
+                .build();
+        mReactRootView.startReactApplication(mReactInstanceManager, "NoteListView", bundle);
+
+        setContentView(mReactRootView);
+
+
+    }
+
+    @Override
+    public void invokeDefaultOnBackPressed() {
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        ylExpActivity = null;
+    }
+}

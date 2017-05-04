@@ -1,0 +1,181 @@
+package com.zhuomogroup.ylyk.base;
+
+import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.StrictMode;
+import android.support.annotation.Nullable;
+import android.view.LayoutInflater;
+import android.view.MotionEvent;
+import android.view.View;
+
+//import com.growingio.android.sdk.collection.GrowingIO;
+import com.qiyukf.nimlib.sdk.NimIntent;
+import com.qiyukf.unicorn.api.ConsultSource;
+import com.qiyukf.unicorn.api.ProductDetail;
+import com.qiyukf.unicorn.api.Unicorn;
+import com.testin.agent.Bugout;
+import com.testin.agent.BugoutConfig;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.utils.NetworkUtil;
+import com.zhy.autolayout.AutoLayoutActivity;
+
+import java.lang.ref.WeakReference;
+
+import static com.zhuomogroup.ylyk.MainApplication.BUGOUT_APPKEY;
+
+/**
+ * Created by xyb on 2017/2/17.
+ */
+
+public abstract class YLBaseActivity extends AutoLayoutActivity implements YLInitActivity {
+
+
+    public static final String APPTEXT = "APPTEXT";
+    /**
+     * 日志输出标志
+     **/
+    protected final String TAG = this.getClass().getSimpleName();
+
+    /**
+     * 当前Activity的弱引用，防止内存泄露
+     **/
+    private static WeakReference<Activity> context = null;
+
+    private MainApplication uhApplication;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
+
+        super.onCreate(savedInstanceState);
+
+
+        /*
+         当前Activity渲染的视图View
+         */
+        View mContextView = LayoutInflater.from(this).inflate(bindLayout(), null);
+        setContentView(mContextView);
+        uhApplication = new MainApplication();
+        context = new WeakReference<Activity>(this);
+        uhApplication.pushTask(context);
+//        GrowingIO.disableRNNavigatorPage();
+        /*初始化试图*/
+        initView(mContextView);
+
+        /*业务操作*/
+        doBusiness(this);
+
+        parseIntent();
+
+
+        initBugout();
+
+
+    }
+
+    private void initBugout() {
+        BugoutConfig config = new BugoutConfig.Builder(this)
+                .withAppKey(BUGOUT_APPKEY)     // 您的应用的项目ID,如果已经在 Manifest 中配置则此处可略
+                .withAppChannel(APPTEXT)
+                .withUserInfo(APPTEXT)    // 用户信息-崩溃分析根据用户记录崩溃信息
+                .withDebugModel(true)    // 输出更多SDK的debug信息
+                .withErrorActivity(true)    // 发生崩溃时采集Activity信息
+                .withCollectNDKCrash(true) //  收集NDK崩溃信息
+                .withOpenCrash(true)    // 收集崩溃信息开关
+                .withOpenEx(true)     // 是否收集异常信息
+                .withReportOnlyWifi(true)    // 仅在 WiFi 下上报崩溃信息
+                .withReportOnBack(true)    // 当APP在后台运行时,是否采集信息
+                .withQAMaster(true)    // 是否收集摇一摇反馈
+                .withCloseOption(true)   // 是否在摇一摇菜单展示‘关闭摇一摇选项’
+                .withLogCat(true)  // 是否系统操作信息
+                .build();
+        Bugout.init(config);
+//        boolean shakeStatus = (boolean) SharedPreferencesUtil.get(this, SHAKE_STATUS, true);
+//        Bugout.setShakeStatus(this,shakeStatus);
+    }
+
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        setIntent(intent);
+        parseIntent();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        //* 注：回调 1
+        Bugout.onResume(this);
+        resume();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        destroy();
+        uhApplication.removeTask(context);
+    }
+
+    /**
+     * 获取当前Activity
+     *
+     * @return
+     */
+    public static Activity getContext() {
+        if (null != context)
+            return context.get();
+        else
+            return null;
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        //* 注：回调 2
+        Bugout.onPause(this);
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        //* 注：回调 3
+        Bugout.onDispatchTouchEvent(this, event);
+        return super.dispatchTouchEvent(event);
+    }
+
+
+    public static void consultService(final Context context, String uri, String title, long xdyId, String staffName, ProductDetail productDetail) {
+        if (!Unicorn.isServiceAvailable()) {
+            AlertDialog.Builder dialog = new AlertDialog.Builder(context);
+            if (!NetworkUtil.isNetworkAvailable(context)) {
+                // 当前无网络
+                dialog.setMessage("网络状况不佳，请重试。");
+                dialog.setPositiveButton("确定", null);
+            }
+            dialog.show();
+            return;
+        }
+
+        // 启动聊天界面
+        ConsultSource source = new ConsultSource(uri, title, null);
+        source.productDetail = productDetail;
+        source.staffId = xdyId;
+        Unicorn.openServiceActivity(context, staffName, source);
+    }
+
+
+    private void parseIntent() {
+        Intent intent = getIntent();
+        if (intent.hasExtra(NimIntent.EXTRA_NOTIFY_CONTENT)) {
+            consultService(this, null, null, 0, null, null);
+            // 最好将intent清掉，以免从堆栈恢复时又打开客服窗口
+            setIntent(new Intent());
+        }
+    }
+
+
+}

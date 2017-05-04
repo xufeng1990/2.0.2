@@ -1,0 +1,66 @@
+//
+//  SplashViewController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/8.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "SplashViewController.h"
+#import "SplashScreen.h"
+#import "LoginViewController.h"
+@interface SplashViewController ()
+
+@end
+
+@implementation SplashViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view.
+    self.view.backgroundColor = [UIColor redColor];
+    
+   
+}
+
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    [self dismiss];
+}
+
+- (void)dismiss
+{
+//    if ([SplashScreen show]) {
+//        [self dismissViewControllerAnimated:YES completion:nil];
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        UIWindow *keywindow = [UIApplication sharedApplication].delegate.window;
+        UINavigationController *nav = (UINavigationController *)keywindow.rootViewController;
+        
+        LoginViewController *login = [[LoginViewController alloc] init];
+        
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(isLoginSuccess:) name:@"isLoginSuccess" object:nil];
+        [self presentViewController:login animated:YES completion:nil];
+    });
+    
+    
+//    }
+}
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+
+/*
+#pragma mark - Navigation
+
+// In a storyboard-based application, you will often want to do a little preparation before navigation
+- (void)prepareForSegue:(UIStoryboardSegue *)segue sender:(id)sender {
+    // Get the new view controller using [segue destinationViewController].
+    // Pass the selected object to the new view controller.
+}
+*/
+
+@end

@@ -1,0 +1,1950 @@
+package com.zhuomogroup.ylyk.activity;
+
+import android.annotation.SuppressLint;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.ServiceConnection;
+import android.graphics.Rect;
+import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.IBinder;
+import android.os.Message;
+import android.os.StrictMode;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.AlertDialog;
+import android.util.DisplayMetrics;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.ViewTreeObserver;
+import android.view.inputmethod.InputMethodManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
+import android.webkit.WebViewClient;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.SeekBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.google.gson.Gson;
+import com.lzy.okgo.OkGo;
+import com.lzy.okgo.model.HttpHeaders;
+import com.lzy.okgo.request.GetRequest;
+import com.lzy.okserver.download.DownloadInfo;
+import com.lzy.okserver.download.DownloadManager;
+import com.lzy.okserver.download.DownloadService;
+import com.reactutils.callback.BaseStringCallback;
+import com.reactutils.download.DownLoadBean;
+import com.tbruyelle.rxpermissions2.RxPermissions;
+import com.testin.agent.Bugout;
+import com.testin.agent.BugoutConfig;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.ScaleTransformer;
+import com.zhuomogroup.ylyk.adapter.YLAudioAdapter;
+import com.zhuomogroup.ylyk.bean.DataList;
+import com.zhuomogroup.ylyk.bean.MyRequestBean;
+import com.zhuomogroup.ylyk.bean.ObjectJS;
+import com.zhuomogroup.ylyk.bean.PlaySelectBean;
+import com.zhuomogroup.ylyk.bean.RequestBean;
+import com.zhuomogroup.ylyk.controller.PushTipsController;
+import com.zhuomogroup.ylyk.controller.QiYuActivityController;
+import com.zhuomogroup.ylyk.listener.MyDownloadListener;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhuomogroup.ylyk.pupwindow.PlayTypePopupWindow;
+import com.zhuomogroup.ylyk.pupwindow.YLPlayListDialogFragment;
+import com.zhuomogroup.ylyk.service.AudioControl;
+import com.zhuomogroup.ylyk.service.AudioPlaybackService;
+import com.zhuomogroup.ylyk.utils.AudioTimeUtils;
+import com.zhuomogroup.ylyk.utils.NetWorkUtils;
+import com.zhuomogroup.ylyk.utils.SPUtils;
+import com.zhuomogroup.ylyk.utils.Utils;
+import com.zhuomogroup.ylyk.views.OnScrollWebView;
+import com.zhy.autolayout.AutoLayoutActivity;
+import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.callback.StringCallback;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+
+import io.reactivex.functions.Consumer;
+import me.iwf.photopicker.PhotoPicker;
+import me.iwf.photopicker.PhotoPreview;
+import okhttp3.Call;
+
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+import static com.reactutils.encryption.EncryptionTools.MD5;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.COURSEID;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.CSS;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.IS_LOGIN;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.LAST_AUDIO_ID;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.LOCAL_FOR_WIFI_TOAST;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_POSITION;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TIME_0_8;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TIME_1;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TIME_1_2_5;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TIME_1_5;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TYPE;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TYPE_NEXT;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TYPE_ONE;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PLAY_TYPE_ONLY_ONE;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.PUSH_TRUE;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.SELECT_IMGS;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.USER_INFO;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.VIEW_PAGER_IS_GONE;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.WEBVIEW_TEXT_SIZE;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.WRITE_TIPS_ISALSO_SHOW;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.WRITE_TIPS_STRING;
+import static com.zhuomogroup.ylyk.network.Signature.UrlHeaders;
+import static com.zhuomogroup.ylyk.network.Signature.UrlSignature;
+import static com.zhuomogroup.ylyk.service.AudioPlaybackService.THIS_BIGIN_PLAY_TYPE;
+import static com.zhuomogroup.ylyk.utils.SPUtils.get;
+import static com.zhuomogroup.ylyk.utils.SPUtils.put;
+import static me.iwf.photopicker.PhotoPicker.REQUEST_CODE;
+import static me.iwf.photopicker.utils.FileUtils.fileIsExists;
+
+
+/**
+ * Created by xyb on 2017/1/20.
+ */
+
+public class YLNewAudioActivity extends AutoLayoutActivity implements View.OnClickListener, SeekBar.OnSeekBarChangeListener, PlayTypePopupWindow.OnSelectedListener,
+        ViewPager.OnPageChangeListener, GestureDetector.OnGestureListener, View.OnTouchListener, ViewTreeObserver.OnGlobalLayoutListener, View.OnFocusChangeListener, YLPlayListDialogFragment.GoToPlay {
+
+    private OnScrollWebView webView;
+    private TextView title_text, now_time, all_time;
+    private ImageView back_img, play_back_15, play_forward_15, play_download, play_more, write_tips;
+    private View view_bg;
+    private ImageView play_type_push;
+    private ImageView select_img_push;
+    private ImageView play_list;
+    private TextView img_size;
+    private int courseId;
+    private SeekBar play_seek;
+    private int duration;
+
+    private String name;
+    private AudioControl audioControl;
+    private MyServiceConnection myServiceConna;
+    private ImageView play_type;
+    private PlayTypePopupWindow playTypePopupWindow;
+    private AlertDialog.Builder alertDialog;
+    private AlertDialog.Builder buy_dialog;
+    private int userId;
+    private boolean isSeek = false;
+    private boolean vip;
+    private JSONArray teachers;
+    private JSONObject album;
+    private int albumId;
+    private String replace;
+    private String json;
+    private AlertDialog lastAlertDialog;
+    private WebSettings settings;
+    private int[] webTextSize = {75, 100, 150};
+    private int webTextSizeType = 1;
+    private ViewPager viewPager;
+    private YLAudioAdapter ylAudioAdapter;
+    private GestureDetector detector; // 手势监听
+    private ImageView img_change;
+    private RelativeLayout img_change_re;
+    private EditText tips_editText;
+    private boolean beforeIsShow = true;
+    private View push_tips_card;
+    private View play_rela;
+    private GestureDetector gestureDetector;
+    private ArrayList<DataList> dataLists;
+    private ImageView push_button;
+    private PushTipsController pushTipsController;
+    private boolean isFromDownload = false;
+    private ArrayList<String> selectedPhotos = new ArrayList<>();
+    private int MY_COURSEID = 0;
+    private String response;
+    private String playListName;
+    private QiYuActivityController controller;
+    private RelativeLayout loading_re;
+    private RelativeLayout push_tips_card_re;
+
+
+    private boolean isKeyboardShown(View rootView) {
+        final int softKeyboardHeight = 50;
+        Rect r = new Rect();
+        rootView.getWindowVisibleDisplayFrame(r);
+        DisplayMetrics dm = rootView.getResources().getDisplayMetrics();
+        int heightDiff = rootView.getBottom() - r.bottom;
+        return heightDiff > softKeyboardHeight * dm.density;
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
+        StrictMode.setThreadPolicy(policy);
+
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_newaudio);
+
+        EventBus.getDefault().register(this); //第1步: 注册
+
+
+        initGetIntent();
+        initView();
+        initWebView();
+
+        bindService();
+
+
+    }
+
+    private void onServiceConnection() {
+        json = (String) get(this, courseId + "last_audio", "");
+
+        if (NetWorkUtils.isNetworkAvailable(this)) {
+            if (NetWorkUtils.isWifi(this)) {
+                checkThread("wifi");
+                initData();
+            } else {
+                checkThread("4g");
+            }
+        } else {
+            checkThread("noNet");
+        }
+        View rootView = getWindow().getDecorView().findViewById(android.R.id.content);
+        rootView.getViewTreeObserver().addOnGlobalLayoutListener(this);
+        initBugout(); // 初始化Bugout
+    }
+
+    private void initBugout() {
+        BugoutConfig config = new BugoutConfig.Builder(this)
+                .withAppKey("8579474c2bbcbd0bfe6215fb5317dff8")     // 您的应用的项目ID,如果已经在 Manifest 中配置则此处可略
+                .withAppChannel("APPTEXT")
+                .withUserInfo("APPTEXT")    // 用户信息-崩溃分析根据用户记录崩溃信息
+                .withDebugModel(true)    // 输出更多SDK的debug信息
+                .withErrorActivity(true)    // 发生崩溃时采集Activity信息
+                .withCollectNDKCrash(true) //  收集NDK崩溃信息
+                .withOpenCrash(true)    // 收集崩溃信息开关
+                .withOpenEx(true)     // 是否收集异常信息
+                .withReportOnlyWifi(true)    // 仅在 WiFi 下上报崩溃信息
+                .withReportOnBack(true)    // 当APP在后台运行时,是否采集信息
+                .withQAMaster(true)    // 是否收集摇一摇反馈
+                .withCloseOption(false)   // 是否在摇一摇菜单展示‘关闭摇一摇选项’
+                .withLogCat(true)  // 是否系统操作信息
+                .build();
+        Bugout.init(config);
+    }
+
+    private void bindService() {
+        Intent intent = new Intent(YLNewAudioActivity.this, AudioPlaybackService.class);
+        startService(intent);
+        myServiceConna = new MyServiceConnection();
+        bindService(intent, myServiceConna, BIND_AUTO_CREATE);
+    }
+
+
+    private void initView() {
+
+        controller = new QiYuActivityController();
+        play_list = (ImageView) findViewById(R.id.play_list);
+        webView = (OnScrollWebView) findViewById(R.id.webview);
+        img_change_re = (RelativeLayout) findViewById(R.id.img_change_re);
+        viewPager = (ViewPager) findViewById(R.id.viewPager);
+        tips_editText = (EditText) findViewById(R.id.tips_editText);
+        write_tips = (ImageView) findViewById(R.id.write_tips);
+        play_more = (ImageView) findViewById(R.id.play_more);
+        img_change = (ImageView) findViewById(R.id.img_change);
+        title_text = (TextView) findViewById(R.id.title_center_text);
+        now_time = (TextView) findViewById(R.id.now_time);
+        img_size = (TextView) findViewById(R.id.img_size);
+        all_time = (TextView) findViewById(R.id.all_time);
+        back_img = (ImageView) findViewById(R.id.back_img);
+        play_download = (ImageView) findViewById(R.id.play_download);
+        play_type = (ImageView) findViewById(R.id.play_type);
+        play_back_15 = (ImageView) findViewById(R.id.play_back_15);
+        play_forward_15 = (ImageView) findViewById(R.id.play_forward_15);
+        play_type_push = (ImageView) findViewById(R.id.play_type_push);
+        select_img_push = (ImageView) findViewById(R.id.select_img_push);
+        push_button = (ImageView) findViewById(R.id.push_button);
+        play_seek = (SeekBar) findViewById(R.id.play_seek);
+        loading_re = (RelativeLayout) findViewById(R.id.loading_re);
+        push_tips_card_re = (RelativeLayout) findViewById(R.id.push_tips_card_re);
+
+        push_tips_card = findViewById(R.id.push_tips_card);
+        play_rela = findViewById(R.id.play_rela);
+        view_bg = findViewById(R.id.view_bg);
+        pushTipsController = new PushTipsController(this, loading_re);
+        playTypePopupWindow = new PlayTypePopupWindow(getApplicationContext());
+        alertDialog = new AlertDialog.Builder(this);
+        buy_dialog = new AlertDialog.Builder(this);
+        ylAudioAdapter = new YLAudioAdapter(this, courseId);
+        viewPager.setOffscreenPageLimit(3);
+        viewPager.setPageTransformer(false, new ScaleTransformer());
+        boolean is_gone = (boolean) SPUtils.get(this, VIEW_PAGER_IS_GONE, true);
+        if (is_gone) {
+            viewPager.setVisibility(View.GONE);
+            img_change.setImageResource(R.mipmap.viewpager_gone);
+        } else {
+            viewPager.setVisibility(View.VISIBLE);
+            img_change.setImageResource(R.mipmap.viewpager_visible);
+        }
+        detector = new GestureDetector(this, this);
+
+
+    }
+
+    @SuppressLint("SetTextI18n")
+    private void myLastWriteTips() {
+        String my_tips = (String) SPUtils.get(YLNewAudioActivity.this, courseId + WRITE_TIPS_STRING, "");
+        if (!my_tips.equals("")) {
+            try {
+                JSONObject object = new JSONObject(my_tips);
+                String write_tips = object.getString(WRITE_TIPS_STRING);
+                MY_COURSEID = object.getInt(COURSEID);
+                JSONArray jsonArray = object.getJSONArray(SELECT_IMGS);
+                selectedPhotos.clear();
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    String string = jsonArray.getString(i);
+                    selectedPhotos.add(string);
+                }
+                if (selectedPhotos.size() > 0) {
+                    img_size.setVisibility(View.VISIBLE);
+                    img_size.setText(selectedPhotos.size() + "");
+                } else {
+                    img_size.setVisibility(View.GONE);
+                }
+                tips_editText.setText(write_tips);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        } else {
+            tips_editText.setText("");
+            selectedPhotos.clear();
+            img_size.setVisibility(View.GONE);
+        }
+    }
+
+
+    /**
+     * 设置是否有点击事件
+     *
+     * @param isLocal
+     */
+    private void initClick(boolean isLocal) {
+        if (isLocal) {
+            play_download.setVisibility(View.VISIBLE);
+            play_list.setOnClickListener(this);
+            play_type.setOnClickListener(this);
+            play_back_15.setOnClickListener(this);
+            play_forward_15.setOnClickListener(this);
+            play_download.setOnClickListener(this);
+            back_img.setOnClickListener(this);
+            push_tips_card_re.setOnClickListener(this);
+            img_change_re.setOnClickListener(this);
+            view_bg.setOnClickListener(this);
+            play_type_push.setOnClickListener(this);
+            select_img_push.setOnClickListener(this);
+            play_more.setOnClickListener(this);
+            write_tips.setOnClickListener(this);
+            playTypePopupWindow.setOnSelectedListener(this);
+            play_seek.setOnSeekBarChangeListener(this);
+            viewPager.setAdapter(ylAudioAdapter);
+            viewPager.addOnPageChangeListener(this);
+            viewPager.setOnTouchListener(this);
+            push_button.setOnClickListener(this);
+            tips_editText.setOnFocusChangeListener(this);
+
+            gestureDetector = new GestureDetector(this, new GestureDetector.OnGestureListener() {
+                @Override
+                public boolean onDown(MotionEvent e) {
+                    return false;
+                }
+
+                @Override
+                public void onShowPress(MotionEvent e) {
+
+                }
+
+                @Override
+                public boolean onSingleTapUp(MotionEvent e) {
+
+                    writeTipsShow();
+                    return false;
+                }
+
+                @Override
+                public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+                    return false;
+                }
+
+                @Override
+                public void onLongPress(MotionEvent e) {
+
+                }
+
+                @Override
+                public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                    return false;
+                }
+            });
+            webView.setOnTouchListener(new View.OnTouchListener() {
+                @Override
+                public boolean onTouch(View v, MotionEvent event) {
+                    return gestureDetector.onTouchEvent(event);
+                }
+            });
+
+            setDownLoadImg(courseId);
+
+        } else {
+            back_img.setOnClickListener(this);
+        }
+
+    }
+
+    private void writeTipsShow() {
+        if (push_tips_card.getVisibility() == View.VISIBLE) {
+            String tips_text = tips_editText.getText().toString();
+            int length = tips_text.length();
+            // 长度大于零
+            if (length > 0) {
+                try {
+                    JSONObject object = new JSONObject();
+                    object.put(WRITE_TIPS_STRING, tips_text);
+                    JSONArray array = new JSONArray();
+                    for (int i = 0; i < selectedPhotos.size(); i++) {
+                        array.put(selectedPhotos.get(i));
+                    }
+                    object.put(SELECT_IMGS, array);
+                    object.put(COURSEID, courseId);
+
+                    SPUtils.put(YLNewAudioActivity.this, courseId + WRITE_TIPS_STRING, object.toString());
+                    boolean isAlsoShow = (boolean) SPUtils.get(YLNewAudioActivity.this, WRITE_TIPS_ISALSO_SHOW, false);
+                    if (!isAlsoShow) {
+                        AlertDialog.Builder builder = new AlertDialog.Builder(YLNewAudioActivity.this);
+                        builder.setMessage("本次编辑已自动保存");
+                        builder.setNegativeButton("我知道了", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                push_tips_card.setVisibility(View.GONE);
+                                play_rela.setVisibility(View.VISIBLE);
+                                write_tips.setVisibility(View.VISIBLE);
+                            }
+                        });
+                        builder.setNeutralButton("不再提醒", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                SPUtils.put(YLNewAudioActivity.this, WRITE_TIPS_ISALSO_SHOW, true);
+                                push_tips_card.setVisibility(View.GONE);
+                                play_rela.setVisibility(View.VISIBLE);
+                                write_tips.setVisibility(View.VISIBLE);
+                            }
+                        });
+                        AlertDialog alertDialog = builder.create();
+                        if (!alertDialog.isShowing()) {
+                            alertDialog.show();
+                        }
+                    } else {
+                        push_tips_card.setVisibility(View.GONE);
+                        play_rela.setVisibility(View.VISIBLE);
+                        write_tips.setVisibility(View.VISIBLE);
+                    }
+                } catch (JSONException e1) {
+                    e1.printStackTrace();
+                }
+            } else {
+                push_tips_card.setVisibility(View.GONE);
+                play_rela.setVisibility(View.VISIBLE);
+                write_tips.setVisibility(View.VISIBLE);
+                SPUtils.put(YLNewAudioActivity.this, courseId + WRITE_TIPS_STRING, "");
+            }
+        }
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.play_type:
+                if (audioControl.isPlaying()) {
+                    audioControl.pause();
+                } else {
+                    audioControl.play();
+                }
+                break;
+            case R.id.play_back_15:
+                if (audioControl.isPlaying()) {
+                    audioControl.seekTo(play_seek.getProgress() - 10000);
+                }
+                break;
+            case R.id.play_forward_15:
+                if (audioControl.isPlaying()) {
+                    audioControl.seekTo(play_seek.getProgress() + 10000);
+                }
+                break;
+            case R.id.play_download:
+
+                if (isLogin()) return;
+                if (!vip) {
+                    alertDialog.setMessage("非友邻同学无法下载");
+                    alertDialog.setNegativeButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+                    AlertDialog alertDialog = this.alertDialog.create();
+                    if (!alertDialog.isShowing()) {
+                        alertDialog.show();
+                    }
+                    return;
+                }
+
+
+                RxPermissions.getInstance(this)
+                        .request(WRITE_EXTERNAL_STORAGE).subscribe(new Consumer<Boolean>() {
+                    @Override
+                    public void accept(Boolean aBoolean) throws Exception {
+                        if (aBoolean) {
+                            DownloadManager downloadManager = DownloadService.getDownloadManager();
+                            String sdCardRoot = Environment.getExternalStorageDirectory().getAbsolutePath();
+                            sdCardRoot = sdCardRoot + "/Android/data/com.zhuomogroup.ylyk/" + "downloads/62933a2951ef01f4eafd9bdf4d3cd2f0/";
+                            String md5 = MD5(userId + "." + courseId);
+                            String filePath = md5 + ".cache";
+                            String finPath = sdCardRoot + filePath;
+                            boolean isDownload = fileIsExists(finPath);
+
+                            if (isDownload) {
+                                Toast.makeText(YLNewAudioActivity.this, "已下载", Toast.LENGTH_SHORT).show();
+                                return;
+                            }
+
+                            Map<String, String> stringStringMap = UrlHeaders(getApplication().getApplicationContext());
+                            HttpHeaders httpHeaders = new HttpHeaders();
+                            for (String s : stringStringMap.keySet()) {
+                                httpHeaders.put(s, stringStringMap.get(s));
+                            }
+                            String downloadUrl = BASE_URL_HEAD + "course/" + courseId + "/media";
+                            GetRequest request = OkGo.get(downloadUrl + UrlSignature()).headers(httpHeaders);//
+                            downloadManager.setTargetFolder(sdCardRoot);
+                            DownLoadBean downLoadBean = new DownLoadBean();
+                            downLoadBean.setId(courseId);
+                            com.reactutils.download.Album album = new com.reactutils.download.Album();
+                            album.setId(albumId);
+                            album.setName(YLNewAudioActivity.this.album.getString("name"));
+                            downLoadBean.setAlbum(album);
+                            downLoadBean.setDuration(duration + "");
+                            downLoadBean.setName(name);
+                            downLoadBean.setTeachers(teachers.toString());
+                            downloadManager.addTask(downloadUrl, downLoadBean, request, new MyDownloadListener(getApplicationContext()));
+                            Toast.makeText(YLNewAudioActivity.this, "已添加到下载列表", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+
+
+                break;
+            case R.id.play_more:
+                playTypePopupWindow.showPopupWindow(this, audioControl.getRate(), response);
+                break;
+            case R.id.write_tips:
+                if (isLogin()) return;
+                myLastWriteTips();
+                if (push_tips_card.getVisibility() == View.GONE) {
+                    push_tips_card.setVisibility(View.VISIBLE);
+                    tips_editText.requestFocus();
+                    play_rela.setVisibility(View.GONE);
+                    write_tips.setVisibility(View.GONE);
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    imm.toggleSoftInput(0, InputMethodManager.HIDE_NOT_ALWAYS);
+                }
+                break;
+            case R.id.back_img:
+                finish();
+                break;
+
+            case R.id.img_change_re:
+                if (viewPager.getVisibility() == View.GONE) {
+                    viewPager.setVisibility(View.VISIBLE);
+                    img_change.setImageResource(R.mipmap.viewpager_visible);
+                    SPUtils.put(this, VIEW_PAGER_IS_GONE, false);
+                } else if (viewPager.getVisibility() == View.VISIBLE) {
+                    viewPager.setVisibility(View.GONE);
+                    img_change.setImageResource(R.mipmap.viewpager_gone);
+                    SPUtils.put(this, VIEW_PAGER_IS_GONE, true);
+                }
+                break;
+            case R.id.view_bg:
+                InputMethodManager imm = (InputMethodManager)
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(view_bg.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+
+                writeTipsShow();
+
+                break;
+            case R.id.select_img_push:
+                Intent intent = new Intent(this, YLPhotoActivity.class);
+                intent.putStringArrayListExtra("selectedPhotos", selectedPhotos);
+                startActivityForResult(intent, REQUEST_CODE);
+                break;
+            case R.id.play_type_push:
+                if (audioControl.isPlaying()) {
+                    audioControl.pause();
+                } else {
+                    audioControl.play();
+                }
+                break;
+            case R.id.play_list:
+                showPlayList();
+                break;
+            case R.id.push_button:
+                String tipsString = tips_editText.getText().toString();
+                if (tipsString.equals("")) {
+                    Toast.makeText(this, "写点什么再发布吧", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (MY_COURSEID == 0) {
+                    pushTipsController.pushInterFace(tipsString, courseId, selectedPhotos);
+                } else {
+                    pushTipsController.pushInterFace(tipsString, MY_COURSEID, selectedPhotos);
+                }
+
+                break;
+        }
+
+    }
+
+    private void noNetWork() {
+        alertDialog.setMessage("请检查网络设置，或收听已缓存的节目");
+        alertDialog.setCancelable(false);
+        alertDialog.setNegativeButton("确定", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                finish();
+            }
+        });
+        AlertDialog alertDialog = this.alertDialog.create();
+        if (!alertDialog.isShowing()) {
+            alertDialog.show();
+        }
+    }
+
+    /**
+     * 如果是 流量模式下的 操作提示
+     */
+    private void is4GWork() {
+        alertDialog.setMessage("确定使用流量听课？");
+        alertDialog.setCancelable(false);
+        alertDialog.setPositiveButton("取消", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                finish();
+            }
+        });
+        alertDialog.setNeutralButton("不再提醒", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                SPUtils.put(getApplicationContext(), LOCAL_FOR_WIFI_TOAST, true);
+                play_seek.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        initData();
+                    }
+                });
+            }
+        });
+        alertDialog.setNegativeButton("确定", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.dismiss();
+                play_seek.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        initData();
+                    }
+                });
+            }
+        });
+        AlertDialog alertDialog = this.alertDialog.create();
+        if (!alertDialog.isShowing()) {
+            alertDialog.show();
+        }
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN) //在ui线程执行
+    public void onDataSynEvent(DownloadInfo demo1) {
+        DownLoadBean data = (DownLoadBean) demo1.getData();
+        if (data.getId() == courseId) {
+            play_download.setImageResource(R.mipmap.load_close);
+        }
+    }
+
+    private boolean beforeIsPlay = false;
+
+    @Subscribe(threadMode = ThreadMode.MAIN) //在ui线程执行
+    public void isPlayIng(String message) {
+
+        if (message.equals("true")) {
+            if (audioControl.isPlaying()) {
+                beforeIsPlay = true;
+                audioControl.pause();
+            } else {
+                beforeIsPlay = false;
+            }
+        } else if (message.equals("false")) {
+            if (beforeIsPlay) {
+                audioControl.play();
+            }
+
+        } else if (message.equals(PUSH_TRUE)) {
+            if (tips_editText != null) {
+
+                InputMethodManager imm = (InputMethodManager)
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(tips_editText.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+
+
+                tips_editText.setText("");
+                SPUtils.put(YLNewAudioActivity.this, MY_COURSEID + WRITE_TIPS_STRING, "");
+                MY_COURSEID = 0;
+
+                if (push_tips_card.getVisibility() == View.VISIBLE) {
+                    push_tips_card.setVisibility(View.GONE);
+                    play_rela.setVisibility(View.VISIBLE);
+                    write_tips.setVisibility(View.VISIBLE);
+                }
+                selectedPhotos.clear();
+                if (selectedPhotos.size() > 0) {
+                    img_size.setVisibility(View.VISIBLE);
+                    img_size.setText(selectedPhotos.size() + "");
+                } else {
+                    img_size.setVisibility(View.GONE);
+                }
+
+            }
+
+
+        } else if (message.equals("PLAY_TYPE")) {
+            if (audioControl != null) {
+                int play_type = (int) SPUtils.get(getApplicationContext(), "play_type", THIS_BIGIN_PLAY_TYPE);
+                audioControl.setPlayType(play_type);
+            }
+        }
+    }
+
+    /**
+     * 检查本地 节目内容 缓存
+     * <p>
+     * courseId 为SP 标签
+     */
+
+    private void checkThread(final String type) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String content = (String) get(YLNewAudioActivity.this, courseId + "", "");
+                if (!content.equals("")) {
+                    try {
+                        final JSONObject jsonObject = new JSONObject(content);
+                        name = jsonObject.getString("name");
+                        duration = jsonObject.getInt("duration");
+                        teachers = jsonObject.getJSONArray("teachers");
+                        album = jsonObject.getJSONObject("album");
+                        albumId = album.getInt("id");
+                        String data = jsonObject.getString("content");
+                        replace = data.replaceFirst(name, "");
+
+                        boolean is_free = album.getBoolean("is_free");
+                        if (!is_free) {
+                            // 不是免费的
+                            if (vip) {
+                                // 是vip
+                                localAudioPlay(jsonObject);
+                            }
+                        } else {
+                            // 是免费的
+                            localAudioPlay(jsonObject);
+                        }
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Toast.makeText(YLNewAudioActivity.this, "本地解析失败", Toast.LENGTH_SHORT).show();
+                        put(YLNewAudioActivity.this, courseId + "", "");
+                    }
+                } else {
+                    // 本地无缓存
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            if (type.equals("noNet")) {
+                                noNetWork();
+                            } else if (type.equals("4g")) {
+                                boolean b = (boolean) SPUtils.get(getApplicationContext(), LOCAL_FOR_WIFI_TOAST, false);
+                                if (!b) {
+                                    is4GWork();
+                                } else {
+                                    play_seek.post(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            initData();
+                                        }
+                                    });
+                                }
+                            }
+                            initClick(false);
+                            if (audioControl != null) {
+                                audioControl.stop();
+                            }
+                        }
+                    });
+
+
+                }
+            }
+
+            private void localAudioPlay(final JSONObject jsonObject) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            loadAudio(jsonObject, replace, teachers, albumId);
+                            initClick(true);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            Toast.makeText(YLNewAudioActivity.this, "解析失败" + "请稍后重试", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }
+        }).start();
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void initWebView() {
+        settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDisplayZoomControls(true);
+        settings.setDefaultFixedFontSize(20);
+        //适应屏幕
+        settings.setAppCacheEnabled(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NARROW_COLUMNS);
+        settings.setLoadWithOverviewMode(true);
+        settings.setBuiltInZoomControls(false); // 设置不显示缩放按钮
+
+        webView.setWebChromeClient(new WebChromeClient());
+        webView.setWebViewClient(new WebViewClient());
+        webView.setBackgroundColor(0);
+
+        webTextSizeType = (int) SPUtils.get(this, WEBVIEW_TEXT_SIZE, webTextSizeType);
+        webTextSizeType = webTextSizeType % 3;
+        settings.setTextZoom(webTextSize[webTextSizeType]);
+    }
+
+
+    private void setDownLoadImg(int courseId) {
+        this.courseId = courseId;
+        ylAudioAdapter.setCourseId(courseId);
+        myLastWriteTips();
+        try {
+            String sdCardRoot = Environment.getExternalStorageDirectory().getAbsolutePath();
+            sdCardRoot = sdCardRoot + "/Android/data/com.zhuomogroup.ylyk/" + "downloads/62933a2951ef01f4eafd9bdf4d3cd2f0/";
+            String md5 = MD5(userId + "." + courseId);
+            String filePath = md5 + ".cache";
+            sdCardRoot = sdCardRoot + filePath;
+            boolean isDownload = fileIsExists(sdCardRoot);
+            if (isDownload) {
+                play_download.setImageResource(R.mipmap.load_close);
+            } else {
+                play_download.setImageResource(R.mipmap.play_icon_download);
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "SD卡未加载 或 检查读写权限" + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    private void initGetIntent() {
+        Intent intent = getIntent();
+
+        Bundle objectJS = intent.getBundleExtra("ObjectJS");
+        if (objectJS != null) {
+            ObjectJS demo = objectJS.getParcelable("ObjectJS");
+            courseId = demo.getCourseId();
+            if (courseId == 0) {
+                courseId = (int) get(this, LAST_AUDIO_ID, courseId);
+            }
+            initDatasNow();
+            isFromDownload = demo.isDownload();
+            if (isFromDownload) {
+                dataLists = demo.getDataLists();
+            }
+        } else {
+
+            courseId = (int) get(this, LAST_AUDIO_ID, courseId);
+
+            initDatasNow();
+        }
+    }
+
+    private void initDatasNow() {
+        String user_info = (String) get(this, USER_INFO, "");
+        if (!user_info.equals("")) {
+            try {
+                JSONObject object = new JSONObject(user_info);
+                this.userId = object.getInt("id");
+                try {
+                    JSONObject vip = object.getJSONObject("vip");
+                    if (vip != null) {
+                        boolean is_permanent = vip.getBoolean("is_permanent");
+                        if (is_permanent) {
+                            this.vip = true;
+                        } else {
+                            long end_time = vip.getInt("end_time");
+                            long todayTime = System.currentTimeMillis() / 1000;
+                            if (end_time > todayTime) {
+                                this.vip = true;
+                            } else {
+                                this.vip = false;
+                            }
+                        }
+                    } else {
+                        this.vip = false;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    this.vip = false;
+                }
+
+                OkHttpUtils.get()
+                        .url(BASE_URL_HEAD + "user/" + userId + Signature.UrlSignature())
+                        .headers(Signature.UrlHeaders(this))
+                        .build()
+                        .execute(new BaseStringCallback() {
+                            @Override
+                            public void onError(Call call, Exception e, int id) {
+                                e.printStackTrace();
+                            }
+
+                            @Override
+                            public void onResponse(String response, int id) {
+                                if (response != null) {
+                                    Gson gson = new Gson();
+                                    RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                                    if (requestBean.isResult()) {
+                                        response = requestBean.getResponse();
+                                        SPUtils.put(YLNewAudioActivity.this, USER_INFO, response);
+                                    } else {
+                                        Toast.makeText(YLNewAudioActivity.this, "requestBean.getCode():" + requestBean.getCode(), Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            }
+                        });
+
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        } else {
+            this.userId = 0;
+            this.vip = false;
+        }
+        if (this.userId == 0) {
+            put(this, IS_LOGIN, false);
+        } else {
+            put(this, IS_LOGIN, true);
+        }
+    }
+
+    // 有网请求数据
+    private void initData() {
+        OkHttpUtils.get()
+                .url(BASE_URL_HEAD + "course/" + courseId + Signature.UrlSignature())
+                .headers(Signature.UrlHeaders(this))
+                .build()
+                .execute(
+                        new BaseStringCallback() {
+                            @Override
+                            public void onError(Call call, Exception e, int id) {
+                                e.printStackTrace();
+
+                                Toast.makeText(getApplicationContext(), "网络出错，请稍后再试", Toast.LENGTH_SHORT).show();
+                            }
+
+                            @Override
+                            public void onResponse(String response, int id) {
+                                loading_re.setVisibility(View.GONE);
+                                Gson gson = new Gson();
+                                MyRequestBean myRequestBean = gson.fromJson(response, MyRequestBean.class);
+                                if (myRequestBean.isResult()) {
+                                    response = myRequestBean.getResponse();
+                                    getIntentData(response);
+                                } else {
+                                    if (myRequestBean.getCode() == 404) {
+                                        Toast.makeText(YLNewAudioActivity.this, "课程已下线,请选择其他课程", Toast.LENGTH_SHORT).show();
+                                    } else if (myRequestBean.getCode() == 401) {
+                                        buy_dialog.setTitle("登陆失效");
+                                        buy_dialog.setMessage("您的登录已失效,请重新登录");
+                                        buy_dialog.setNegativeButton("重新登录", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                dialog.dismiss();
+                                                Intent intent = new Intent(getApplicationContext(), YLLoginActivity.class);
+                                                startActivity(intent);
+                                                finish();
+                                            }
+                                        });
+                                        buy_dialog.setCancelable(false);
+                                        AlertDialog alertDialog = buy_dialog.create();
+                                        if (!alertDialog.isShowing()) {
+                                            alertDialog.show();
+                                        }
+                                        if (audioControl != null) {
+                                            audioControl.stop();
+                                        }
+                                    } else if (myRequestBean.getCode() == 408) {
+
+                                    } else if (myRequestBean.getCode() == 500) {
+                                        Toast.makeText(YLNewAudioActivity.this, "服务器故障：服务器去学英语了，请通知阿树老师把它抓回来！", Toast.LENGTH_SHORT).show();
+
+                                    }
+
+
+                                }
+
+                            }
+                        }
+                );
+    }
+
+
+    private void getIntentData(String response) {
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            name = jsonObject.getString("name");
+            duration = jsonObject.getInt("duration");
+            teachers = jsonObject.getJSONArray("teachers");
+            album = jsonObject.getJSONObject("album");
+            albumId = album.getInt("id");
+            String data = jsonObject.getString("content");
+            replace = data.replaceFirst(name, "");
+            boolean is_free = album.getBoolean("is_free");
+            if (!is_free) {
+                // 不是免费的
+                if (!vip) {
+                    openLoginActivity();
+                } else {
+                    // 是vip
+                    loadAudio(jsonObject, replace, teachers, albumId);
+                    initClick(true);
+                    Message message = new Message();
+                    message.obj = response;
+                    message.what = 0;
+                    if (handler != null) {
+                        handler.sendMessageDelayed(message, 10);
+                    }
+                }
+            } else {
+                // 是免费的
+                loadAudio(jsonObject, replace, teachers, albumId);
+                initClick(true);
+                Message message = new Message();
+                message.obj = response;
+                message.what = 0;
+                if (handler != null) {
+                    handler.sendMessageDelayed(message, 10);
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            Toast.makeText(YLNewAudioActivity.this, "解析失败", Toast.LENGTH_SHORT).show();
+
+        }
+    }
+
+    private void openLoginActivity() {
+        // 不是vip
+        if (!(userId == 0)) {
+            buy_dialog.setMessage("成为友邻优课学员即可收听此课程");
+            buy_dialog.setNeutralButton("立即入学", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                    finish();
+                }
+            });
+            buy_dialog.setPositiveButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    YLNewAudioActivity.this.finish();
+                }
+            });
+            buy_dialog.setNegativeButton("咨询阿树老师", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    controller.pushInterFace(YLNewAudioActivity.this);
+                    finish();
+                }
+            });
+            buy_dialog.setCancelable(false);
+            AlertDialog alertDialog = buy_dialog.create();
+            if (!alertDialog.isShowing()) {
+                alertDialog.show();
+            }
+            if (audioControl != null) {
+                audioControl.stop();
+            }
+        } else {
+            buy_dialog = new AlertDialog.Builder(this);
+            buy_dialog.setMessage("此节目为会员专享，请登录");
+            buy_dialog.setNeutralButton("去登录", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                    Intent intent = new Intent(getApplicationContext(), YLLoginActivity.class);
+                    startActivity(intent);
+                    finish();
+                }
+            });
+            buy_dialog.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    YLNewAudioActivity.this.finish();
+                }
+            });
+            buy_dialog.setCancelable(false);
+            AlertDialog alertDialog = buy_dialog.create();
+            if (!alertDialog.isShowing()) {
+                alertDialog.show();
+            }
+            if (audioControl != null) {
+                audioControl.stop();
+            }
+        }
+    }
+
+    private Handler handler = new Handler(new Handler.Callback() {
+        @Override
+        public boolean handleMessage(Message msg) {
+            switch (msg.what) {
+                case 0:
+                    String response = (String) msg.obj;
+                    try {
+                        JSONObject object = new JSONObject(response);
+                        int id = object.getInt("id");
+                        put(YLNewAudioActivity.this, id + "", response);
+
+                        YLNewAudioActivity.this.response = response;
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                case 1:
+                    try {
+                        loadAudio((JSONObject) msg.obj, replace, teachers, albumId);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+
+            }
+            return false;
+        }
+    });
+
+
+    /**
+     * 加载aduio 数据
+     *
+     * @param jsonObject
+     * @param replace
+     * @param teachers
+     * @param albumId
+     * @throws JSONException
+     */
+    private void loadAudio(JSONObject jsonObject, String replace, JSONArray teachers, int albumId) throws JSONException {
+        loading_re.setVisibility(View.GONE);
+
+        if (!isFromDownload) {
+            // 获取节目列表
+            initAlbumList(albumId);
+        } else {
+            audioControl.setDataList(albumId, dataLists);
+            playListName = "播放列表";
+        }
+
+
+//        initTeacher(teacherId, teacher, is_liked, like_count);
+        webView.loadDataWithBaseURL(null, CSS + replace, "text/html", "utf-8", null);
+        String media_url = jsonObject.getString("media_url");
+
+        checkCachedStateOn(media_url);
+        title_text.setText(jsonObject.getString("name"));
+        if (audioControl == null) {
+            Message message = new Message();
+            message.what = 1;
+            message.obj = jsonObject;
+            if (handler != null) {
+                handler.sendMessageDelayed(message, 10);
+            }
+            return;
+        }
+
+        int nowCourseId = audioControl.getCourseId();
+        String audio_url = audioControl.getAudio_url();
+        // 如果有播放返回
+        if (nowCourseId == jsonObject.getInt("id") && media_url.equals(audio_url)) {
+            int duration = (int) audioControl.getDurationIntenet();
+            int progress = (int) audioControl.getProgress();
+            String allToTime = AudioTimeUtils.secToTime(duration);
+            String progressToTime = AudioTimeUtils.secToTime(progress);
+            now_time.setText(progressToTime);
+            all_time.setText(allToTime);
+            play_seek.setMax(duration);
+            play_seek.setProgress(progress);
+            return;
+        }
+
+        audioControl.setDataSource(media_url, courseId, jsonObject.getString("name"), userId, duration);
+        try {
+            boolean equals = json.equals("");
+            if (!equals) {
+                JSONObject jsonOb = new JSONObject(json);
+                if (courseId == jsonOb.getInt("courseId")) {
+                    final int time = jsonOb.getInt("time");
+                    int learn_time = time / 1000;
+                    if (learn_time < 10) {
+                        audioControl.play();
+                        return;
+
+                    }
+                    String timeText = AudioTimeUtils.secToTime(time);
+                    alertDialog.setMessage("上次听到" + timeText + "，" + "是否继续");
+                    alertDialog.setNeutralButton("取消", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            audioControl.play();
+                        }
+                    });
+                    alertDialog.setNegativeButton("继续", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                            audioControl.play();
+                            audioControl.seekTo(time);
+                        }
+                    });
+                    if (lastAlertDialog == null) {
+                        lastAlertDialog = this.alertDialog.create();
+                        if (!lastAlertDialog.isShowing()) {
+                            try {
+                                alertDialog.show();
+
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                } else {
+                    audioControl.play();
+                }
+            } else {
+                audioControl.play();
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    /**
+     * 设置顺序播放列表
+     *
+     * @param albumId 专辑的 id
+     */
+    private void initAlbumList(final int albumId) {
+
+        TreeMap<String, String> params = new TreeMap<>();
+        params.put("album_id", albumId + "");
+
+        OkHttpUtils.get()
+                .url(BASE_URL_HEAD + "course" + Signature.UrlSignature(params))
+                .headers(Signature.UrlHeaders(this))
+                .build()
+                .execute(new StringCallback() {
+                    @Override
+                    public void onError(Call call, Exception e, int id) {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onResponse(String response, int id) {
+                        try {
+
+                            JSONArray jsonArray = new JSONArray(response);
+                            dataLists = new ArrayList<>();
+                            if (jsonArray.length() > 0) {
+                                for (int i = 0; i < jsonArray.length(); i++) {
+                                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                                    int courseId = jsonObject.getInt("id");
+                                    String name = jsonObject.getString("name");
+                                    JSONArray teachers = jsonObject.getJSONArray("teachers");
+                                    long in_time = jsonObject.getLong("in_time");
+                                    int duration = jsonObject.getInt("duration");
+                                    playListName = album.getString("name");
+
+                                    DataList dataList = new DataList();
+                                    dataList.setCourseId(courseId);
+                                    dataList.setName(name);
+                                    dataList.setTeacherName(teachers.toString());
+                                    dataList.setDuration(duration);
+                                    dataList.setIn_time(in_time);
+                                    dataLists.add(dataList);
+
+                                }
+                            }
+                            audioControl.setDataList(albumId, dataLists);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+    }
+
+
+    /**
+     * 检查缓存状态
+     *
+     * @param url 缓存的 网络url地址
+     */
+    private void checkCachedStateOn(String url) {
+        boolean fullyCached = MainApplication.getProxy(getApplicationContext()).isCached(url);
+        if (fullyCached && onListener != null) {
+            onListener.getCacheProgress(100);
+        }
+    }
+
+
+    AudioPlaybackService.OnListener onListener = new AudioPlaybackService.OnListener() {
+
+        public PlaySelectBean playSelectBean = new PlaySelectBean();
+        private boolean isPlay;
+
+
+        @Override
+        public void onTimeChange() {
+            int duration = (int) audioControl.getDurationIntenet();
+            int progress = (int) audioControl.getProgress();
+            String allToTime = AudioTimeUtils.secToTime(duration);
+            String progressToTime = AudioTimeUtils.secToTime(progress);
+            if (!isSeek) {
+                play_seek.setMax(duration);
+                play_seek.setProgress(progress);
+                now_time.setText(progressToTime);
+                all_time.setText(allToTime);
+            }
+            if (!isPlay) {
+                play_type.setImageResource(R.mipmap.play_icon_pause);
+                play_type_push.setImageResource(R.drawable.tips_pause_img);
+                playSelectBean.setType(PLAY_TYPE);
+                playSelectBean.setPlay(true);
+                EventBus.getDefault().post(playSelectBean);
+                isPlay = true;
+            }
+        }
+
+        @Override
+        public void onPositionChange() {
+
+        }
+
+
+        @Override
+        public void Stopped() {
+
+            if (isPlay) {
+                play_type.setImageResource(R.mipmap.play_icon_play);
+                play_type_push.setImageResource(R.drawable.tips_play_img);
+                playSelectBean.setType(PLAY_TYPE);
+                playSelectBean.setPlay(false);
+                EventBus.getDefault().post(playSelectBean);
+                isPlay = false;
+            }
+
+        }
+
+        @Override
+        public void onEndReached() {
+            if (isPlay) {
+                now_time.setText("00:00");
+                play_seek.setMax(0);
+                play_seek.setProgress(0);
+                play_type.setImageResource(R.mipmap.play_icon_play);
+                play_type_push.setImageResource(R.drawable.tips_play_img);
+                playSelectBean.setType(PLAY_TYPE);
+                playSelectBean.setPlay(false);
+                EventBus.getDefault().post(playSelectBean);
+                isPlay = false;
+            }
+
+        }
+
+        @Override
+        public void onPlaying() {
+
+            if (!isPlay) {
+                play_type.setImageResource(R.mipmap.play_icon_pause);
+                play_type_push.setImageResource(R.drawable.tips_pause_img);
+                playSelectBean.setType(PLAY_TYPE);
+                playSelectBean.setPlay(true);
+                EventBus.getDefault().post(playSelectBean);
+                isPlay = true;
+
+            }
+
+        }
+
+        @Override
+        public void onPaused() {
+            if (isPlay) {
+
+                play_type.setImageResource(R.mipmap.play_icon_play);
+                play_type_push.setImageResource(R.drawable.tips_play_img);
+
+                playSelectBean.setType(PLAY_TYPE);
+                playSelectBean.setPlay(false);
+                EventBus.getDefault().post(playSelectBean);
+                isPlay = false;
+            }
+
+
+        }
+
+        @Override
+        public void getCacheProgress(int i) {
+            int max = play_seek.getMax();
+            play_seek.setSecondaryProgress(max * i / 100);
+
+        }
+
+        @Override
+        public void checkCachedState(String url) {
+            checkCachedStateOn(url);
+        }
+
+        @Override
+        public void setWebViewContent(String content, String name, JSONArray teachers, boolean is_liked, String like_count, int courseId, String response) {
+
+            Message message = new Message();
+            message.obj = response;
+            message.what = 0;
+            if (handler != null) {
+                handler.sendMessageDelayed(message, 10);
+            }
+
+            YLNewAudioActivity.this.name = name;
+
+            webView.loadDataWithBaseURL(null, CSS + content, "text/html", "utf-8", null);
+            title_text.setText(name);
+            setDownLoadImg(courseId);
+
+            // 发送列表postion 到 dialogfragment
+            PlaySelectBean playSelectBean = new PlaySelectBean();
+
+            playSelectBean.setType(PLAY_POSITION);
+            playSelectBean.setCourseId(courseId);
+            EventBus.getDefault().post(playSelectBean);
+            loading_re.setVisibility(View.GONE);
+
+        }
+    };
+
+
+    /**
+     * 判断是否登录 没有登录 返回 true  登录 返回 false
+     *
+     * @return
+     */
+    private boolean isLogin() {
+        if (userId == 0) {
+            alertDialog.setMessage("请先登录");
+            alertDialog.setNegativeButton("确定", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                    finish();
+                }
+            });
+            alertDialog.setNeutralButton("取消", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    dialog.dismiss();
+                }
+            });
+            AlertDialog alertDialog = this.alertDialog.create();
+            if (!alertDialog.isShowing()) {
+                alertDialog.show();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+        String allToTime = AudioTimeUtils.secToTime(seekBar.getMax());
+        String progressToTime = AudioTimeUtils.secToTime(progress);
+        now_time.setText(progressToTime);
+        all_time.setText(allToTime);
+
+    }
+
+    @Override
+    public void onStartTrackingTouch(SeekBar seekBar) {
+        isSeek = true;
+
+    }
+
+    @Override
+    public void onStopTrackingTouch(SeekBar seekBar) {
+        isSeek = false;
+        int progress = seekBar.getProgress();
+        audioControl.seekTo(progress);
+
+    }
+
+    public void showPlayList() {
+        int position = 0;
+        if (dataLists != null) {
+            for (int i = 0; i < dataLists.size(); i++) {
+                int courseId = dataLists.get(i).getCourseId();
+                if (this.courseId == courseId) {
+                    position = i;
+                    //   获得当前曲目的下标
+                }
+            }
+
+
+            YLPlayListDialogFragment ylPlayListDialogFragment = YLPlayListDialogFragment.newInstance(dataLists, position, audioControl.isPlaying(), playListName);
+            ylPlayListDialogFragment.showDialog(getSupportFragmentManager());
+
+
+        }
+    }
+
+    @Override
+    public void OnSelected(View v, int position, int type) {
+        switch (position) {
+            case 0:
+
+
+                Intent intent = new Intent(this, YLExpActivity.class);
+                JSONObject courseInfo = new JSONObject();
+                try {
+                    courseInfo.put("id", courseId);
+                    courseInfo.put("teachers", teachers.toString());
+                    courseInfo.put("courseName", name);
+
+                    intent.putExtra("courseInfo", courseInfo.toString());
+                    startActivity(intent);
+
+                    if (playTypePopupWindow.isPopupWindowShow()) {
+                        playTypePopupWindow.dismissPopupWindow(this);
+                    }
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+
+                break;
+            case 1:
+                if (audioControl != null) {
+                    switch (type) {
+                        case PLAY_TIME_0_8:
+                            audioControl.setRate(0.8f);
+                            break;
+                        case PLAY_TIME_1:
+                            audioControl.setRate(1f);
+                            break;
+                        case PLAY_TIME_1_2_5:
+                            audioControl.setRate(1.25f);
+                            break;
+                        case PLAY_TIME_1_5:
+                            audioControl.setRate(1.5f);
+                            break;
+                    }
+                }
+
+
+                break;
+            case 2:
+                if (audioControl != null) {
+                    switch (type) {
+
+                        case PLAY_TYPE_ONE:
+                            audioControl.setPlayType(PLAY_TYPE_ONE);
+                            break;
+                        case PLAY_TYPE_NEXT:
+                            audioControl.setPlayType(PLAY_TYPE_NEXT);
+                            break;
+                        case PLAY_TYPE_ONLY_ONE:
+                            audioControl.setPlayType(PLAY_TYPE_ONLY_ONE);
+                            break;
+
+                    }
+                }
+
+                break;
+            case 3:
+                if (playTypePopupWindow.isPopupWindowShow()) {
+                    playTypePopupWindow.dismissPopupWindow(this);
+                }
+                break;
+            case 4:
+                webTextSizeType++;
+                webTextSizeType = webTextSizeType % 3;
+                settings.setTextZoom(webTextSize[webTextSizeType]);
+                SPUtils.put(this, WEBVIEW_TEXT_SIZE, webTextSizeType);
+                break;
+            case 5:
+                boolean isChecked;
+                if (isLogin()) {
+                    return;
+                }
+
+
+                if (type == 1) {
+                    isChecked = true;
+                } else {
+                    isChecked = false;
+                }
+                if (isChecked) {
+                    OkHttpUtils.post()
+                            .url(BASE_URL_HEAD + "course/" + courseId + "/like" + Signature.UrlSignature())
+                            .headers(Signature.UrlHeaders(this))
+                            .build().execute(new StringCallback() {
+                        @Override
+                        public void onError(Call call, Exception e, int id) {
+                            e.printStackTrace();
+                        }
+
+                        @Override
+                        public void onResponse(String response, int id) {
+                            try {
+                                JSONObject jsonObject = new JSONObject(response);
+                                boolean result = jsonObject.getBoolean("result");
+                                if (result) {
+                                    refreshRespose();
+
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                } else {
+                    OkHttpUtils.delete()
+                            .url(BASE_URL_HEAD + "course/" + courseId + "/like" + Signature.UrlSignature())
+                            .headers(Signature.UrlHeaders(this))
+                            .build().execute(new StringCallback() {
+                        @Override
+                        public void onError(Call call, Exception e, int id) {
+                            e.printStackTrace();
+                        }
+
+                        @Override
+                        public void onResponse(String response, int id) {
+                            try {
+                                JSONObject jsonObject = new JSONObject(response);
+                                boolean result = jsonObject.getBoolean("result");
+                                if (result) {
+                                    refreshRespose();
+
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+                break;
+        }
+    }
+
+    private void refreshRespose() {
+        OkHttpUtils.get()
+                .url(BASE_URL_HEAD + "course/" + courseId + Signature.UrlSignature())
+                .headers(Signature.UrlHeaders(this))
+                .build()
+                .execute(new BaseStringCallback() {
+                    @Override
+                    public void onError(Call call, Exception e, int id) {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onResponse(String response, int id) {
+                        Gson gson = new Gson();
+                        MyRequestBean myRequestBean = gson.fromJson(response, MyRequestBean.class);
+                        if (myRequestBean.isResult()) {
+                            YLNewAudioActivity.this.response = myRequestBean.getResponse();
+                        } else {
+                            Toast.makeText(YLNewAudioActivity.this, "myRequestBean.getCode():" + myRequestBean.getCode(), Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+    }
+
+    @Override
+    public void onBackPressed() {
+
+
+        if (push_tips_card.getVisibility() == View.VISIBLE) {
+            writeTipsShow();
+            return;
+        }
+
+        if (playTypePopupWindow.isPopupWindowShow()) {
+            playTypePopupWindow.dismissPopupWindow(this);
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+    }
+
+
+    @Override
+    public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+    }
+
+    @Override
+    public void onPageSelected(int position) {
+//        JCVideoPlayer.releaseAllVideos();
+    }
+
+    @Override
+    public void onPageScrollStateChanged(int state) {
+
+    }
+
+    @Override
+    public boolean onDown(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public void onShowPress(MotionEvent e) {
+
+    }
+
+    @Override
+    public boolean onSingleTapUp(MotionEvent e) {
+        return false;
+    }
+
+    @Override
+    public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
+        return false;
+    }
+
+    @Override
+    public void onLongPress(MotionEvent e) {
+
+    }
+
+    @Override
+    public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+        if (velocityY > 20) {
+            // 向下
+            if (Math.abs(velocityX) < Math.abs(velocityY)) {
+                viewPager.setVisibility(View.VISIBLE);
+                img_change.setImageResource(R.mipmap.viewpager_visible);
+                SPUtils.put(this, VIEW_PAGER_IS_GONE, false);
+            }
+        } else if (velocityY < -20) {
+            // 向上
+            if (Math.abs(velocityX) < Math.abs(velocityY)) {
+                viewPager.setVisibility(View.GONE);
+                img_change.setImageResource(R.mipmap.viewpager_gone);
+                SPUtils.put(this, VIEW_PAGER_IS_GONE, true);
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean onTouch(View v, MotionEvent event) {
+        detector.onTouchEvent(event);
+        return false;
+    }
+
+    @Override
+    public void onGlobalLayout() {
+        boolean keyboardShown = isKeyboardShown(img_change_re.getRootView());
+
+
+        if (beforeIsShow == keyboardShown) {
+            return;
+        }
+
+        if (keyboardShown) {
+            beforeIsShow = true;
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) tips_editText.getLayoutParams();
+            layoutParams.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
+            tips_editText.setLayoutParams(layoutParams);
+            tips_editText.setMaxLines(4);
+            view_bg.setVisibility(View.VISIBLE);
+        } else {
+            beforeIsShow = false;
+            RelativeLayout.LayoutParams layoutParams = (RelativeLayout.LayoutParams) tips_editText.getLayoutParams();
+            layoutParams.height = Utils.dip2px(this, 119);
+            tips_editText.setLayoutParams(layoutParams);
+            tips_editText.setMaxLines(8);
+            view_bg.setVisibility(View.GONE);
+        }
+
+    }
+
+    @Override
+    public void onFocusChange(View v, boolean hasFocus) {
+
+    }
+
+    @Override
+    public void gotoPlayById(int courseId) {
+        audioControl.playByCourseId(courseId);
+    }
+
+    @Override
+    public void changePlayType() {
+        if (audioControl.isPlaying()) {
+            audioControl.pause();
+        } else {
+            audioControl.play();
+        }
+    }
+
+
+    private class MyServiceConnection implements ServiceConnection {
+
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            audioControl = (AudioControl) service;
+            audioControl.setOnListener(onListener);
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (userId == 0) {
+                        buy_dialog = new AlertDialog.Builder(YLNewAudioActivity.this);
+
+                        buy_dialog.setMessage("此节目为会员专享，请登录");
+                        buy_dialog.setNeutralButton("去登录", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                Intent intent = new Intent(getApplicationContext(), YLLoginActivity.class);
+                                startActivity(intent);
+                                finish();
+                            }
+                        });
+                        buy_dialog.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                YLNewAudioActivity.this.finish();
+                            }
+                        });
+                        buy_dialog.setCancelable(false);
+                        AlertDialog alertDialog = buy_dialog.create();
+                        if (!alertDialog.isShowing()) {
+                            alertDialog.show();
+                        }
+                        if (audioControl != null) {
+                            audioControl.stop();
+                        }
+                    } else {
+                        onServiceConnection();
+
+                    }
+
+                }
+            });
+
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (handler != null) {
+            handler.removeMessages(1);
+        }
+        super.onDestroy();
+
+        if (myServiceConna != null) {
+            unbindService(myServiceConna);
+        }
+
+        if (audioControl != null) {
+            audioControl.clearSetOnListener();
+        }
+
+        EventBus.getDefault().unregister(this);
+
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (resultCode == RESULT_OK &&
+                (requestCode == REQUEST_CODE || requestCode == PhotoPreview.REQUEST_CODE)) {
+
+            List<String> photos = null;
+            if (data != null) {
+                photos = data.getStringArrayListExtra(PhotoPicker.KEY_SELECTED_PHOTOS);
+            }
+            selectedPhotos.clear();
+
+            if (photos != null) {
+                selectedPhotos.addAll(photos);
+            }
+
+            if (selectedPhotos.size() > 0) {
+                img_size.setVisibility(View.VISIBLE);
+                img_size.setText(selectedPhotos.size() + "");
+            } else {
+                img_size.setVisibility(View.GONE);
+            }
+
+        }
+    }
+
+
+}

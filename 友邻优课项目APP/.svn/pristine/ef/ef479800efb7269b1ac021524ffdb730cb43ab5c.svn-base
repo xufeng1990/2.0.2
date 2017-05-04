@@ -1,0 +1,141 @@
+package com.zhuomogroup.ylyk.wxapi;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.widget.Toast;
+
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.google.gson.Gson;
+import com.reactutils.callback.BaseStringCallback;
+import com.reactutils.userinfo.YLBridgeNativeModule;
+import com.tencent.mm.sdk.constants.ConstantsAPI;
+import com.tencent.mm.sdk.modelbase.BaseReq;
+import com.tencent.mm.sdk.modelbase.BaseResp;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.IWXAPIEventHandler;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.bean.RequestBean;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhuomogroup.ylyk.utils.SharedPreferencesUtil;
+import com.zhy.http.okhttp.OkHttpUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import okhttp3.Call;
+
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.USER_INFO;
+import static com.zhuomogroup.ylyk.utils.SharedPreferencesUtil.get;
+
+//import com.theweflex.react.WeChatModule;
+
+/**
+ * Created by xyb on 2017/2/9.
+ */
+
+public class WXPayEntryActivity extends Activity implements IWXAPIEventHandler {
+    private static final String TAG = "WXPayEntryActivity";
+    private IWXAPI iwxapi;
+    private static final int PAY_WIN = 0;
+    private static final int PAY_ERROR = -1;
+    private static final int PAY_CANCEL = -2;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        MainApplication application = (MainApplication) getApplication();
+        iwxapi = application.getIwxapi();
+        iwxapi.handleIntent(getIntent(), this);
+
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        iwxapi.handleIntent(intent, this);
+    }
+
+    @Override
+    public void onReq(BaseReq req) {
+    }
+
+    @Override
+    public void onResp(BaseResp resp) {
+        if (resp.getType() == ConstantsAPI.COMMAND_PAY_BY_WX) {
+            boolean isPay = false;
+            switch (resp.errCode) {
+                case PAY_WIN:
+                    isPay = true;
+                    Toast.makeText(this, "支付成功", Toast.LENGTH_SHORT).show();
+                    break;
+                case PAY_ERROR:
+                    isPay = false;
+                    Toast.makeText(this, "支付错误", Toast.LENGTH_SHORT).show();
+                    break;
+                case PAY_CANCEL:
+                    isPay = false;
+                    Toast.makeText(this, "取消支付", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+            if (YLBridgeNativeModule.getPromise() != null) {
+                WritableMap map = Arguments.createMap();
+                map.putBoolean("is_succeed", isPay);
+                YLBridgeNativeModule.getPromise().resolve(map);
+                YLBridgeNativeModule.setPromise(null);
+            }
+
+            MainApplication application = (MainApplication) getApplication();
+            ReactContext reactContext = application.getReactContext();
+            if (reactContext != null) {
+                WritableMap map = new WritableNativeMap();
+                map.putBoolean("PaySuccess", isPay);
+                reactContext
+                        .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+                        .emit("PayEvent", map);
+            }
+
+            String user_info = (String) get(this, USER_INFO, "");
+            if (!"".equals(user_info)) {
+                try {
+                    JSONObject object = new JSONObject(user_info);
+                    int userId = object.getInt("id");
+                    OkHttpUtils.get()
+                            .url(BASE_URL_HEAD + "user/" + userId + Signature.UrlSignature())
+                            .headers(Signature.UrlHeaders(this))
+                            .build()
+                            .execute(new BaseStringCallback() {
+                                @Override
+                                public void onError(Call call, Exception e, int id) {
+                                    e.printStackTrace();
+                                }
+
+                                @Override
+                                public void onResponse(String response, int id) {
+                                    if (response != null) {
+                                        Gson gson = new Gson();
+                                        RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                                        if (requestBean.isResult()) {
+                                            response = requestBean.getResponse();
+                                            SharedPreferencesUtil.put(getApplicationContext(), USER_INFO, response);
+                                        } else {
+                                            Toast.makeText(getApplicationContext(), "requestBean.getCode():" + requestBean.getCode(), Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                                }
+                            });
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        finish();
+    }
+}

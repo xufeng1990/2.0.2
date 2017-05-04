@@ -1,0 +1,273 @@
+//  FoucsClass
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    NativeModules,
+    DeviceEventEmitter,
+    Platform
+} from 'react-native';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import ProfileRowCell from '../../component/AlbumCell/ProfileRowCell.js'
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import FocusInformation from './focusInformation.js';
+import Service from '../../configs/Service.js';
+import Icon from '../../common/Icon.js';
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import Loading from '../../component/Loading/Loading.js';
+import Util from '../../common/util.js';
+
+// 类
+export default class FoucsClass extends Component {
+    // 构造函数
+    _foucsData = [];
+    _foucsState = [];
+    _dataSource = new ListView.DataSource({
+        rowHasChanged: (row1, row2) => row1 !== row2
+    })
+    constructor(props) {
+        super(props);
+        this.focus = true
+        this.state = {
+
+            foucsState: this._foucsState,
+            dataSource: this._dataSource.cloneWithRows(this._foucsData),
+            isLoading:true,
+            isConnected:true,
+
+        };
+    }
+
+    _goBack() {
+        var user_id = this.props.user_id;
+        DeviceEventEmitter.emit('refreshData', user_id);
+        RnNativeModules.hideTabBar('show')
+        this.props.navigator.pop();
+    }
+
+    componentDidMount() {
+
+        this.changeFousId = DeviceEventEmitter.addListener('changeFousId', (rowID) => {
+
+            var arr = this.state.foucsState;
+            arr[rowID] = !arr[rowID];
+            this.setState({foucsState: arr})
+
+        })
+
+        Service.service.getFolloweeList({
+            'page': 1,
+            'user_id': this.props.user_id + ''
+        }).then((data) => {
+
+            var resultData = JSON.parse(data);
+            for (var i = 0; i < resultData.length; i++) {
+                this._foucsData.push(resultData[i]);
+                this._foucsState.push(resultData[i].is_followee);
+                console.log('关注数据1' + this._foucsData)
+            }
+            this.setState({
+                dataSource: this._dataSource.cloneWithRows(this._foucsData),
+                foucsState: this._foucsState,
+                isLoading:false,
+            })
+
+            console.log('关注数据5' + this.state.dataSource)
+        }).catch((err) => {
+          this.setState({isConnected:false,  isLoading:false,})
+            console.log('数据错误..' + err)
+        })
+
+    }
+    componentWillUnmount() {
+        this.changeFousId && this.changeFousId.remove();
+          DeviceEventEmitter.emit('showProfileTabBar','1');
+    }
+
+    _deleteFunc(rowData,rowID){
+      Service.service.deleteFollowee({'user_id': rowData.user.id}).then(() => {
+
+          delete this._foucsData[rowID];
+
+          this.setState({
+              dataSource: this._dataSource.cloneWithRows(this._foucsData)
+          })
+
+      }).catch((err) => {
+          console.log('取消失败' + err)
+      })
+    }
+
+    _focusAction(rowData, sectionID, rowID) {
+
+        if (this.state.foucsState[rowID] == true) {
+          Util.alert({
+            msg:'确定不再关注' + rowData.user.nickname + '了吗?',
+            okBtn:'确定',
+            cancelBtn:'取消',
+            okFun:()=>{this._deleteFunc(rowData,rowID)}
+          })
+
+
+        } else {
+            Service.service.createFollowee({'user_id': rowData.user.id}).then((data) => {
+                var arr = this.state.foucsState;
+
+                arr[rowID] = !arr[rowID]
+                this.setState({foucsState: arr})
+
+            }).catch((err) => {
+                console.log("关注失败" + err)
+            })
+        }
+
+    }
+
+    _goToInformationPage(focusId, is_followee, rowID) {
+
+        this.props.navigator.push({
+            component: FocusInformation,
+            params: {
+                focusId: focusId,
+                is_followee: is_followee,
+                rowID: rowID
+            }
+        })
+    }
+    _renderRow(rowData, sectionID, rowID) {
+
+        var focusId = rowData.user.id;
+        var is_followee = rowData.is_followee;
+
+        return (
+            <TouchableOpacity onPress={() => {
+                this._goToInformationPage(focusId, is_followee, rowID)
+            }}>
+
+                <ProfileRowCell name={rowData.user.nickname} headerImage={{
+                    uri: ImgUrl.baseImgUrl + 'user/' + rowData.user.id + '/avatar'
+                }} contentText={rowData.user.intro} focusImagePath={this.state.foucsState[rowID]
+                    ? require('../Course/images/Focus2.png')
+                    : require('../Course/images/Focus1.png')} foucsActionFnc= {() => {this._focusAction(rowData,sectionID,rowID)}}/>
+            </TouchableOpacity>
+        );
+    }
+    // render
+    render() {
+        if (!this.state.dataSource) {
+            return (
+                <View></View>
+            );
+        }
+
+        return (
+            <View style={styles.container}>
+                <View style={styles.headerView}>
+                  <Loading visible = {this.state.isLoading} />
+                    <Text style={styles.titleText}>关注</Text>
+                    <TouchableOpacity style={styles.touchBackImage} onPress={this._goBack.bind(this)}>
+                        <Text style={styles.backImage}>{Icon.back}</Text>
+                    </TouchableOpacity>
+                </View>
+                {this.state.isLoading ? null : ( this.state.isConnected ? this._foucsData.length == 0
+                  ?  <BlankPages ImageUrl={require('../../imgs/focus.png')} titleText='关注' contentText='德不孤 必有邻'/>
+                : <ListView ref='scrollView' enableEmptySections={true} dataSource={this.state.dataSource} renderRow={this._renderRow.bind(this)} removeClippedSubviews={false}/>
+              : <BlankPages ImageUrl={require('../../imgs/none.png')}  contentText='无法连接到服务器,请检查你的网络设置'/>)
+                }
+            </View>
+        );
+    }
+
+}
+
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f2f5f6'
+    },
+    headerView: {
+        width: g_AppValue.screenWidth,
+        height: Platform.OS == 'ios'
+            ? 65 * g_AppValue.precent
+            : 44 * g_AppValue.precent,
+        alignItems: 'center',
+        backgroundColor: '#ffffff'
+    },
+    titleText: {
+        marginTop: Platform.OS == 'ios'
+            ? 34 * g_AppValue.precent
+            : 10 * g_AppValue.precent,
+        fontSize: 18 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    touchBackImage: {
+        position: 'absolute',
+        top: Platform.OS == 'ios'
+            ? 33 * g_AppValue.precent
+            : 15 * g_AppValue.precent,
+        left: 12 * g_AppValue.precent
+    },
+    backImage: {
+        fontSize: 18 * g_AppValue.precent,
+        fontFamily: 'iconfont',
+        // width:10 * g_AppValue.precent,
+        // height:18 * g_AppValue.precent,
+    },
+    rowView: {
+        width: g_AppValue.screenWidth,
+        height: 82 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        marginTop: 10 * g_AppValue.precent,
+        flexDirection: 'row'
+    },
+    headerImage: {
+        width: 58 * g_AppValue.precent,
+        height: 58 * g_AppValue.precent,
+        marginTop: 15 * g_AppValue.precent,
+        marginLeft: 12 * g_AppValue.precent
+    },
+    cintentView: {
+        width: 200 * g_AppValue.precent,
+        height: 35 * g_AppValue.precent,
+        // backgroundColor:'red',
+        marginLeft: 12 * g_AppValue.precent,
+        marginTop: 25 * g_AppValue.precent
+    },
+    nameText: {
+        fontSize: 14 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    introduceText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c',
+        marginTop: 8 * g_AppValue.precent
+    },
+    touchFocusImage: {
+        //  backgroundColor:'black',
+        position: 'absolute',
+        top: 31 * g_AppValue.precent,
+        right: 12 * g_AppValue.precent,
+        bottom: 30 * g_AppValue.precent
+    },
+    focusImage: {
+        width: 54 * g_AppValue.precent,
+        height: 21 * g_AppValue.precent
+    }
+
+})

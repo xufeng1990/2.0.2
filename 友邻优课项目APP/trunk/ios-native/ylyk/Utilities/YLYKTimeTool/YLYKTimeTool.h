@@ -1,0 +1,15 @@
+//
+//  YLYKTimeTool.h
+//  YLYKPlayer
+//
+//  Created by 友邻优课 on 2017/1/17.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface YLYKTimeTool : NSObject
+
++ (NSString *)stringWithTime:(NSTimeInterval)time;
+
+@end

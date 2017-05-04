@@ -1,0 +1,194 @@
+//  AlbumNote
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  NativeModules,
+  DeviceEventEmitter,
+  Platform,
+    InteractionManager,
+} from 'react-native';
+import UltimateListView from "react-native-ultimate-listview";
+import AlbumNoteCell from './AlbumNoteCell.js';
+import Service from '../../../configs/Service.js';
+import g_AppValue from '../../../configs/AppGlobal.js';
+import BlankPages from '../../../component/AlbumCell/BlankPages.js';
+import NoVipDetailsView from '../NoVipDetails.js';
+import Loading from '../../../component/Loading/Loading.js';
+export default class AlbumNote extends Component {
+  // 构造函数
+  _page=2
+      _alldata = [];
+    _dataSource = new ListView.DataSource({rowHasChanged:(row1,row2)=>row1 !== row2})
+
+  constructor(props) {
+    super(props);
+    this.state = {
+      dataSource :this._dataSource.cloneWithRows(this._alldata),
+      isShowLoadMore:false,
+      isLoading:true,
+      isConnected:true,
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+
+    this._onListRefersh();
+  }
+
+  // view卸载
+
+    componentWillMount(){
+      //监听滚动事件
+      if (g_AppValue.isConnected == false) {
+        this.setState({isLoading:false})
+      }
+    }
+
+
+    componentWillUnmount(){
+
+    }
+  _rowRow(rowData){
+    return <AlbumNoteCell  data = {rowData}/>
+  }
+
+  _noDataView(){
+
+    return(
+         <BlankPages ImageUrl={require('../../../imgs/note.png')} titleText='评价' contentText='学习除了大量输入之外也要有内化和输出的过程'/>
+    );
+  }
+  // render
+  render(){
+    let that = this;
+    console.log('note数据' + that._alldata.lenght)
+
+     //<Loading visible = {this.state.isLoading} />
+    return (
+      <View style ={{backgroundColor:'#f2f5f6',height:Platform.OS == 'ios' ? 415 * g_AppValue.precent : 390 *g_AppValue.precent}}>
+
+        <Loading visible = {this.state.isLoading} />
+        {
+          !g_AppValue.isConnected ?  <BlankPages ImageUrl={require('../../../imgs/none.png')}  contentText='无法连接到服务器,请检查你的网络设置'/>
+        : <UltimateListView
+              ref= 'listView'
+              onFetch={this._onListRefersh.bind(this)}
+              enableEmptySections
+              //----Normal Mode----
+              separator={false}
+              rowView={this._rowRow.bind(this)}
+              refreshableTitleWillRefresh="下拉刷新..."
+              refreshableTitleInRefreshing="下拉刷新..."
+              refreshableTitleDidRefresh="Finished"
+              refreshableTitleDidRefreshDuration={10000}
+              emptyView = {this._noDataView.bind(this)}
+              allLoadedText=''
+              waitingSpinnerText=''
+          />
+      }
+
+
+              {this.props.hideNoVip == false   ? <NoVipDetailsView navigator = {this.props.navigator} /> : null}
+
+      </View>
+
+    );
+  }
+
+
+
+  _getCourseList(page, callback, options) {
+      const pageLimit = 10;
+      let that = this;
+
+        InteractionManager.runAfterInteractions(()=>{
+      Service.publicService.get(JSON.stringify({
+          url: ["album", that.props.course_id + "", "comment"],
+          body: {},
+          query: {}
+      })).then((data) => {
+
+          if (page <= 1) {
+              that._alldata = [];
+          }
+      var resultData = JSON.parse(data);
+
+        for (let i = 0;i<resultData.length;i++){
+          that._alldata.push(resultData[i])
+        }
+        this.setState({
+          dataSource:this._dataSource.cloneWithRows(this._alldata),
+          isShowLoadMore:true,
+          isLoading:false,
+        })
+      //  console.log('ldjgjkrwtbnrtnboi;rntbiontroinbitrntn' + that._allData.length)
+
+        options.pageLimit = pageLimit;
+        callback(resultData, options);
+
+    //end()
+    }).catch((err)=> {
+      console.warn('数据err', err);
+      this.setState({isLoading:false,isConnected:false})
+    });
+  })
+  }
+
+  _onListRefersh(page = 1, callback, options) {
+      this._getCourseList(page , callback, options);
+  }
+
+
+
+}
+var styles = StyleSheet.create({
+  listView:{
+    // height:g_AppValue.screenHeight - 100,
+    backgroundColor:'#f2f5f6',
+  },
+  container:{
+    backgroundColor:'#ffffff',
+    height:g_AppValue.screenHeight,
+  //  justifyContent:'center',
+    alignItems:'center',
+  },
+  ImageView:{
+    marginTop:50 * g_AppValue.precent,
+    width:115  * g_AppValue.precent,
+    height:115  * g_AppValue.precent,
+  //  backgroundColor:'black',
+    borderRadius:57.5 * g_AppValue.precent,
+
+  },
+  titleText:{
+    fontSize:24* g_AppValue.precent,
+    color:'#5a5a5a',
+    marginTop:30* g_AppValue.precent,
+  },
+  textStyle:{
+    width:140  * g_AppValue.precent,
+    marginTop:25  * g_AppValue.precent,
+    fontSize:14  * g_AppValue.precent,
+    color:'#5a5a5a',
+    justifyContent:'center',
+    alignItems:'center',
+    textAlign:'center',
+    　flexWrap:'wrap',
+  },
+})

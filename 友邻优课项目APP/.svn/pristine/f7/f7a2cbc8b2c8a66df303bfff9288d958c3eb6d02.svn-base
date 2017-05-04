@@ -1,0 +1,66 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+} from 'react-native';
+
+// 类
+import Toast from 'react-native-root-toast';
+export default class AppToast extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      visible:false,
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+    setTimeout(() => this.setState({
+            visible: true
+        }), 2000); // show toast after 2s
+
+        setTimeout(() => this.setState({
+            visible: false
+        }), 5000); // hide toast after 5s
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+
+  // render
+  render(){
+    return (
+
+      <Toast
+          visible={this.state.visible}
+          position={50}
+          shadow={false}
+          animation={false}
+          hideOnPress={true}
+      >This is a message</Toast>
+    );
+  }
+
+  // 自定义方法区域
+  // your method
+
+}

@@ -1,0 +1,44 @@
+package com.reactutils.callback;
+
+import com.zhy.http.okhttp.callback.StringCallback;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Response;
+
+/**
+ * Created by xyb on 2017/3/13.
+ */
+
+public abstract class BaseStringCallback extends StringCallback {
+
+
+
+
+    @Override
+    public boolean validateReponse(Response response, int id) {
+        return true;
+    }
+
+    @Override
+    public String parseNetworkResponse(Response response, int id) throws IOException {
+
+        try {
+            int code = response.code();
+            String string = response.body().string();
+
+            JSONObject object = new JSONObject();
+            object.put("code",code);
+            object.put("result",response.isSuccessful());
+            object.put("response",string);
+            return object.toString();
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+}

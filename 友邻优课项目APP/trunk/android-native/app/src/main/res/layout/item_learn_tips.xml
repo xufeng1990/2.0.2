@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <RelativeLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:layout_alignBottom="@+id/base"
+        android:layout_alignLeft="@+id/img_type"
+        android:layout_alignRight="@+id/img_type"
+        android:layout_below="@+id/img_type">
+
+        <View
+            android:id="@+id/line_time"
+            android:layout_width="1px"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:background="@color/learn_line_color" />
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/learn_time"
+        android:layout_width="wrap_content"
+        android:layout_height="29px"
+        android:layout_marginLeft="12px"
+        android:textSize="13px"
+        android:gravity="center"
+        android:textColor="#9a9b9c"
+        android:text="20:33" />
+
+    <ImageView
+        android:id="@+id/img_type"
+        android:layout_width="29px"
+        android:layout_height="29px"
+        android:layout_marginLeft="10px"
+        android:layout_marginTop="1px"
+        android:layout_marginBottom="1px"
+        android:layout_toRightOf="@+id/learn_time"
+        android:src="@mipmap/leatn_tips" />
+
+    <RelativeLayout
+        android:id="@+id/base"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/img_type"
+        android:paddingBottom="2px"
+        android:paddingLeft="9px">
+
+        <TextView
+            android:id="@+id/learn_alltime_one"
+            android:layout_width="wrap_content"
+            android:layout_height="29px"
+            android:textSize="11px"
+            android:textColor="#9a9b9c"
+            android:gravity="center"
+            android:text="" />
+
+        <TextView
+            android:id="@+id/user_tips"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#5a5a5a"
+            android:textSize="13px"
+            android:layout_marginRight="12px"
+            android:layout_below="@+id/learn_alltime_one"
+            android:layout_marginBottom="10px"
+            android:layout_marginTop="6px" />
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/item_recyclerView"
+            android:layout_width="match_parent"
+            android:layout_marginRight="12px"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/user_tips">
+
+        </android.support.v7.widget.RecyclerView>
+
+        <RelativeLayout
+            android:id="@+id/course_re"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/item_recyclerView"
+            android:layout_marginBottom="10px"
+            android:layout_marginRight="12px"
+            android:padding="1px"
+            android:background="@drawable/learnpath_listen_bg">
+
+            <ImageView
+                android:id="@+id/course_img"
+                android:layout_width="64px"
+                android:layout_height="48px"
+                android:scaleType="centerCrop"
+                 />
+
+
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_alignBottom="@+id/course_img"
+                android:layout_alignTop="@+id/course_img"
+                android:layout_marginLeft="10px"
+                android:layout_marginRight="10px"
+                android:layout_toRightOf="@+id/course_img"
+                android:orientation="vertical">
+
+                <com.zhuomogroup.ylyk.views.ScrollTextView
+                    android:id="@+id/course_name"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerVertical="true"
+                    android:text="节目名称"
+                    android:textSize="13px" />
+
+                <TextView
+                    android:id="@+id/course_teacher"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/course_name"
+                    android:text="节目名称"
+                    android:visibility="gone" />
+            </RelativeLayout>
+
+
+        </RelativeLayout>
+
+
+    </RelativeLayout>
+
+
+</RelativeLayout>

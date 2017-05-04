@@ -1,0 +1,18 @@
+import React, {Component} from 'react';
+import {View, requireNativeComponent} from 'react-native';
+var RCTLoadingView = requireNativeComponent('RCTLoadingView', LoadingIOS);
+export default class LoadingIOS extends React.Component {
+    // 与OC中 RCTViewManager子类中导出的属性对应
+    static propTypes = {};
+    componentDidMount() {
+        //  console.log("MyView被加载了");
+    }
+    render() {
+        return (
+            <RCTLoadingView/>
+        );
+    }
+}
+// 这个文件中,凡是用到RCTMyView的地方,应该与OC中
+// RCTViewManager子类中RCT_EXPORT_MODULE()括号中的参数一致,
+// 如果没有参数,应为RCTViewManager子类的类名去掉manager

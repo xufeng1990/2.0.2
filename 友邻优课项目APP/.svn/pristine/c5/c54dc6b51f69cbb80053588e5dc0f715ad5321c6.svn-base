@@ -1,0 +1,34 @@
+package com.zhuomogroup.ylyk.controller;
+
+import android.app.Activity;
+import android.support.v7.app.AlertDialog;
+
+/**
+ * Created by xyb on 2017/3/26.
+ */
+
+public class DialogController {
+    private AlertDialog.Builder alertDialog;
+
+    public void dialogShow(Activity activity, int code) {
+        if (activity != null) {
+            if (!activity.isFinishing()) {
+                if (code == 401) {
+                    alertDialog = new AlertDialog.Builder(activity);
+                    alertDialog.setMessage("登陆失效");
+
+
+                }else if (code == 408){
+                    alertDialog = new AlertDialog.Builder(activity);
+                    alertDialog.setMessage("请设置您的本机时间");
+                }else if (code == 500){
+                    alertDialog = new AlertDialog.Builder(activity);
+                    alertDialog.setMessage("服务器错误");
+
+                }
+
+            }
+        }
+    }
+
+}

@@ -1,0 +1,130 @@
+//  teacherAlbum
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+} from 'react-native';
+import g_AppValue from '../../../configs/AppGlobal.js';
+import IntroduceHeaderCell from '../../../component/AlbumCell/IntroduceHeaderCell.js';
+// 类
+export default class TeacherIntroduceTab extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      // your code
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+    //
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+
+  // render
+  render(){
+    return (
+
+      <View style={styles.container} >
+        <View style={styles.topView}>
+          <View style={styles.contentView}>
+            <View style={styles.content}>
+            <Text style={styles.contentTextOne}>教学微信公众平台巴别塔创办者，塔客学院主讲教师互粉互粉的方的对符合法国哈哈哈哈哈哈速度黄日华俄黑恶就二货宁夏境内出门呢大黄蜂哈饿哦发反反复复我IE 哦休息休息休息多久就多久的话教学微信公众平台巴别塔创办者，塔客学院主讲教师互粉互粉的方的对符合法国哈哈哈哈哈哈速度黄日华俄黑恶就二货宁夏境内出门呢大黄蜂哈饿哦发反反复复我IE 哦休息休息休息多久就多久的话</Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.albunIntroduceView} >
+          <IntroduceHeaderCell
+            titleName = '教育背景'
+            titleNameTwo = 'education'
+          />
+        
+        <Text style = {[styles.contentText,{marginBottom:100,}]} >2009年，美国夏威夷计划经济看看见看见看你就快快快快好的会晤 i 额外花费 i 互粉 i 和贩毒互粉 i 的互粉似懂非懂风华绝代护肤 i 回复回复回复 i 的互粉 i 嘿嘿发布好景不长鉴湖女侠年新款好代表大会开始觉得京东我去品味今年份举办 2009年，美国夏威夷计划经济看看见看见看你就快快快快好的会晤 i 额外花费 i 互粉 i 和贩毒互粉 i 的互粉似懂非懂风华绝代护肤 i 回复回复回复 i 的互粉 i 嘿嘿发布好景不长鉴湖女侠年新款好代表大会开始觉得京东我去品味今年份举办</Text>
+        </View>
+        <View style={styles.albunIntroduceView} >
+          <IntroduceHeaderCell
+            titleName = '职业履历'
+            titleNameTwo = 'experiences'
+          />
+        <Text style = {styles.contentText} >2009年，美国夏威夷计划经济看看见看见看你就快快快快好的会晤 i 额外花费 i 互粉 i 和贩毒互粉 i 的互粉似懂非懂风华绝代护肤 i 回复回复回复 i 的互粉 i 嘿嘿发布好景不长鉴湖女侠年新款好代表大会开始觉得京东我去品味今年份举办 2009年，美国夏威夷计划经济看看见看见看你就快快快快好的会晤 i 额外花费 i 互粉 i 和贩毒互粉 i 的互粉似懂非懂风华绝代护肤 i 回复回复回复 i 的互粉 i 嘿嘿发布好景不长鉴湖女侠年新款好代表大会开始觉得京东我去品味今年份举办</Text>
+        </View>
+
+
+      </View>
+    );
+  }
+
+  // 自定义方法区域
+  // your method
+
+}
+
+var  styles = StyleSheet.create({
+  container:{
+     flex:1,
+     backgroundColor:'#f2f5f6',
+  },
+  topView:{
+    marginTop:10,
+    width:g_AppValue.screenWidth,
+    backgroundColor:'#ffffff',
+  },
+  contentView:{
+    width:305,
+    backgroundColor:'#f2f5f6',
+    justifyContent:'center',
+    alignItems:'center',
+    margin:35,
+    shadowColor:'black',
+  shadowRadius:1,
+  shadowOffset:{height:0,width:0},
+  shadowOpacity:0.2,
+
+  },
+  content:{
+    width:278,
+  },
+  contentTextOne:{
+    fontSize:13,
+    color:'#5a5a5a',
+    marginTop:14,
+    marginLeft:13,
+    marginBottom:14,
+
+  },
+
+  albunIntroduceView:{
+    width:g_AppValue.screenWidth,
+    backgroundColor:'#ffffff',
+    marginTop:10,
+
+
+  },
+  contentText:{
+    width:335,
+    marginTop:18,
+    marginLeft:20,
+    marginBottom:20,
+    fontSize:14,
+    color:'#5a5a5a',
+  },
+})

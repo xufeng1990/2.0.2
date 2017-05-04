@@ -1,0 +1,564 @@
+//
+//  XXZQNetwork.m
+//  XXZQNetwork
+//
+//  Created by XXXBryant on 16/7/22.
+//  Copyright © 2016年 张琦. All rights reserved.
+//
+
+#import "XXZQNetwork.h"
+#import "AFNetworking.h"
+#import "XXZQUploadParam.h"
+#import "XXZQNetworkCache.h"
+#import "NSStringTools.h"
+#import "CBLProgressHUD.h"
+
+@interface XXZQNetwork()
+
+@property (nonatomic, strong) AFHTTPSessionManager * manager;
+@property (nonatomic, strong) NSMutableArray * allSessionTask;
+
+@end
+
+@implementation XXZQNetwork
+
+static id _instance = nil;
+static NSMutableArray *_allSessionTask;
+
+/**
+ 存储着所有的请求task数组
+ */
+- (NSMutableArray *)allSessionTask {
+    if (!_allSessionTask) {
+        _allSessionTask = [[NSMutableArray alloc] init];
+    }
+    return _allSessionTask;
+}
+
+
++ (instancetype)sharedInstance {
+    return [[self alloc] init];
+}
+
++ (instancetype)allocWithZone:(struct _NSZone *)zone {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _instance = [super allocWithZone:zone];
+    });
+    return _instance;
+}
+
+#pragma mark - 获取GMT日期字符串
+- (NSString *)getGMTStr {
+    NSDate *date = [NSDate date];
+    NSTimeZone *tzGMT = [NSTimeZone timeZoneWithName:@"GMT"];
+    [NSTimeZone setDefaultTimeZone:tzGMT];
+    NSDateFormatter *iosDateFormater=[[NSDateFormatter alloc]init];
+    iosDateFormater.dateFormat=@"EEE, d MMM yyyy HH:mm:ss 'GMT'";
+    iosDateFormater.locale=[[NSLocale alloc]initWithLocaleIdentifier:@"en_US"];
+    NSString *dateStr = [iosDateFormater stringFromDate:date];
+    return dateStr;
+}
+
+- (instancetype)init {
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        _instance = [super init];
+        AFNetworkReachabilityManager * manager = [AFNetworkReachabilityManager sharedManager];
+        [manager startMonitoring];
+        [manager setReachabilityStatusChangeBlock:^(AFNetworkReachabilityStatus status) {
+            switch (status) {
+                case AFNetworkReachabilityStatusUnknown:
+                    XXZQLog(@"未知网络");
+                    break;
+                case AFNetworkReachabilityStatusNotReachable:
+                    XXZQLog(@"无法连接网络");
+                    break;
+                case AFNetworkReachabilityStatusReachableViaWiFi:
+                    XXZQLog(@"wifi网络");
+                    break;
+                case AFNetworkReachabilityStatusReachableViaWWAN:
+                    XXZQLog(@"当前使用手机网络");
+                    break;
+                default:
+                    break;
+            }
+        }];
+    });
+    return _instance;
+}
+
+- (AFHTTPSessionManager *)manager {
+    static AFHTTPSessionManager *manager = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        manager = [AFHTTPSessionManager manager];
+        /**
+         *  可以接受的类型
+         */
+        AFJSONResponseSerializer *response = [AFJSONResponseSerializer serializer];
+        response.removesKeysWithNullValues = YES;
+        
+        manager.responseSerializer = response;
+        //manager.responseSerializer = [AFHTTPResponseSerializer serializer];
+        manager.responseSerializer.acceptableContentTypes = [NSSet setWithObjects:@"application/json", @"text/json", @"text/javascript",@"text/html",@"text/plain",@"image/jpg",@"application/x-javascript",@"keep-alive", nil];
+        
+        
+        manager.requestSerializer = [AFJSONRequestSerializer serializer];
+        /**
+         *  请求队列允许的最大并发数
+         */
+        //    manager.operationQueue.maxConcurrentOperationCount = 5;
+        // 设置超时时间
+        [manager.requestSerializer willChangeValueForKey:@"timeoutInterval"];
+        manager.requestSerializer.timeoutInterval = 20.f;
+        [manager.requestSerializer didChangeValueForKey:@"timeoutInterval"];
+        // 设置请求头部内容
+        [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+        manager.requestSerializer.HTTPMethodsEncodingParametersInURI = [NSSet setWithObjects:@"GET", @"HEAD", nil];
+        //设置状态栏的小菊花
+        [UIApplication sharedApplication].networkActivityIndicatorVisible = NO;
+    });
+    return manager;
+}
+
+#pragma mark - json转字符串
+//json转字符串
+- (NSString *)jsonToString:(id)data {
+    if(!data) {
+        return nil;
+    }
+    NSData *jsonData = [NSJSONSerialization dataWithJSONObject:data options:NSJSONWritingPrettyPrinted error:nil];
+    NSString * jsonString = [[NSString alloc] initWithData:jsonData encoding:NSUTF8StringEncoding];
+    return jsonString;
+}
+
+#pragma mark --GET请求 自动缓存--
+- (void)getWithURLString:(NSString *)URLString
+              parameters:(NSDictionary *)parameters
+           authorization:(NSString *)authorization
+           responseCache:(void (^)(id))responseCache
+                 success:(void (^)(id))success
+                 failure:(void (^)(NSError *))faliure {
+    responseCache ? responseCache([XXZQNetworkCache httpCacheForURLString:URLString parameters:parameters]) : nil;
+    
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    NSString *buildVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+    NSString *bundleVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    NSString *iOSVersion = [[UIDevice currentDevice] systemVersion];
+    NSString *currentDevice = [NSStringTools deviceVersion];
+    NSString *bundleName = @"ylyk";
+    NSString *userAgent = [NSString stringWithFormat:@"%@/%@%@ (%@, iOS/%@)",bundleName,bundleVersion,buildVersion,currentDevice,iOSVersion];
+    [manager.requestSerializer setValue:userAgent forHTTPHeaderField:@"User-Agent"];
+    if (authorization != nil) {
+        [manager.requestSerializer setValue:authorization forHTTPHeaderField:@"Authorization"];
+    }
+    [manager GET:URLString parameters:parameters progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        [self.allSessionTask removeObject:task];
+        if (success) {
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+            responseCache ? [XXZQNetworkCache setHttpCache:responseObject URLString:URLString parameters:parameters] : nil;
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        [self.allSessionTask removeObject:task];
+        if (faliure) {
+            XXZQLog(@"error = %@",error);
+            NSData * errmessageData = [error.userInfo objectForKey:@"com.alamofire.serialization.response.error.data"];
+            NSString * errorString = [[NSString alloc] initWithData:errmessageData encoding:NSUTF8StringEncoding];
+            NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:errorString];
+            NSString * errorCode = [dict objectForKey:@"error_code"];
+            if ([errorCode integerValue] == 401) {
+//                [CBLProgressHUD showTextHUDInWindowWithText:@"您的登录已失效，请重新登录"];
+//                NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+//                [defaults removeObjectForKey:@"user_id"];
+//                [defaults removeObjectForKey:@"xdy_id"];
+//                [defaults removeObjectForKey:@"userInfo"];
+//                [defaults removeObjectForKey:@"authorization"];
+//                [defaults removeObjectForKey:@"isVip"];
+//                [defaults removeObjectForKey:@"has_login"];
+//                [defaults synchronize];
+            } else if ([errorCode integerValue] >499.5){
+                 [CBLProgressHUD showTextHUDInWindowWithText:@"服务器去学英语了，请通知阿树老师把它抓回来！"];
+            } else if ([errorCode integerValue] == 408) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"系统时间与服务器时间不一致，请检查时间设置"];
+
+            } else if ([errorCode integerValue] == 405) {
+//                 [CBLProgressHUD showTextHUDInWindowWithText:@"无法连接到服务器，请检查你的网络设置"];
+            } else if ([errorCode integerValue] == 404) {
+//                [CBLProgressHUD showTextHUDInWindowWithText:@"内容不存在"];
+            }
+           faliure(error);
+        }
+    }];
+    self.allSessionTask = [NSMutableArray arrayWithArray:self.manager.tasks];
+    
+//    XXZQLog(@"%@",self.allSessionTask);
+}
+
+#pragma mark --get请求无缓存--
+- (void)getWithURLString:(NSString *)URLString
+              parameters:(NSDictionary *)parameters
+           authorization:(NSString *)authorization
+                 success:(void (^)(id))success
+                 failure:(void (^)(NSError *))faliure {
+    return [self getWithURLString:URLString
+                       parameters:parameters
+                    authorization:authorization
+                    responseCache:nil success:success
+                          failure:faliure];
+}
+
+#pragma mark --POST请求 自动缓存--
+- (void)postWithURLString:(NSString *)URLString
+               parameters:(NSDictionary *)parameters
+            authorization:(NSString *)authorization
+            responseCache:(void (^)(id))responseCache
+                  success:(void (^)(id))success
+                  failure:(void (^)(NSError *))faliure {
+    responseCache ? responseCache([XXZQNetworkCache httpCacheForURLString:URLString parameters:parameters]) : nil;
+    
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    NSString *buildVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+    NSString *bundleVersion = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    NSString *iOSVersion = [[UIDevice currentDevice] systemVersion];
+    NSString *currentDevice = [NSStringTools deviceVersion];
+    NSString *bundleName = @"ylyk";
+    NSString *userAgent = [NSString stringWithFormat:@"%@/%@%@ (%@, iOS/%@)",bundleName,bundleVersion,buildVersion,currentDevice,iOSVersion];
+    [manager.requestSerializer setValue:userAgent forHTTPHeaderField:@"User-Agent"];
+    if (authorization != nil) {
+        [manager.requestSerializer setValue:authorization forHTTPHeaderField:@"Authorization"];
+    }
+    [manager POST:URLString parameters:parameters progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        [self.allSessionTask removeObject:task];
+        if (success) {
+            responseCache ? [XXZQNetworkCache setHttpCache:responseObject URLString:URLString parameters:parameters] : nil;
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        [self.allSessionTask removeObject:task];
+        if (faliure) {
+            faliure(error);
+        }
+    }];
+    self.allSessionTask = [NSMutableArray arrayWithArray:self.manager.tasks];
+}
+
+
+#pragma mark --POST请求 无缓存--
+- (void)postWithURLString:(NSString *)URLString
+               parameters:(NSDictionary *)parameters
+            authorization:(NSString *)authorization
+                  success:(void (^)(id))success
+                  failure:(void (^)(NSError *))faliure
+{
+    return [self postWithURLString:URLString
+                        parameters:parameters
+                     authorization:authorization
+                     responseCache:nil
+                           success:success
+                           failure:faliure];
+}
+
+#pragma mark --网络请求  自动缓存--
+- (void)requireWithURLString:(NSString *)URLString
+                  parameters:(NSDictionary *)parameters
+               authorization:(NSString *)authorization
+               responseCache:(void (^)(id))responseCache
+                        type:(HTTPRequestType)type
+                     success:(void (^)(id))success
+                     failure:(void (^)(NSError *))faliure {
+    responseCache ? responseCache([XXZQNetworkCache httpCacheForURLString:URLString parameters:parameters]) : nil;
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    switch (type) {
+        case HTTPRequestTypeGet: {
+            [manager GET:URLString parameters:parameters progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                [self.allSessionTask removeObject:task];
+                if (success) {
+                    responseCache ? [XXZQNetworkCache setHttpCache:responseObject URLString:URLString parameters:parameters] : nil;
+                    NSString * jsonString = [self jsonToString:responseObject];
+                    success(jsonString);
+                    XXZQLog(@" 【RECEIVE】 \n%@\n%@\n\n",URLString,jsonString);
+                }
+            } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                [self.allSessionTask removeObject:task];
+                if (faliure) {
+                    faliure(error);
+                    XXZQLog(@"error = %@",error);
+                }
+            }];
+        }
+            break;
+        case HTTPRequestTypePost: {
+            [manager POST:URLString parameters:parameters progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+                [self.allSessionTask removeObject:task];
+                if (success) {
+                    responseCache ? [XXZQNetworkCache setHttpCache:responseObject URLString:URLString parameters:parameters] : nil;
+                    NSString * jsonString = [self jsonToString:responseObject];
+                    success(jsonString);
+                    XXZQLog(@" 【RECEIVE】 \n%@\n%@\n\n",URLString,jsonString);
+                }
+            } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+                [self.allSessionTask removeObject:task];
+                if (faliure) {
+                    faliure(error);
+                    XXZQLog(@"error = %@",error);
+                }
+            }];
+            break;
+        }
+    }
+    self.allSessionTask = [NSMutableArray arrayWithArray:self.manager.tasks];
+}
+
+#pragma mark --网络请求  无缓存--
+- (void)requireWithURLString:(NSString *)URLString
+                  parameters:(NSDictionary *)parameters
+               authorization:(NSString *)authorization
+                        type:(HTTPRequestType)type
+                     success:(void (^)(id))success
+                     failure:(void (^)(NSError *))faliure {
+    return [self requireWithURLString:URLString
+                           parameters:parameters
+                        authorization:authorization
+                        responseCache:nil type:type
+                              success:success
+                              failure:faliure];
+}
+
+#pragma mark --上传数据--
+
+- (void)uploadWithURLString:(NSString *)URLString
+                 parameters:(NSDictionary *)parameters
+                uploadParam:(NSArray<XXZQUploadParam *> *)uploadParams
+                    success:(void (^)())success
+                    failure:(void (^)(NSError *))failure {
+    AFHTTPSessionManager * manager = [self manager];
+    [manager POST:URLString parameters:parameters constructingBodyWithBlock:^(id <AFMultipartFormData >  _Nonnull formData) {
+        for (XXZQUploadParam * uploadParam in uploadParams) {
+            [formData appendPartWithFileData:uploadParam.data name:uploadParam.name fileName:uploadParam.filename mimeType:uploadParam.mimeType];
+        }
+    } progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        [self.allSessionTask removeObject:task];
+        if (success) {
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+            XXZQLog(@" 【RECEIVE】 \n%@\n%@\n\n",URLString,jsonString);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        [self.allSessionTask removeObject:task];
+        if (failure) {
+            failure(error);
+            XXZQLog(@"error = %@",error);
+        }
+    }];
+    self.allSessionTask = [NSMutableArray arrayWithArray:self.manager.tasks];
+}
+
+#pragma mark --下载数据--
+
+- (void)downLoadWithURLString:(NSString *)URLString
+                  parameters:(NSDictionary *)parameters
+                    progerss:(void (^)())progress
+                     success:(void (^)())success
+                     failure:(void (^)(NSError *))failure {
+    AFHTTPSessionManager * manager = [[AFHTTPSessionManager alloc] initWithSessionConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    NSURLRequest * request = [NSURLRequest requestWithURL:[NSURL URLWithString:URLString]];
+    NSURLSessionDownloadTask * downloadTask = [manager downloadTaskWithRequest:request progress:^(NSProgress * _Nonnull downloadProgress) {
+        if (progress) {
+            progress();
+        }
+    } destination:^NSURL * _Nonnull(NSURL * _Nonnull targetPath, NSURLResponse * _Nonnull response) {
+        return targetPath;
+    } completionHandler:^(NSURLResponse * _Nonnull response, NSURL * _Nullable filePath, NSError * _Nullable error) {
+        [self.allSessionTask removeObject:downloadTask];
+        if (failure) {
+            failure(error);
+            XXZQLog(@"error = %@",error);
+        }
+    }];
+    [downloadTask resume];
+    downloadTask ? [self.allSessionTask addObject:downloadTask] : nil ;
+}
+
+- (void)putWithURLString:(NSString *)URLString
+              parameters:(NSDictionary *)parameters
+           authorization:authorization
+                 success:(void (^)(id))success
+                 failure:(void (^)(NSError *))failure {
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    if (authorization != nil) {
+        [manager.requestSerializer setValue:authorization forHTTPHeaderField:@"Authorization"];
+    }
+    [manager PUT:URLString parameters:parameters success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (success) {
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+#pragma mark - 删除数据
+- (void)deleteWithURLString:(NSString *)URLString
+                 parameters:(NSDictionary *)parameters
+              authorization:authorization
+                    success:(void (^)(id))success
+                    failure:(void (^)(NSError *))failure {
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    if (authorization != nil) {
+        [manager.requestSerializer setValue:authorization forHTTPHeaderField:@"Authorization"];
+    }
+    [manager DELETE:URLString parameters:parameters success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (success) {
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+#pragma mark - 上传图片
+- (void)uploadImageWithURLString:(NSString *)URLString
+                      parameters:(NSDictionary *)parameters
+                           image:(NSData *)image
+                   authorization:authorization
+                         success:(void (^)(id))success
+                         failure:(void (^)(NSError *))failure {
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"multipart/form-data" forHTTPHeaderField:@"Content-Type"];
+    [manager.requestSerializer setValue:authorization forHTTPHeaderField:@"Authorization"];
+    [manager POST:URLString parameters:parameters constructingBodyWithBlock:^(id<AFMultipartFormData>  _Nonnull formData) {
+        NSData * imageData = UIImageJPEGRepresentation(image, 1);
+        NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+        formatter.dateFormat = @"yyyyMMddHHmmss";
+        NSString *str = [formatter stringFromDate:[NSDate date]];
+        NSString *fileName = [NSString stringWithFormat:@"%@.jpg", str];
+        [formData appendPartWithFileData:imageData name:str fileName:fileName mimeType:@"image/jpg"];
+    }progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        if (success) {
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        if (failure) {
+            failure(error);
+        }
+    }];
+}
+
+#pragma mark -取消所有请求
+- (void)cancelAllRequest
+{
+    // 锁操作
+    @synchronized(self) {
+        [self.allSessionTask enumerateObjectsUsingBlock:^(NSURLSessionTask  *_Nonnull task, NSUInteger idx, BOOL * _Nonnull stop) {
+            [task cancel];
+        }];
+        [self.allSessionTask removeAllObjects];
+    }
+}
+
+- (void)cancelRequestForURL:(NSString *)URLString{
+    if (!URLString) {
+        return;
+    }
+    @synchronized (self) {
+        [self.allSessionTask enumerateObjectsUsingBlock:^(NSURLSessionTask  *_Nonnull task, NSUInteger idx, BOOL * _Nonnull stop) {
+            if ([task.currentRequest.URL.absoluteString hasPrefix:URLString]) {
+                [task cancel];
+                [self.allSessionTask removeObject:task];
+                *stop = YES;
+            }
+        }];
+    }
+}
+
+#pragma mark - redirectURLReq
+- (void)redirectURLString:(NSString *)URLString
+            authorization:(NSString *)authorization
+               parameters:(NSDictionary *)parameters
+                  success:(void (^)(id))success
+                  failure:(void (^)(NSError *))faliure
+              redirectURL:(void (^)(NSURL *))redirectURL
+{
+    AFHTTPSessionManager * manager = [self manager];
+    [manager.requestSerializer setValue:[self getGMTStr] forHTTPHeaderField:@"X-Date"];
+    [manager.requestSerializer setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    if (authorization != nil) {
+        [manager.requestSerializer setValue:authorization forHTTPHeaderField:@"Authorization"];
+    }
+    [manager setTaskWillPerformHTTPRedirectionBlock:^NSURLRequest * _Nonnull(NSURLSession * _Nonnull session, NSURLSessionTask * _Nonnull task, NSURLResponse * _Nonnull response, NSURLRequest * _Nonnull request) {
+        if (response) {
+            redirectURL(request.URL);
+        }
+        return nil;
+    }];
+    [manager GET:URLString parameters:parameters progress:nil success:^(NSURLSessionDataTask * _Nonnull task, id  _Nullable responseObject) {
+        [self.allSessionTask removeObject:task];
+        if (success) {
+            NSString * jsonString = [self jsonToString:responseObject];
+            success(jsonString);
+        }
+    } failure:^(NSURLSessionDataTask * _Nullable task, NSError * _Nonnull error) {
+        [self.allSessionTask removeObject:task];
+        if (faliure) {
+        //faliure(error);
+            XXZQLog(@"error = %@",error);
+        }
+    }];
+//    self.allSessionTask = [NSMutableArray arrayWithArray:self.manager.tasks];
+//    
+//    XXZQLog(@"%@",self.allSessionTask);
+}
+
+#pragma mark - 获取网络状态
+- (NSString *)getNetWorkState {
+    AFNetworkReachabilityManager *mgr = [AFNetworkReachabilityManager sharedManager];
+    __block NSString * state;
+    // 2.设置网络状态改变后的处理
+    [mgr setReachabilityStatusChangeBlock:^(AFNetworkReachabilityStatus status) {
+        // 当网络状态改变了, 就会调用这个block
+        switch (status) {
+            case AFNetworkReachabilityStatusUnknown: // 未知网络
+//                NSLog(@"未知网络");
+                state = @"未知网络";
+                break;
+            case AFNetworkReachabilityStatusNotReachable: // 没有网络(断网)
+//                NSLog(@"没有网络(断网)");
+                state = @"没有网络(断网)";
+                break;
+            case AFNetworkReachabilityStatusReachableViaWWAN: // 手机自带网络
+//                NSLog(@"手机自带网络");
+                state = @"手机自带网络";
+                break;
+            case AFNetworkReachabilityStatusReachableViaWiFi: // WIFI
+//                NSLog(@"WIFI");
+                state = @"WIFI";
+                break;
+        }
+    }];
+    // 3.开始监控
+    [mgr startMonitoring];
+    return state;
+}
+
+@end

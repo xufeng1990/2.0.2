@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="11762" systemVersion="16B2657" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES">
+    <device id="retina4_7" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="11757"/>
+        <capability name="Constraints to layout margins" minToolsVersion="6.0"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <tableViewCell contentMode="scaleAspectFit" selectionStyle="none" indentationWidth="10" rowHeight="179" id="KGk-i7-Jjw" customClass="ImageListCell">
+            <rect key="frame" x="0.0" y="0.0" width="184" height="179"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+            <tableViewCellContentView key="contentView" opaque="NO" clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="center" tableViewCell="KGk-i7-Jjw" id="H2p-sc-9uM">
+                <rect key="frame" x="0.0" y="0.0" width="184" height="178"/>
+                <autoresizingMask key="autoresizingMask"/>
+                <subviews>
+                    <imageView clipsSubviews="YES" multipleTouchEnabled="YES" contentMode="scaleAspectFill" horizontalHuggingPriority="251" verticalHuggingPriority="251" translatesAutoresizingMaskIntoConstraints="NO" id="ufp-mX-tkS">
+                        <rect key="frame" x="8" y="8" width="168" height="162.5"/>
+                        <color key="backgroundColor" red="0.94901960784313721" green="0.95686274509803915" blue="0.96470588235294119" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </imageView>
+                    <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="yeU-UO-e46">
+                        <rect key="frame" x="156" y="8" width="20" height="20"/>
+                        <constraints>
+                            <constraint firstAttribute="height" constant="20" id="Xp2-gI-2M5"/>
+                            <constraint firstAttribute="width" constant="20" id="eYb-9j-HuG"/>
+                        </constraints>
+                        <state key="normal" image="close"/>
+                        <connections>
+                            <action selector="deleteImage:" destination="KGk-i7-Jjw" eventType="touchUpInside" id="WwE-ff-odI"/>
+                        </connections>
+                    </button>
+                </subviews>
+                <color key="backgroundColor" red="0.94901960780000005" green="0.95686274510000002" blue="0.96470588239999999" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                <constraints>
+                    <constraint firstItem="ufp-mX-tkS" firstAttribute="leading" secondItem="H2p-sc-9uM" secondAttribute="leadingMargin" id="CDO-tO-cYz"/>
+                    <constraint firstAttribute="bottomMargin" secondItem="ufp-mX-tkS" secondAttribute="bottom" id="XQp-ju-fp6"/>
+                    <constraint firstItem="ufp-mX-tkS" firstAttribute="trailing" secondItem="H2p-sc-9uM" secondAttribute="trailingMargin" id="apq-D4-7sf"/>
+                    <constraint firstAttribute="trailingMargin" secondItem="yeU-UO-e46" secondAttribute="trailing" id="hUT-Dg-fvu"/>
+                    <constraint firstItem="yeU-UO-e46" firstAttribute="top" secondItem="H2p-sc-9uM" secondAttribute="topMargin" id="ppK-bm-QOx"/>
+                    <constraint firstItem="ufp-mX-tkS" firstAttribute="top" secondItem="H2p-sc-9uM" secondAttribute="topMargin" id="uzv-ay-S8j"/>
+                </constraints>
+            </tableViewCellContentView>
+            <connections>
+                <outlet property="deleteBtn" destination="yeU-UO-e46" id="DMj-zs-a85"/>
+                <outlet property="imageView" destination="ufp-mX-tkS" id="tuq-rc-3uw"/>
+            </connections>
+            <point key="canvasLocation" x="20" y="41.5"/>
+        </tableViewCell>
+    </objects>
+    <resources>
+        <image name="close" width="20" height="20"/>
+    </resources>
+</document>

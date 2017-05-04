@@ -1,0 +1,17 @@
+// 'use strict'
+// import {NativeModules,Platform} from 'react-native';
+// import g_AppValue from './AppGlobal.js';
+//
+// export function getCourseList({}){
+//   NativeModules.NativeNetwork.getCourseList({}){
+//   .then((data)=> {
+//     console.log('数据' + JSON.parse(data))
+//
+//     return data;
+//   })
+//   .catch((err)=> {
+//     console.warn('数据err', err);
+//       alert(err);
+//           });
+//   }
+// }

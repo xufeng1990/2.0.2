@@ -1,0 +1,79 @@
+package com.zhuomogroup.ylyk.wxapi;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.widget.Toast;
+
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.WritableMap;
+import com.reactutils.userinfo.BridgeNativeModule;
+import com.tencent.mm.sdk.constants.ConstantsAPI;
+import com.tencent.mm.sdk.modelbase.BaseReq;
+import com.tencent.mm.sdk.modelbase.BaseResp;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.IWXAPIEventHandler;
+import com.zhuomogroup.ylyk.MainApplication;
+
+//import com.theweflex.react.WeChatModule;
+
+/**
+ * Created by xyb on 2017/2/9.
+ */
+
+public class WXPayEntryActivity extends Activity implements IWXAPIEventHandler {
+    private static final String TAG = "WXPayEntryActivity";
+    private IWXAPI iwxapi;
+    private static final int PAY_WIN = 0;
+    private static final int PAY_ERROR = -1;
+    private static final int PAY_CANCEL = -2;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        MainApplication application = (MainApplication) getApplication();
+        iwxapi = application.getIwxapi();
+        iwxapi.handleIntent(getIntent(), this);
+
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        iwxapi.handleIntent(intent, this);
+    }
+
+    @Override
+    public void onReq(BaseReq req) {
+    }
+
+    @Override
+    public void onResp(BaseResp resp) {
+        if (resp.getType() == ConstantsAPI.COMMAND_PAY_BY_WX) {
+            boolean isPay = false;
+            switch (resp.errCode) {
+                case PAY_WIN:
+                    isPay= true;
+                    Toast.makeText(this, "支付成功", Toast.LENGTH_SHORT).show();
+                    break;
+                case PAY_ERROR:
+                    isPay = false;
+                    Toast.makeText(this, "支付错误", Toast.LENGTH_SHORT).show();
+                    break;
+                case PAY_CANCEL:
+                    isPay = false;
+                    Toast.makeText(this, "取消支付", Toast.LENGTH_SHORT).show();
+                    break;
+            }
+            if (BridgeNativeModule.getPromise() != null) {
+                WritableMap map = Arguments.createMap();
+                map.putBoolean("is_succeed",isPay);
+                BridgeNativeModule.getPromise().resolve(map);
+                BridgeNativeModule.setPromise(null);
+            }
+        }
+        finish();
+    }
+}

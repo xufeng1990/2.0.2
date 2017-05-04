@@ -1,0 +1,402 @@
+//  "ProgileTabBar"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2017
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    Alert,
+    NativeModules,
+    DeviceEventEmitter,
+    Modal,
+    NativeAppEventEmitter,
+    NativeEventEmitter,
+    Platform
+} from 'react-native';
+//common
+import Icon from '../../common/Icon.js';
+import Util from '../../common/util.js';
+//configs
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import YLYKNatives from '../../configs/ylykbridges/YLYKNatives.js';
+import YLYKServices from '../../configs/ylykbridges/YLYKServices.js';
+
+//component
+import NavigationView from '../../component/Navigator/NavigationView.js';
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import DetailsHeaderView from '../../component/AlbumCell/DetailsHeaderView.js';
+//pages
+import ProfileView from './ProfileView.js';
+import MyFans from './MyFans.js';
+import FoucsClass from './FocusClass.js';
+import MyNoteList from './MyNoteList.js';
+import MeEdit from '../MeEdit/MeEdit.js'
+import Setting from '../Setting/Setting.js';
+import VipState from './VipState.js';
+import Test from "../Course/NoteListView.js";
+import Pay from "../Pay/pay.js";
+//组件
+import CachedImage from 'react-native-cached-image';
+
+var Bridges = NativeModules.BridgeEvents;
+const myEvent = new NativeEventEmitter(Bridges);
+var subscription;
+
+//登陆
+var LoginEvents = NativeModules.LoginEvent;
+const myLoginEvent = new NativeEventEmitter(LoginEvents);
+var loginSubscription;
+
+//支付成功
+var PaySuccessEvents = NativeModules.PayEvent;
+const myPaySuccessEvents = new NativeEventEmitter(PaySuccessEvents);
+var paySuccessSubscription;
+
+//发布新的成功
+var SendNoteEvent = NativeModules.SendNoteEvent;
+const mySendNoteEvent= new NativeEventEmitter(SendNoteEvent);
+var sendNoteSubscription;
+
+export default class Profile extends Component {
+    // 构造函数
+    constructor(props) {
+        super(props);
+        this.state = {
+            //个人页面数据
+            userData: '',
+            loginStatus: false,//登陆状态
+            isVip: false,//是否是vip
+            isPlayingOrPause: 0,
+            isExistPlayedTrace: 1,
+            wechat: "",
+            uMoney: 0,
+            userInfo: {},
+            id: 0,
+            headerImage:'',
+        };
+
+        this.refreshFunction = this.refreshFunction.bind(this);
+    }
+
+    componentWillMount() {
+        this._getUserInfo();
+           YLYKNatives.$player.isExistPlayedTrace().then((data) => {
+            this.setState({ isExistPlayedTrace: data })
+        });
+
+        this.showNoteTabBar = DeviceEventEmitter.addListener('showNoteTabBar', (res) => {
+            if (res[0] == 1) {
+              YLYKNatives.$showOrHideTabbar.showOrHideTabbar('show');
+            } else {
+                return;
+            }
+        });
+
+        this.showProfileTabBar = DeviceEventEmitter.addListener('showProfileTabBar', () => {
+          YLYKNatives.$showOrHideTabbar.showOrHideTabbar('show');
+        });
+        //登陆成功
+        this.loginSubscription = myLoginEvent.addListener('LoginSuccess', (reminder) => {
+            this.refreshFunction();
+        });
+        //无网
+        if (!g_AppValue.isConnected) {
+            this.refreshFunction();
+        };
+        //展厅播放
+        this.subscription = myEvent.addListener('playOrPauseToRN', (reminder) => {
+            this.setState({ isPlayingOrPause: reminder.isPlayingOrPause, isExistPlayedTrace: 1 })
+        });
+
+        //发布新的成功
+        this.sendNoteSubscription = mySendNoteEvent.addListener('sendNoteEvent', (reminder) => {
+            this.refreshFunction();
+        });
+        //支付成功
+        this.paySuccessSubscription = myPaySuccessEvents.addListener('PayEvent', (reminder) => {
+            if (reminder.PaySuccess) {
+                this.interval = setInterval(() => {
+                    this.refreshFunction();
+                }, 5000);
+            }
+        })
+    };
+
+    _getUserInfo() {
+        YLYKNatives.$oauth.getUserInfo().then((data) => {
+            var resultData = JSON.parse(data);
+            if (data == '0' || data == 0) {
+                this.setState({ loginStatus: false, profileloginStatus: '0' });
+            } else {
+                this.setState({ loginStatus: true, profileloginStatus: '0' });
+                //个人页面数据
+                let isVip = Util.isVip(resultData);
+                if (isVip == false) {
+                    this.setState({ userData: resultData, isVip: false });
+                } else {
+                    this.setState({
+                        wechat: resultData.info.wechat,
+                        userInfo: resultData,
+                        id: resultData.id,
+                        uMoney: resultData.stat.umoney,
+                        userData: resultData,
+                        isVip: true,
+                        headerImage:ImgUrl.baseImgUrl + 'user/' + resultData.id + '/avatar'
+                    });
+
+                    this.interval && this.interval.remove();
+                }
+            }
+
+        }).catch((err) => {
+            // console.log('获取失败' + err)
+        })
+    }
+
+    //返回更新数据
+    refreshFunction() {
+
+        this._getUserInfo();
+    }
+
+    // 加载完成
+    componentDidMount() {
+        this.refreshFunction();
+        this.refresh = DeviceEventEmitter.addListener('refreshData', this.refreshFunction);
+       YLYKNatives.$player.isPlayingOrPause().then((data) => {
+            this.setState({ isPlayingOrPause: data.isPlayingOrPause });
+        }).catch((err) => {
+            // console.log('错误' + err)
+        })
+    }
+
+
+
+    // view卸载
+    componentWillUnmount() {
+        this.refresh && this.refresh.remove();
+        this.showProfileTabBar && this.showProfileTabBar.remove();
+        this.loginSubscription && this.loginSubscription.remove();
+        this.showNoteTabBar && this.showNoteTabBar.remove();
+        this.subscription && this.subscription.remove();
+        this.paySuccessSubscription && this.paySuccessSubscription.remove();
+        this.sendNoteSubscription && this.sendNoteSubscription.remove();
+    }
+
+    _goToPlayerView(id, is, is2) {
+        YLYKNatives.$player.openPlayerController(id, is, is2);
+
+    }
+
+    _gotoFansView(user_id) {
+      YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({
+            component: MyFans,
+            params: {
+                user_id: user_id,
+                fansData: this.state.fansData,
+                isVip: this.state.isVip
+            }
+        })
+    }
+
+    _gotoFoucesView(user_id) {
+      YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({
+            component: FoucsClass,
+            params: {
+                user_id: user_id,
+                FoucsData: this.state.FoucsData,
+                isVip: this.state.isVip
+            }
+        })
+    }
+
+    //跳转登录页面
+    _goToLoginView() {
+
+        YLYKNatives.$login.openLoginViewController()
+        .then((res) => {
+            this.refreshFunction();
+            YLYKNatives.hideTabBar('show');
+        })
+    }
+
+    //跳转我的心得
+    _goToMyNoteList(user_id) {
+    YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({
+            component: MyNoteList,
+            params: {
+                user_id: user_id
+            }
+        })
+    }
+
+    //个人编辑界面
+    _gotoMeEditView(user_id) {
+        YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({
+            component: MeEdit,
+            params: {
+                userId: user_id
+            }
+        })
+    }
+
+    //设置页面
+    _settingView() {
+      YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({
+            component: Setting,
+            params: {
+                userInfo: this.state.userData,
+            }
+        })
+    }
+
+    //咨询页面
+    goToQiView() {
+      YLYKNatives.$qiyu.goToQiyu();
+    }
+
+    //支付页面
+    goToPayView() {
+        YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+        this.props.navigator.push({
+            component: Pay,
+        })
+    }
+
+    //非会员弹alert
+    _alert(vipState) {
+        Util.alertDialog({
+            msg: vipState == false ? '成为友邻同学即可享受同学权益' : '成为友邻学员即可收听此课程',
+            oneBtn: '立即入学',
+            okBtn: '咨询阿树老师',
+            cancelBtn: '取消',
+            okFun: () => { this.goToQiView() },
+            oneFun: () => { this.goToPayView() },
+        })
+    }
+
+    //学霸跳转
+    //学霸跳转'成为友邻同学即可享受同学权益'
+    _bullView() {
+      if (this.state.loginStatus == false) {
+        this._goToLoginView();
+      }else {
+        if (this.state.isVip == false) {
+          var vipState = false;
+            this._alert(vipState);
+        }else {
+          YLYKNatives.$showOrHideTabbar.showOrHideTabbar('hide');
+          this.props.navigator.push({
+              component: VipState,
+              params: {
+                  userId: this.state.userInfo.id,
+                  userState: this.state.userInfo.vip,
+                  isVip: this.isVip
+              }
+          })
+        }
+      }
+
+    }
+
+    render() {
+        if (!this.state.userData) {
+            return (
+                <View style={{ backgroundColor: '#ffffff', flex: 1 }}>
+
+                    <NavigationView
+                        leftItemTitle={Icon.setting}
+                        leftItemFunc={() => { this._goToLoginView() }}
+                        rightItemFunc={() => { this._goToLoginView() }}
+                        rightImageSource={this.state.isExistPlayedTrace == 1 ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png') : require('../../imgs/play.gif') : null}
+
+                    />
+
+                    <ScrollView >
+
+                        <DetailsHeaderView
+                            bullyText=''
+                            headerFunc={() => { this._goToLoginView() }}
+                            headerImage={require('./imgs/nologinImage.png')}
+                            nameText='点击登录'
+                            editorFunc={() => { this._goToLoginView() }}
+                            editorImage={require('../Course/images/g.png')}
+                            contentText='' fansFunc={() => { this._goToLoginView() }}
+                            fansNumber='-'
+                            fansText='粉丝'
+                            focusFunc={() => { this._goToLoginView() }}
+                            focusNumber='-'
+                            focusText='关注'
+                            noteFunc={() => { this._goToLoginView() }}
+                            noteNumber='-' noteText='心得'
+                        />
+
+                        <ProfileView navigator={this.props.navigator} />
+
+                    </ScrollView>
+                </View>
+            )
+
+        } else {
+            let user_id = this.state.userData.id;
+              // https://api.youlinyouke.com/v1/user/176459/avatar
+              // https://api.youlinyouke.com/v1/user/176459/avatar
+            return (
+                <View style={{ backgroundColor: '#ffffff', flex: 1 }}>
+                    <NavigationView
+                        navigator={this.props.navigator}
+                        leftItemTitle={Icon.setting}
+                        leftItemFunc={this.state.loginStatus == false ? () => { this._goToLoginView() } : () => { this._settingView() }}
+                        rightItemFunc={this.state.loginStatus == false ? () => { this._goToLoginView() } : () => this._goToPlayerView("0", false, "[]")}
+                        rightImageSource={this.state.isExistPlayedTrace ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png') : require('../../imgs/play.gif') : null}
+                    />
+
+                    <ScrollView>
+                        <DetailsHeaderView
+                            bullyFunc={() => { this._bullView() }}
+                            bullyText={this.state.isVip ? this.state.userData.vip.title : '普通用户'}
+                            headerFunc={this.state.loginStatus ? () => { this._gotoMeEditView(user_id) } : () => { this._goToLoginView() }}
+                            headerImage={this.state.loginStatus ? { uri: this.state.headerImage } : require('./imgs/nologinImage.png')}
+                            nameText={this.state.loginStatus ? this.state.userData.info.nickname : '点击登录'}
+                            editorFunc={this.state.loginStatus ? () => { this._gotoMeEditView(user_id) } : () => { this._goToLoginView() }}
+                            editorImage={require('../Course/images/g.png')}
+                            contentText={this.state.loginStatus ? this.state.userData.info.intro : ''}
+                            fansFunc={this.state.loginStatus ? () => { this._gotoFansView(user_id) } : () => { this._goToLoginView() }}
+                            fansNumber={this.state.loginStatus ? this.state.userData.stat.fans_count : '-'}
+                            fansText='粉丝' focusFunc={this.state.loginStatus ? () => { this._gotoFoucesView(user_id) } : () => { this._goToLoginView() }}
+                            focusNumber={this.state.loginStatus ? this.state.userData.stat.followee_count : '-'}
+                            focusText='关注'
+                            noteFunc={this.state.loginStatus ? () => { this._goToMyNoteList(user_id) } : () => { this._goToLoginView() }}
+                            noteNumber={this.state.loginStatus ? this.state.userData.stat.note_count : '-'}
+                            noteText='心得'
+                        />
+
+                        <ProfileView
+                            isVip={this.state.isVip}
+                            navigator={this.props.navigator}
+                            loginStatus={this.state.loginStatus}
+                            umoney={this.state.userData.stat.umoney}
+                            wechat={this.state.userData.info.wechat}
+                        />
+                    </ScrollView>
+                </View>
+            );
+        }
+    }
+}
+
+var styles = StyleSheet.create({ contentView: {} });

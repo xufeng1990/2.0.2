@@ -1,0 +1,33 @@
+package com.reactutils.userinfo;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.zhuomogroup.ylyk.controller.QiYuActivityController;
+
+/**
+ * Created by xyb on 2017/4/19.
+ */
+
+public class YLQiyuModule extends ReactContextBaseJavaModule {
+
+
+    public YLQiyuModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return null;
+    }
+
+    /**
+     * 跳转到七鱼方法
+     */
+    @ReactMethod
+    public void goToQiyu(Promise promise) {
+        QiYuActivityController controller = new QiYuActivityController();
+        controller.pushInterFace(getCurrentActivity());
+    }
+}

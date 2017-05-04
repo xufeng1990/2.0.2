@@ -1,0 +1,36 @@
+//
+//  LoadingView.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/17.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "RCTLoadingViewManager.h"
+#import "CBLProgressHUD.h"
+
+@implementation RCTLoadingViewManager
+
+RCT_EXPORT_MODULE();
+
+- (UIView *)view
+{
+    return [CBLProgressHUD showLoadingHUDInView:nil];
+}
+
+RCT_EXPORT_METHOD(loadingViewAddToView:(UIView *)view)
+{
+    [CBLProgressHUD showLoadingHUDInView:view];
+}
+
+RCT_EXPORT_METHOD(hideLoadingView:(UIView *)view)
+{
+    [CBLProgressHUD hideLoadingHUDInView:view];
+}
+
+- (dispatch_queue_t)methodQueue
+{
+    return dispatch_get_main_queue();
+}
+
+@end

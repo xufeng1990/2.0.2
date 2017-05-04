@@ -1,0 +1,50 @@
+//
+//  DownloadEvent.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/6.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "DownloadEvent.h"
+static NSInteger count = 0;
+@implementation DownloadEvent
+
+
+RCT_EXPORT_MODULE();
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[@"DownloadCourse"];
+}
+- (void)startObserving
+{
+    for (NSString *event in [self supportedEvents]) {
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(handleNotification:)
+                                                         name:event
+                                                       object:nil];
+    }
+}
+
++ (BOOL)application:(UIApplication *)application withDownload:(NSDictionary *)downloadDict
+{
+    [self postNotificationName:@"DownloadCourse" withDownload:downloadDict];
+    return YES;
+}
+
++ (void)postNotificationName:(NSString *)name withDownload:(NSDictionary *)object
+{
+    [[NSNotificationCenter defaultCenter] postNotificationName:name
+                                                        object:self
+                                                      userInfo:object];
+}
+
+- (void)handleNotification:(NSNotification *)notification {
+    [self sendEventWithName:@"DownloadCourse" body:notification.userInfo];
+}
+
+-(void)dealloc{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+@end

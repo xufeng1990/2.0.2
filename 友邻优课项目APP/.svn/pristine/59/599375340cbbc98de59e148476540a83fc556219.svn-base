@@ -1,0 +1,861 @@
+//
+//  PushNative.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/2/22.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "BridgeNative.h"
+#import <React/RCTBridgeModule.h>
+#import <React/RCTEventDispatcher.h>
+#import "YLYKPlayerViewController.h"
+#import "YLYKCourseViewController.h"
+#import "AppDelegate.h"
+#import "NativeNetwork.h"
+#import "YLYKLoginViewController.h"
+#import "ProfileViewController.h"
+#import "YLYKPhoneLoginViewController.h"
+#import "YLYKCalendarViewController.h"
+#import "QYSDK.h"
+#import "NSStringTools.h"
+#import "CBLProgressHUD.h"
+#import "SearchResultViewController.h"
+#import "YLYKCalendarViewController.h"
+#import <PYSearch.h>
+#import "YLYKCourse.h"
+#import "MJExtension.h"
+#import "CBLProgressHUD.h"
+#import "YLYKTraceModel.h"
+#import "WXApi.h"
+#import "YLYKPlayerManager.h"
+#include <sys/param.h>
+#include <sys/mount.h>
+#import "YLYKNavigationController.h"
+#import "LogoutEvent.h"
+#import "NoteListViewController.h"
+#import "YLYKListenTraceViewController.h"
+#import "YLYKPlayerManager.h"
+
+typedef void (^RCTPromiseResolveBlock)(id result);
+typedef void (^RCTPromiseRejectBlock)(NSString *code, NSString *message, NSError *error);
+@interface BridgeNative ()
+
+@property (nonatomic, copy) NSString *fileCachePath;
+
+@property (nonatomic, strong) NSMutableArray *courseArray;
+
+@end
+
+@implementation BridgeNative{
+    RCTPromiseResolveBlock _resolveBlock;
+    RCTPromiseRejectBlock _rejectBlock;
+}
+
+
+@synthesize bridge = _bridge;
+
+RCT_EXPORT_MODULE();
+
+//- (NSArray<NSString *> *)supportedEvents
+//{
+//    return @[@"PayCallback"];  // 这里注意要和  [self sendEventWithName:@"QRCodeFromPhoto" body:@{ @"scanResult":scandResult, @"stateCode":@(self.stateCode), }]; 里面发送的事件名字一致，不然JS 端不会识别
+//}
+
++ (void)loginAlertViewWithCaptcha:(NSString *)mobilephone
+                                 success:(void (^)(id))success
+{
+    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+    UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+    YLYKLoginViewController *login = [[YLYKLoginViewController alloc] init];
+    [nav presentViewController:login animated:YES completion:nil];
+}
+
+#pragma mark -打开学习日历
+RCT_REMAP_METHOD(openCalendarViewController, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject){
+    
+    //主要这里必须使用主线程发送,不然有可能失效
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKCalendarViewController *calendar = [[YLYKCalendarViewController alloc] init];
+        
+//        [nav presentViewController:calendar animated:YES completion:nil];
+        [nav pushViewController:calendar animated:YES];
+    });
+}
+
+#pragma mark -登录
+RCT_REMAP_METHOD(openLoginViewController, resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject)
+{
+    
+    //主要这里必须使用主线程发送,不然有可能失效
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKLoginViewController *login = [[YLYKLoginViewController alloc] init];
+
+        [nav presentViewController:login animated:YES completion:nil];
+    });
+}
+
+#pragma mark -更改绑定手机
+RCT_REMAP_METHOD(changeBandPhoneNumber, resolver:(RCTPromiseResolveBlock)resolve reject:(RCTPromiseRejectBlock)reject){
+    
+    //主要这里必须使用主线程发送,不然有可能失效
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKPhoneLoginViewController *login = [[YLYKPhoneLoginViewController alloc]init];
+        login.title = @" 绑定手机号";
+        [nav pushViewController:login animated:YES];
+    });
+}
+
+#pragma mark -获取总的下载文件的大小
+RCT_EXPORT_METHOD(getDownloadCacheSize:(NSString *)download resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0"]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    NSString *downloadSize = [NSString stringWithFormat:@"%.2fM",fileTotalSize/1000.0/1000];
+    resolve(downloadSize);
+}
+
+#pragma mark -获取缓存大小
+RCT_REMAP_METHOD(getCacheSize, cache:(RCTPromiseResolveBlock)resolve size:(RCTPromiseRejectBlock)reject )
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    
+    
+    NSString * downloadPath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"Caches/Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0"]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subDownloadPath = [fileManger subpathsAtPath:downloadPath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger downloadTotalSize = 0;
+    
+    for (NSString * fileName in subDownloadPath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [downloadPath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        downloadTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    NSString *downloadSize = [NSString stringWithFormat:@"%.2fM",(fileTotalSize - downloadTotalSize)/1000.0/1000];
+    
+    resolve(downloadSize);
+}
+
+
+#pragma mark -获取总缓存大小
+RCT_REMAP_METHOD(getTotalCacheSize, cacheresolver:(RCTPromiseResolveBlock)resolve sizerejecter:(RCTPromiseRejectBlock)reject)
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    NSString *cacheSize = [NSString stringWithFormat:@"%.2fM",fileTotalSize/1000.0/1000];
+    //将字节大小转为MB，然后传出去
+//        return fileTotalSize/1000.0/1000;
+    resolve(cacheSize);
+}
+
+#pragma mark -隐藏底部的tabbar
+RCT_EXPORT_METHOD(showOrHideTabbar:(NSString *)showOrHide)
+{
+    UITabBarController * obj = [UIApplication sharedApplication].keyWindow.rootViewController.childViewControllers[0];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if ([showOrHide isEqualToString:@"show"]) {
+            obj.tabBar.hidden = NO;
+        } else if ([showOrHide isEqualToString:@"hide"]){
+            obj.tabBar.hidden = YES;
+        }
+    });
+}
+
+#pragma mark -清除缓存
+RCT_EXPORT_METHOD(clearCache)
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    for (NSString * fileName in subFilePath)
+    {
+        if (![fileName containsString:@"Pandora"]) {
+            //拼接文件全路径（注意：是文件）
+            NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+            [fileManger removeItemAtPath:filePath error:nil];
+        }
+    }
+    // 清除音频缓存
+    NSString *musicCache =  [NSSearchPathForDirectoriesInDomains(NSLibraryDirectory, NSUserDomainMask, YES) lastObject];
+    NSString *musicCachePath = [musicCache stringByAppendingPathComponent:@"MusicCaches"];
+    NSArray *subMusicPath = [fileManger subpathsAtPath:musicCachePath];
+    for (NSString *musicName in subMusicPath) {
+        NSString *filePath = [musicCachePath stringByAppendingPathComponent:musicName];
+        [fileManger removeItemAtPath:filePath error:nil];
+    }
+}
+
+- (void)clearDownloadedCache
+{
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    NSString *musicCache =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    NSString *musicCachePath = [musicCache stringByAppendingPathComponent:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0"];
+    NSArray *subMusicPath = [fileManager subpathsAtPath:musicCachePath];
+    for (NSString *musicName in subMusicPath) {
+        NSString *filePath = [musicCachePath stringByAppendingPathComponent:musicName];
+        [fileManager removeItemAtPath:filePath error:nil];
+    }
+}
+
+
+#pragma mark -退出登录
+RCT_EXPORT_METHOD(logout)
+{
+    [[YLYKPlayerManager sharedPlayer] pause];
+    // 注销则需要清除所有与用户相关的信息
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults removeObjectForKey:@"user_id"];
+    [defaults removeObjectForKey:@"xdy_id"];
+    [defaults removeObjectForKey:@"userInfo"];
+    [defaults removeObjectForKey:@"authorization"];
+    [defaults removeObjectForKey:@"isVip"];
+    [defaults removeObjectForKey:@"has_login"];
+    [defaults removeObjectForKey:@"DownloadManager_downloadList"];
+    [defaults synchronize];
+    
+    //注销七鱼
+    [[QYSDK sharedSDK] logout:nil];
+    // 将音频缓存清除
+    [self clearDownloadedCache];
+    [self clearCache];
+    if (!USERID) {
+        LogoutEvent *events = [[LogoutEvent alloc] init];
+        [LogoutEvent application:[UIApplication sharedApplication] withLogout:@{@"LogoutSuccess":@true}];
+        [events startObserving];
+//        resolve(@"注销userid成功");
+    } else {
+        LogoutEvent *events = [[LogoutEvent alloc] init];
+        [LogoutEvent application:[UIApplication sharedApplication] withLogout:@{@"LogoutSuccess":@false}];
+        [events startObserving];
+//        resolve(@"移除失败");
+    }
+}
+
+#pragma mark -查询手机剩余空间
+RCT_REMAP_METHOD(freeDiskSpaceInBytes, resolve:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    struct statfs buf;
+    long long freespace = -1;
+    if(statfs("/var", &buf) >= 0){
+        freespace = (long long)(buf.f_bsize * buf.f_bfree);
+    }
+    NSString *disk = [NSString stringWithFormat:@"%qi" ,freespace/1024/1024];
+    resolve(disk);
+}
+#pragma mark -查询手机总空间大小
+RCT_REMAP_METHOD(getTotalDiskSize, resolved:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    struct statfs buf;
+    unsigned long long freeSpace = -1;
+    if (statfs("/var", &buf) >= 0)
+    {
+        freeSpace = (unsigned long long)(buf.f_bsize * buf.f_blocks);
+    }
+    
+    NSString *disk = [NSString stringWithFormat:@"%qi" ,freeSpace/1024/1024];
+    resolve(disk);
+}
+
+
+#pragma mark -获取版本号 2.0.0
+RCT_REMAP_METHOD(getVersion, resolved:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject)
+{
+    resolve([[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"]);
+}
+
+#pragma mark -获取build号 1702101
+RCT_REMAP_METHOD(getBuild, re:(RCTPromiseResolveBlock)resolve jecter:(RCTPromiseRejectBlock)reject)
+{
+    resolve([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+}
+#pragma mark -是否review
+RCT_REMAP_METHOD(getReviewVersion, reso:(RCTPromiseResolveBlock)resolve jecter:(RCTPromiseRejectBlock)reject)
+{
+    NSString *reviewVersion = [[NSUserDefaults standardUserDefaults] objectForKey:@"review_version_code"];
+    NSString *CurrentVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+    
+    if ([reviewVersion integerValue] <= [CurrentVersion integerValue]) {
+        resolve(@{@"isReview":@true});
+    } else {
+        resolve(@{@"isReview":@false});
+    }
+}
+
+RCT_REMAP_METHOD(getUserID, resolvedsa:(RCTPromiseResolveBlock)resolve rejecterds:(RCTPromiseRejectBlock)reject)
+{
+    NSString *user_id = USERID;
+    if (user_id) {
+        resolve(user_id);
+    } else
+    {
+        resolve(@"0");
+    }
+}
+
+RCT_REMAP_METHOD(getUserInfo, resolve:(RCTPromiseResolveBlock)resolve rejecterds:(RCTPromiseRejectBlock)reject)
+{
+    
+    
+    
+    [[NativeNetwork sharedInstance] getUserById:USERID success:^(id responseObject) {
+        
+        NSData *aJSONData = [responseObject dataUsingEncoding:NSUTF8StringEncoding];
+        NSDictionary * dict = [NSJSONSerialization JSONObjectWithData:aJSONData
+                                                              options:NSJSONReadingAllowFragments
+                                                                error:nil];
+        [[NSUserDefaults standardUserDefaults] setObject:dict forKey:@"userInfo"];
+        NSString * xdyId = [NSString stringWithFormat:@"%@",[dict objectForKey:@"xdy_id"]];
+        if ([dict objectForKey:@"vip"]) {
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"isVip"];
+        }
+        [[NSUserDefaults standardUserDefaults] setObject:xdyId forKey:@"xdy_id"];
+        [[NSUserDefaults standardUserDefaults] synchronize];
+        NSString *user_info = [NSStringTools jsonToString:USER_INFO];
+        resolve(user_info);
+    } failure:^(NSError *error) {
+        NSString *user_info = [NSStringTools jsonToString:USER_INFO];
+        if (user_info) {
+            resolve(user_info);
+        } else {
+            resolve(@"0");
+        }
+    }];
+    
+}
+
+#pragma mark -获取手机网络状态
+RCT_REMAP_METHOD(getNetWorkState, success:(RCTPromiseResolveBlock)resolve failed:(RCTPromiseRejectBlock)reject)
+{
+    NSString *state = [[NativeNetwork sharedInstance] getSystemNetworkState];
+    resolve(state);
+}
+
+RCT_EXPORT_METHOD(isLoginAndVip:(NSString *)str resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    if (USER_INFO) {
+        if ([USER_INFO objectForKey:@"vip"]) {
+            NSString * endTime = [[USER_INFO objectForKey:@"vip"] objectForKey:@"end_time"];
+            NSInteger nowTime = [[NSDate date] timeIntervalSince1970];
+            // 判断是否过期
+            if ([endTime integerValue] > nowTime) {
+                resolve(@"isVip");
+            } else {
+                resolve(@"expireVip");
+                
+                [self actionAndAlertViewTitle:@"" withMessage:@"成为友邻优课学员即可收听此课程" action1Title:@"立即入学 " action2Title:@"咨询阿树老师" firstAction:^(id result) {
+//                    NSLog(@"入学");
+                    
+                    
+                    
+                    
+                } secondAction:^(id cancel) {
+//                    NSLog(@"zixun");
+                    [self sentUserInfoToQY];
+                }];
+            }
+        } else{
+            resolve(@"notVip");
+            [self actionAndAlertViewTitle:@"" withMessage:@"成为友邻优课学员即可收听此课程"  action1Title:@"立即入学 " action2Title:@"咨询阿树老师" firstAction:^(id result) {
+//                NSLog(@"入学");
+            } secondAction:^(id cancel) {
+//                NSLog(@"zixun");
+                [self sentUserInfoToQY];
+            }];
+        }
+    } else{
+        [CBLProgressHUD showTextHUDInWindowWithText:@"未登录"];
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            YLYKLoginViewController *login = [[YLYKLoginViewController alloc] init];
+            UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+            UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+            [nav presentViewController:login animated:YES completion:nil];
+        });
+    }
+}
+
+- (void)actionAndAlertViewTitle:(NSString *)title withMessage:(NSString *)message action1Title:(NSString *)action1Title action2Title:(NSString *)action2Title firstAction:(void (^)(id result))firstAction secondAction:(void (^)(id cancel))secondAction {
+    
+    UIAlertController *alertVC = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertAction *action1 = [UIAlertAction actionWithTitle:action1Title style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+        firstAction(action);
+    }];
+    
+    UIAlertAction *action2 = [UIAlertAction actionWithTitle:action2Title style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+        secondAction(action);
+    }];
+    
+    UIAlertAction *cancel = [UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:^(UIAlertAction *_Nonnull action) {
+        
+    }];
+    [alertVC addAction:cancel];
+    [alertVC addAction:action1];
+    [alertVC addAction:action2];
+    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+    UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+    [nav presentViewController:alertVC animated:YES completion:nil];
+    
+}
+
+RCT_EXPORT_METHOD(goToQiyu)
+{
+    if (USER_INFO) {
+        [self sentUserInfoToQY];
+    } else{
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [CBLProgressHUD showTextHUDInWindowWithText:@"未登录"];
+        });
+    }
+}
+
+- (void)sentUserInfoToQY
+{
+    XXZQLog(@"%@",USER_INFO);
+    QYUserInfo *userInfo = [[QYUserInfo alloc] init];
+    userInfo.userId = USERID;
+    NSMutableArray *array = [NSMutableArray new];
+    NSMutableDictionary *dictRealName = [NSMutableDictionary new];
+    [dictRealName setObject:@"real_name" forKey:@"key"];
+    NSString *realName = [[USER_INFO objectForKey:@"info"] objectForKey:@"realname"];
+    [dictRealName setObject:realName forKey:@"value"];
+    [array addObject:dictRealName];
+    NSMutableDictionary *dictMobilePhone = [NSMutableDictionary new];
+    [dictMobilePhone setObject:@"mobile_phone" forKey:@"key"];
+    NSString *mobilephone = [USER_INFO objectForKey:@"mobilephone"];
+    [dictMobilePhone setObject:mobilephone forKey:@"value"];
+    [dictMobilePhone setObject:@(NO) forKey:@"hidden"];
+    [array addObject:dictMobilePhone];
+    NSMutableDictionary *dictEmail = [NSMutableDictionary new];
+    [dictEmail setObject:@"email" forKey:@"key"];
+    [dictEmail setObject:@"true" forKey:@"hidden"];
+    [dictEmail setObject:@"" forKey:@"value"];
+    [array addObject:dictEmail];
+    
+    NSMutableDictionary *dictUserId = [NSMutableDictionary new];
+    [dictUserId setObject:@"account" forKey:@"key"];
+    [dictUserId setObject:USERID forKey:@"value"];
+    [dictUserId setObject:@"0" forKey:@"index"];
+    [dictUserId setObject:@"用户ID" forKey:@"label"];
+    [array addObject:dictUserId];
+    
+    NSMutableDictionary *dictAvatar = [NSMutableDictionary new];
+    [dictAvatar setObject:@"avatar" forKey:@"key"];
+    NSString *avatarURL = [NSString stringWithFormat:@"%@user/%@/avatar",BASEURLSTRING,USERID];
+    [dictAvatar setObject:avatarURL forKey:@"value"];
+    [array addObject:dictAvatar];
+    
+    NSData *data = [NSJSONSerialization dataWithJSONObject:array
+                                                   options:0
+                                                     error:nil];
+    if (data)
+    {
+        userInfo.data = [[NSString alloc] initWithData:data
+                                              encoding:NSUTF8StringEncoding];
+    }
+    [[QYSDK sharedSDK] setUserInfo:userInfo];
+    [self openQYServies];
+}
+
+- (void)openQYServies
+{
+    //由于React 改变了系统时区 这里重新设置一下默认时区
+    [NSTimeZone setDefaultTimeZone:[NSTimeZone timeZoneWithName:@"Asia/Shanghai"]];
+    
+    [[QYSDK sharedSDK] customUIConfig].customerHeadImageUrl = [NSString stringWithFormat:@"%@user/%@/avatar",BASEURLSTRING,USERID];
+    [[QYSDK sharedSDK] customUIConfig].serviceHeadImageUrl = [NSString stringWithFormat:@"%@xdy/%@/avatar",BASEURLSTRING,XDY_ID];
+    QYSource *source = [[QYSource alloc] init];
+    
+    source.title =  @"友邻优课";
+    QYSessionViewController *sessionViewController = [[QYSDK sharedSDK] sessionViewController];
+    sessionViewController.sessionTitle = @"阿树老师";
+    sessionViewController.source = source;
+    sessionViewController.staffId = [self getStaffIdWithUserId];
+    //    sessionViewController.navigationItem.rightBarButtonItem = nil;
+    UIImage *img = [UIImage imageNamed:@"nav_back"];
+    img = [img imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    sessionViewController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:img style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+    UINavigationController *nav =
+    [[UINavigationController alloc] initWithRootViewController:sessionViewController];
+    UIWindow *window = [UIApplication sharedApplication].delegate.window;
+    UINavigationController *nav1 = (UINavigationController *)window.rootViewController;
+    [nav1 presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)back
+{
+    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+    UINavigationController *nav = (UINavigationController *)keyWindow.rootViewController;
+//    NSLog(@"%@", nav.childViewControllers);
+    [nav dismissViewControllerAnimated:YES completion:nil];
+}
+
+RCT_EXPORT_METHOD(goToCalendar)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKCalendarViewController *calendar = [[YLYKCalendarViewController alloc] init];
+        //        [nav presentViewController:calendar animated:YES completion:nil];
+        [nav pushViewController:calendar animated:YES];
+    });
+}
+
+RCT_EXPORT_METHOD(goToListenTraceWithStartTime:(NSString *)startTime)
+{
+    
+    NSString *dateStr = startTime;
+    NSDateFormatter* formater = [[NSDateFormatter alloc] init];
+    
+//    [formater setTimeZone:[NSTimeZone timeZoneWithName:@"Asia/Shanghai"]];
+    [formater setDateFormat:@"YYYY-MM-dd"];
+    NSDate* date = [formater dateFromString:dateStr];
+    NSString *timeStr = [NSString stringWithFormat:@"%ld",(long)[date timeIntervalSince1970] - 28800];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKListenTraceViewController *listenTrace = [[YLYKListenTraceViewController alloc] init];
+        listenTrace.startTime = timeStr;
+//        NSDate* date = [NSDate dateWithTimeIntervalSince1970:[startTime integerValue]];
+        listenTrace.month = [NSString stringWithFormat:@"%ld",[self month:date]];
+        listenTrace.day = [NSString stringWithFormat:@"%ld",[self day:date]];
+        [nav pushViewController:listenTrace animated:YES];
+    });
+}
+
+- (NSInteger)day:(NSDate *)date{
+    NSDateComponents *components = [[NSCalendar currentCalendar] components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay) fromDate:date];
+    return [components day];
+}
+
+
+- (NSInteger)month:(NSDate *)date{
+    NSDateComponents *components = [[NSCalendar currentCalendar] components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay) fromDate:date];
+    return [components month];
+}
+
+
+RCT_EXPORT_METHOD(goToSearchView)
+{
+    self.courseArray = [NSMutableArray array];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        PYSearchViewController *searchVC = [PYSearchViewController searchViewControllerWithHotSearches:nil searchBarPlaceholder:@"搜索课程" didSearchBlock:^(PYSearchViewController *searchViewController, UISearchBar *searchBar, NSString *searchText) {
+            
+            NSDictionary *parameters = @{@"keyword":searchText};
+            
+            NSString *netStatus = [[NativeNetwork sharedInstance] getSystemNetworkState];
+            
+            if ([netStatus isEqualToString:@"notReachable"]) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"无法连接至网络，请检查网络设置"];
+                return;
+            }
+            
+            [[NativeNetwork sharedInstance] getCourseList:parameters success:^(id responseObject) {
+                XXZQLog(@"%@",responseObject);
+                [self.courseArray removeAllObjects];
+                NSMutableArray *resultArray = [NSStringTools getArrayWithJSONString:responseObject];
+                if (resultArray.count > 0) {
+                    for (NSDictionary *dict in resultArray) {
+                        YLYKCourse *course = [YLYKCourse mj_objectWithKeyValues:dict];
+                        [self.courseArray addObject:course];
+                    }
+                    SearchResultViewController *result = [[SearchResultViewController alloc] init];
+                    result.searchText = searchText;
+                    result.resultArray = self.courseArray;
+                    [searchViewController.navigationController pushViewController:result animated:YES];
+                } else {
+                    [CBLProgressHUD showTextHUDInWindowWithText:@"没有搜索结果"];
+                }
+                
+            } failure:^(NSError *error) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"搜索失败"];
+                NSString *errCode = [self getErrorCodeWithError:error];
+                NSString *errMessage = [self getErrorMessageWithError:error];
+                XXZQLog(@"%@,%@",errCode,errMessage);
+                if (!errCode && !errMessage) {
+//                    [CBLProgressHUD showTextHUDInWindowWithText:@"无法连接至网络，请检查网络设置"];
+                }
+            }];
+        }];
+//        searchVC.delegate = self;
+        //    searchVC.showSearchHistory = NO;
+        searchVC.navigationController.navigationBar.translucent = NO;
+        searchVC.searchHistoriesCount = 6;
+        searchVC.searchBar.frame = CGRectMake(100, 0, 100 , 32);
+        searchVC.searchBarBackgroundColor = [UIColor colorWithRed:242/255.0 green:245/255.0 blue:246/255.0 alpha:1.0];
+        [searchVC.navigationItem.rightBarButtonItem setTintColor:[UIColor colorWithRed:90/255.0 green:90/255.0 blue:90/255.0 alpha:1.0]];
+        YLYKNavigationController *nav =
+        [[YLYKNavigationController alloc] initWithRootViewController:searchVC];
+        UIWindow *window = [UIApplication sharedApplication].delegate.window;
+        UINavigationController *nav1 = (UINavigationController *)window.rootViewController;
+//        [nav1 pushViewController:searchVC animated:YES];
+        [nav1 presentViewController:nav animated:YES completion:nil];
+    });
+}
+
+- (int64_t)getStaffIdWithUserId
+{
+    if ([USERID integerValue] % 2 == 0) {
+        return 100578;
+    } else
+    {
+        return 99738;
+    }
+}
+
+
+RCT_EXPORT_METHOD(goToPay:(NSDictionary *)parameters resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+   dispatch_async(dispatch_get_main_queue(), ^{
+        [[NativeNetwork sharedInstance] createOrderWithParameters:parameters success:^(id responseObject) {
+            XXZQLog(@"%@",responseObject);
+            NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:responseObject];
+            NSString *result = [dict objectForKey:@"result"];
+            if ([[dict objectForKey:@"result"] integerValue]== 1) {
+                NSDictionary *packageDict = [dict objectForKey:@"package"];
+                [[NSUserDefaults standardUserDefaults] setObject:[packageDict objectForKey:@"order_id"] forKey:@"order_id"];
+                NSDictionary *payment = [packageDict objectForKey:@"payment"];
+                NSString *partner_id = [payment objectForKey:@"partner_id"];
+                NSString *package = [payment objectForKey:@"package"];
+                NSString *prepay_id = [payment objectForKey:@"prepay_id"];
+                NSString *nonce_str= [payment objectForKey:@"nonce_str"];
+                NSString *timestamp = [payment objectForKey:@"timestamp"];
+                NSString *sign = [payment objectForKey:@"sign"];
+                PayReq *request = [[PayReq alloc] init];
+                request.partnerId = partner_id;
+                request.prepayId = prepay_id;
+                request.package = package;
+                request.nonceStr = nonce_str;
+                request.timeStamp = [timestamp intValue];
+                request.sign = sign;
+                [WXApi sendReq:request];
+                ((AppDelegate *)[UIApplication sharedApplication].delegate).paymentStateBlock = ^void(NSDictionary *success){
+//                    NSLog(@"%@",success);
+                    resolve(success);
+                };
+            } else {
+                NSDictionary *package = [dict objectForKey:@"package"];
+                NSString *message = [package objectForKey:@"message"];
+                [CBLProgressHUD showTextHUDInWindowWithText:message];
+            }
+        } failure:^(NSError *error) {
+            
+            [CBLProgressHUD showTextHUDInWindowWithText:@"创建订单失败,请重试"];
+        }];
+    });
+}
+
+RCT_EXPORT_METHOD(getLearnTimeWithStartTime:(NSString *)startTime andEndTime:(NSString *)endTime resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+     NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:startTime, @"start_time",endTime, @"end_time", @"100",@"limit",nil];
+    NSDate *datenow = [NSDate date];//现在时间,你可以输出来看下是什么格式
+    
+    NSString *timeSp = [NSString stringWithFormat:@"%ld", (long)[datenow timeIntervalSince1970]];
+    __block NSInteger totalLearnTime = 0;
+    NSString *key = [NSString stringWithFormat:@"DateLearnTime%@",startTime];
+    
+    // 说明是两天以前的数据
+    if ([startTime integerValue] <= [timeSp integerValue] - 24*60*60*2) {
+        totalLearnTime = [[NSUserDefaults standardUserDefaults] integerForKey:key];
+        if (totalLearnTime >0) {
+            totalLearnTime = [[NSUserDefaults standardUserDefaults] integerForKey:key];
+            XXZQLog(@"=============1111%@",[NSString stringWithFormat:@"%ld",totalLearnTime]);
+            resolve([NSString stringWithFormat:@"%ld",totalLearnTime]);
+        } else {
+            [[NativeNetwork sharedInstance] getUserTraceById:USERID parameters:dict success:^(id responseObject) {
+                NSArray *array = [NSStringTools getArrayWithJSONString:responseObject];
+                for (NSDictionary *dic in array) {
+                    YLYKTraceModel *model = [YLYKTraceModel mj_objectWithKeyValues:dic];
+                    if (model.listened_time) {
+                        totalLearnTime += model.listened_time;
+                    }
+                }
+                 XXZQLog(@"===========qqqq%@",[NSString stringWithFormat:@"%ld",totalLearnTime]);
+                resolve([NSString stringWithFormat:@"%ld",totalLearnTime]);
+                [[NSUserDefaults standardUserDefaults] setInteger:totalLearnTime forKey:key];
+            } failure:^(NSError *error) {
+                reject(@"",@"",error);
+            }];
+        }
+    } else {
+        [[NativeNetwork sharedInstance] getUserTraceById:USERID parameters:dict success:^(id responseObject) {
+            NSArray *array = [NSStringTools getArrayWithJSONString:responseObject];
+            for (NSDictionary *dic in array) {
+                YLYKTraceModel *model = [YLYKTraceModel mj_objectWithKeyValues:dic];
+                if (model.listened_time) {
+                    totalLearnTime += model.listened_time;
+                }
+            }
+            XXZQLog(@"===========xxxx%@",[NSString stringWithFormat:@"%ld",totalLearnTime]);
+            resolve([NSString stringWithFormat:@"%ld",totalLearnTime]);
+            [[NSUserDefaults standardUserDefaults] setInteger:totalLearnTime forKey:key];
+        } failure:^(NSError *error) {
+            reject(@"",@"",error);
+        }];
+    }
+}
+
+// 该记录每次应该只在启动app时调用一次，其他时间不应该调用
+RCT_REMAP_METHOD(isExistPlayedTrace,playing:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+// 判断是否有上次播放的记录
+    NSString *courseId = [[NSUserDefaults standardUserDefaults] objectForKey:@"lastPlayCourseId"];
+    // 去接收是否正在播放的通知
+    if (courseId) {
+        resolve(@true);
+    } else {
+        resolve(@false);
+    }
+}
+
+RCT_REMAP_METHOD(openWXApp,openWXApp:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    [WXApi openWXApp];
+}
+
+RCT_REMAP_METHOD(isPlayingOrPause,playing:(RCTPromiseResolveBlock)resolve refuse:(RCTPromiseRejectBlock)reject)
+{
+    BOOL isPlaying = [[YLYKPlayerManager sharedPlayer] isPlaying];
+    
+    resolve(@{@"isPlayingOrPause":[NSString stringWithFormat:@"%d",isPlaying]});
+}
+
+
+- (NSString *)getErrorMessageWithError:(NSError *)error {
+    NSData * errmessageData = [error.userInfo objectForKey:@"com.alamofire.serialization.response.error.data"];
+    NSString * errorString = [[NSString alloc] initWithData:errmessageData encoding:NSUTF8StringEncoding];
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:errorString];
+    NSString *errorMessage = [dict objectForKey:@"error_message"];
+    return errorMessage;
+}
+
+- (NSString *)getErrorCodeWithError:(NSError *)error {
+    NSData * errmessageData = [error.userInfo objectForKey:@"com.alamofire.serialization.response.error.data"];
+    NSString * errorString = [[NSString alloc] initWithData:errmessageData encoding:NSUTF8StringEncoding];
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:errorString];
+    NSString * errorCode = [dict objectForKey:@"error_code"];
+    return errorCode;
+}
+
+RCT_EXPORT_METHOD(disMissNoteController)
+{
+//     NoteListViewController *note = [NoteListViewController defaultMainVC];
+//     [note  dissmissView];
+}
+
+
+@end

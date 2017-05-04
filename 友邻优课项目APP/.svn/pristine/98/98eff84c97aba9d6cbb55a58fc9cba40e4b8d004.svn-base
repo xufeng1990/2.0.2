@@ -1,0 +1,243 @@
+package com.reactutils.controller;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.TextUtils;
+import android.util.Log;
+
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.JSApplicationIllegalArgumentException;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableNativeMap;
+import com.google.gson.Gson;
+import com.reactutils.download.DownLoadBean;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.activity.YLExpActivity;
+import com.zhuomogroup.ylyk.activity.YLLoginActivity;
+import com.zhuomogroup.ylyk.bean.DataList;
+import com.zhuomogroup.ylyk.bean.ObjectJS;
+
+import org.greenrobot.eventbus.EventBus;
+import org.json.JSONException;
+
+import java.util.ArrayList;
+
+
+/**
+ * Created by xyb on 2017/2/24 at 友邻优课 2017
+ */
+
+public class IntentModule extends ReactContextBaseJavaModule {
+
+    public static Promise promise;
+
+
+    private final static String NOT_REGISTERED = "registerApp required.";
+
+
+    public IntentModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return "IntentModule";
+    }
+
+    /**
+     * 从JS页面跳转到原生activity   同时也可以从JS传递相关数据到原生
+     *
+     * @param name   需要打开的Activity的class
+     * @param params
+     */
+    @ReactMethod
+    public void startActivityFromJS(String name, String params) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            if (null != currentActivity) {
+                Class toActivity = Class.forName(name);
+                Intent intent = new Intent(currentActivity, toActivity);
+                Gson gson = new Gson();
+                ObjectJS objectJS = gson.fromJson(params, ObjectJS.class);
+                Bundle bundle = new Bundle();
+                bundle.putParcelable("ObjectJS", objectJS);
+                intent.putExtra("ObjectJS", bundle);
+                currentActivity.startActivity(intent);
+            }
+        } catch (Exception e) {
+            throw new JSApplicationIllegalArgumentException(
+                    "不能打开Activity : " + e.getMessage());
+        }
+    }
+
+    /**
+     * Activtiy跳转到JS页面，传输数据 在js 页面使用
+     *
+     * @param successBack
+     * @param errorBack
+     */
+    @ReactMethod
+    public void dataToJS(Callback successBack, Callback errorBack) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+
+            String result = currentActivity.getIntent().getStringExtra("data");
+            if (TextUtils.isEmpty(result)) {
+                result = "没有数据";
+            }
+            successBack.invoke(result);
+        } catch (Exception e) {
+            errorBack.invoke(e.getMessage());
+        }
+    }
+
+
+    @ReactMethod
+    public void showOrHideTabbar(String isShow) {
+        EventBus.getDefault().post(isShow);
+    }
+
+
+    @ReactMethod
+    public void startAudioPlay(String courseId, Boolean isDownload, String readableMap, Promise promise) {
+
+        try {
+            Activity currentActivity = getCurrentActivity();
+            if (null != currentActivity) {
+                Class toActivity = Class.forName("com.zhuomogroup.ylyk.activity.YLNewAudioActivity");
+                Intent intent = new Intent(currentActivity, toActivity);
+
+                ObjectJS objectJS = new ObjectJS();
+                objectJS.setCourseId(Integer.parseInt(courseId));
+                if (isDownload) {
+                    org.json.JSONArray jsonArray = new org.json.JSONArray(readableMap);
+                    ArrayList<DataList> dataLists = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+
+                        org.json.JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                        Object teachers1 = jsonObject.get("teachers");
+                        if (teachers1 instanceof org.json.JSONArray) {
+                            int duration = jsonObject.getInt("duration");
+                            int id = jsonObject.getInt("id");
+                            String name = jsonObject.getString("name");
+                            String teachers = jsonObject.getJSONArray("teachers").toString();
+                            long in_time = jsonObject.getLong("in_time");
+                            DataList dataList = new DataList();
+                            dataList.setCourseId(id);
+                            dataList.setName(name);
+                            dataList.setIn_time(in_time);
+                            dataList.setDuration(duration);
+                            dataList.setTeacherName(teachers);
+                            dataLists.add(dataList);
+
+                        } else if (teachers1 instanceof String) {
+                            Gson gson = new Gson();
+                            DownLoadBean downLoadBean = gson.fromJson(jsonObject.toString(), DownLoadBean.class);
+                            String duration = downLoadBean.getDuration();
+                            int id = downLoadBean.getId();
+                            String name = downLoadBean.getName();
+                            String teachers = downLoadBean.getTeachers();
+
+                            DataList dataList = new DataList();
+                            dataList.setCourseId(id);
+                            dataList.setName(name);
+                            dataList.setDuration(Integer.parseInt(duration));
+                            dataList.setTeacherName(teachers);
+                            dataLists.add(dataList);
+                        }
+
+
+                    }
+                    objectJS.setDataLists(dataLists);
+                }
+                objectJS.setDownload(isDownload);
+                Bundle bundle = new Bundle();
+                bundle.putParcelable("ObjectJS", objectJS);
+                intent.putExtra("ObjectJS", bundle);
+                currentActivity.startActivity(intent);
+            }
+        } catch (Exception e) {
+            throw new JSApplicationIllegalArgumentException(
+                    "不能打开Activity : " + e.getMessage());
+        }
+    }
+
+
+    private String getNativeString(ReadableNativeMap updateUserJson) throws JSONException {
+        ReadableNativeMap nativeMap = updateUserJson;
+        String string = nativeMap.toString();
+        org.json.JSONObject object = new org.json.JSONObject(string);
+        org.json.JSONObject nativeMap1 = object.getJSONObject("NativeMap");
+
+        return nativeMap1.toString();
+    }
+
+
+    /**
+     * 打开微信
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void openWXApp(Promise promise) {
+
+        MainApplication application = (MainApplication) getCurrentActivity().getApplication();
+        IWXAPI iwxapi = application.getIwxapi();
+        if (iwxapi != null) {
+            promise.resolve(iwxapi.openWXApp());
+        } else {
+            promise.reject("500", NOT_REGISTERED);
+        }
+    }
+
+    /**
+     * 打开登录页面
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void openPlayerController(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            Intent intent = new Intent(currentActivity, YLLoginActivity.class);
+            ReacBean reacBean = new ReacBean();
+            reacBean.setFrom("ReactNative");
+            reacBean.setPromise(promise);
+            Bundle bundle = new Bundle();
+            bundle.putParcelable("reacBean", reacBean);
+            intent.putExtra("reacBean", bundle);
+            currentActivity.startActivity(intent);
+        }
+        this.promise = promise;
+
+
+    }
+
+    public static Promise getPromise() {
+        return promise;
+    }
+
+    public static void setPromise(Promise promise) {
+        IntentModule.promise = promise;
+
+    }
+
+
+    @ReactMethod
+    public void closeMine() {
+        Log.e("IntentModule", "closeMine");
+        if (YLExpActivity.ylExpActivity != null) {
+            YLExpActivity.ylExpActivity.finish();
+            YLExpActivity.ylExpActivity = null;
+        }
+    }
+
+
+}

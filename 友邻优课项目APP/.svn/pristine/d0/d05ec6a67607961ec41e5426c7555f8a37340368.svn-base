@@ -1,0 +1,256 @@
+//
+//  ViewController.m
+//  TYDownloadManagerDemo
+//
+//  Created by tany on 16/6/12.
+//  Copyright © 2016年 tany. All rights reserved.
+//
+
+#import "DownloadSessionViewController.h"
+#import <MediaPlayer/MediaPlayer.h>
+#import <React/RCTEventDispatcher.h>
+#import "TYDownLoadUtility.h"
+#import "TYDownloadSessionManager.h"
+
+@interface DownloadSessionViewController ()<TYDownloadDelegate,UITableViewDelegate,UITableViewDataSource>
+
+@property (weak, nonatomic) IBOutlet UIProgressView *progressView;
+@property (weak, nonatomic) IBOutlet UIButton *downloadBtn;
+@property (weak, nonatomic) IBOutlet UILabel *progressLabel;
+
+@property (weak, nonatomic) IBOutlet UIProgressView *progressView1;
+@property (weak, nonatomic) IBOutlet UIButton *downloadBtn1;
+@property (weak, nonatomic) IBOutlet UILabel *progressLabel1;
+
+@property (weak, nonatomic) IBOutlet UIProgressView *progressView2;
+@property (weak, nonatomic) IBOutlet UIButton *downloadBtn2;
+@property (weak, nonatomic) IBOutlet UILabel *progressLabel2;
+
+@property (nonatomic,strong) TYDownloadModel *downloadModel;
+@property (nonatomic,strong) TYDownloadModel *downloadModel1;
+@property (nonatomic,strong) TYDownloadModel *downloadModel2;
+
+@property (nonatomic,strong) UITableView * tableView;
+
+//播放器视图控制器
+@property (nonatomic,strong) MPMoviePlayerViewController *moviePlayerViewController;
+@end
+
+static NSString * const downloadUrl = @"http://baobab.wdjcdn.com/1455888619273255747085_x264.mp4";
+static NSString * const downloadUrl1 = @"http://baobab.wdjcdn.com/1456317490140jiyiyuetai_x264.mp4";
+static NSString * const downloadUrl2 = @"http://baobab.wdjcdn.com/1442142801331138639111.mp4";
+
+@implementation DownloadSessionViewController
+
+@synthesize bridge = _bridge;
+
+- (NSMutableArray *)downloadArray
+{
+    if (!_downloadArray) {
+        _downloadArray = [NSMutableArray array];
+    }
+    return _downloadArray;
+}
+
+- (NSMutableArray *)courseArray
+{
+    if (!_courseArray) {
+        _courseArray = [NSMutableArray array];
+    }
+    return _courseArray;
+}
+
+RCT_EXPORT_MODULE(Notification);
+
+RCT_EXPORT_METHOD(addEvent:(NSString *)name object:(NSDictionary *)obj)
+{
+    [self downloadWithUrl:@"http://baobab.wdjcdn.com/1455888619273255747085_x264.mp4"];
+}
+
+
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    // Do any additional setup after loading the view, typically from a nib.
+    self.title = @"DownloadSessionViewControllerDemo";
+    // 下载可以使用 manager的代理 或者 downloadModel的block
+    [TYDownloadSessionManager manager].delegate = self;
+    
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height) style:UITableViewStylePlain];
+    self.tableView.dataSource = self;
+    self.tableView.delegate = self;
+    [self.view addSubview:self.tableView];
+
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemAdd target:self action:@selector(downloadAll)];
+}
+
+- (void)downloadAll
+{
+    for (NSString * url in self.downloadArray) {
+        [self refreshDowloadInfoWithUrl:url];
+         [self downloadWithUrl:url];
+    }
+   
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+         [self.navigationController setNavigationBarHidden:NO animated:animated];
+    [self.tableView reloadData];
+}
+
+#pragma mark -tableViewDatasource
+- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
+{
+    return self.downloadArray.count;
+}
+
+
+- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView
+{
+    return 1;
+}
+
+- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
+{
+    UITableViewCell * cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:@"cell"];
+    if (!cell) {
+        cell = [tableView dequeueReusableCellWithIdentifier:@"cell"];
+    }
+    cell.textLabel.text = [NSString stringWithFormat:@"%@",self.courseArray[indexPath.row]];
+    [self refreshDowloadInfoWithUrl:self.downloadArray[indexPath.row]];
+//    cell.textLabel.text = indexPath.row;
+    return cell;
+}
+
+#pragma mark -tableViewDelegate
+- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath
+{
+//    [self refreshDowloadInfoWithUrl:self.downloadArray[indexPath.row]];
+//    [self startDownlaod];
+    [self downloadWithUrl:self.downloadArray[indexPath.row]];
+}
+
+
+- (void)refreshDowloadInfoWithUrl:(NSString *)url
+{
+    // manager里面是否有这个model是正在下载
+    _downloadModel = [[TYDownloadSessionManager manager] downLoadingModelForURLString:url];
+    if (_downloadModel) {
+        [self startDownlaod];
+        return;
+    }
+    TYDownloadModel *model = [[TYDownloadModel alloc]initWithURLString:url];
+//    [self.downloadBtn setTitle:[[TYDownloadSessionManager manager] isDownloadCompletedWithDownloadModel:model] ? @"下载完成，重新下载":@"开始" forState:UIControlStateNormal];
+    _downloadModel = model;
+    
+    NSLog(@"%@",[[TYDownloadSessionManager manager] isDownloadCompletedWithDownloadModel:model] ? @"下载完成，重新下载":@"开始");
+    
+    if (!_downloadModel.task && [[TYDownloadSessionManager manager] backgroundSessionTasksWithDownloadModel:_downloadModel]) {
+        [self downloadWithUrl:url];
+    }
+}
+
+
+- (IBAction)downloadWithUrl:(NSString *)url {
+    
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    
+    if (_downloadModel.state == TYDownloadStateReadying) {
+        [manager cancleWithDownloadModel:_downloadModel];
+        return;
+    }
+    
+    if ([manager isDownloadCompletedWithDownloadModel:_downloadModel]) {
+        [manager deleteFileWithDownloadModel:_downloadModel];
+    }
+    
+    if (_downloadModel.state == TYDownloadStateRunning) {
+        [manager suspendWithDownloadModel:_downloadModel];
+        return;
+    }
+    [self startDownlaod];
+}
+
+- (void)startDownlaod
+{
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    __weak typeof(self) weakSelf = self;
+    [manager startWithDownloadModel:_downloadModel progress:^(TYDownloadProgress *progress) {
+        weakSelf.progressView.progress = progress.progress;
+        weakSelf.progressLabel.text = [weakSelf detailTextForDownloadProgress:progress];
+        
+    } state:^(TYDownloadState state, NSString *filePath, NSError *error) {
+        if (state == TYDownloadStateCompleted) {
+            [self.courseArray removeObjectAtIndex:[self.downloadArray indexOfObject:_downloadModel.downloadURL]];
+            [self.downloadArray removeObject:_downloadModel.downloadURL];
+            
+            [self.tableView reloadData];
+//            [self.tableView reloadRowsAtIndexPaths: withRowAnimation:UITableViewRowAnimationFade];
+//            weakSelf.progressView.progress = 1.0;
+//            weakSelf.progressLabel.text = [NSString stringWithFormat:@"progress %.2f",weakSelf.progressView.progress];
+//            NSLog(@"%@",weakSelf.progressView)
+        }
+        
+//        [weakSelf.downloadBtn setTitle:[weakSelf stateTitleWithState:state] forState:UIControlStateNormal];
+        
+        NSLog(@"state %ld error%@ filePath%@",state,error,filePath);
+    }];
+}
+
+
+- (NSString *)detailTextForDownloadProgress:(TYDownloadProgress *)progress
+{
+    NSString *fileSizeInUnits = [NSString stringWithFormat:@"%.2f %@",
+                                 [TYDownloadUtility calculateFileSizeInUnit:(unsigned long long)progress.totalBytesExpectedToWrite],
+                                 [TYDownloadUtility calculateUnit:(unsigned long long)progress.totalBytesExpectedToWrite]];
+    
+    NSMutableString *detailLabelText = [NSMutableString stringWithFormat:@"File Size: %@\nDownloaded: %.2f %@ (%.2f%%)\nSpeed: %.2f %@/sec\nLeftTime: %dsec",fileSizeInUnits,
+                                        [TYDownloadUtility calculateFileSizeInUnit:(unsigned long long)progress.totalBytesWritten],
+                                        [TYDownloadUtility calculateUnit:(unsigned long long)progress.totalBytesWritten],progress.progress*100,
+                                        [TYDownloadUtility calculateFileSizeInUnit:(unsigned long long) progress.speed],
+                                        [TYDownloadUtility calculateUnit:(unsigned long long)progress.speed],progress.remainingTime];
+    return detailLabelText;
+}
+
+- (NSString *)stateTitleWithState:(TYDownloadState)state
+{
+    switch (state) {
+        case TYDownloadStateReadying:
+            return @"等待下载";
+            break;
+        case TYDownloadStateRunning:
+            return @"暂停下载";
+            break;
+        case TYDownloadStateFailed:
+            return @"下载失败";
+            break;
+        case TYDownloadStateCompleted:
+            return @"下载完成，重新下载";
+            break;
+        default:
+            return @"开始下载";
+            break;
+    }
+}
+
+#pragma mark - TYDownloadDelegate
+
+- (void)downloadModel:(TYDownloadModel *)downloadModel didUpdateProgress:(TYDownloadProgress *)progress
+{
+     NSLog(@"delegate progress %.3f",progress.progress);
+    NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:[NSString stringWithFormat:@"%.3f",progress.progress] ,@"progress", nil];
+    [self.bridge.eventDispatcher sendAppEventWithName:@"xxxxxxzq" body:dict];
+}
+
+- (void)downloadModel:(TYDownloadModel *)downloadModel didChangeState:(TYDownloadState)state filePath:(NSString *)filePath error:(NSError *)error
+{
+    NSLog(@"delegate state %ld error%@ filePath%@",state,error,filePath);
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+@end

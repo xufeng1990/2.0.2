@@ -1,0 +1,59 @@
+package com.reactutils.userinfo;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
+import com.reactutils.request.YLBaseService;
+import com.zhuomogroup.ylyk.popupwindow.YLSharePopupWindow;
+
+import org.json.JSONException;
+
+/**
+ * Created by xyb on 2017/4/19.
+ */
+
+public class YLShareModule extends ReactContextBaseJavaModule {
+    private final YLBaseService service;
+
+    public YLShareModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        service = new YLBaseService(reactContext.getApplicationContext());
+    }
+
+    @Override
+    public String getName() {
+        return null;
+    }
+
+    /**
+     * 微信分享信息
+     *
+     * @param readableMap
+     * @param promise
+     */
+
+    @ReactMethod
+    public void shareWXMesage(ReadableMap readableMap, Promise promise) {
+        if (getCurrentActivity() != null) {
+            try {
+                final String nativeString = service.getNativeString((ReadableNativeMap) readableMap);
+                getCurrentActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        YLSharePopupWindow sharePopupWindow = new YLSharePopupWindow(getCurrentActivity(), nativeString);
+                        sharePopupWindow.showPopwindow(getCurrentActivity());
+                    }
+                });
+
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+    }
+}

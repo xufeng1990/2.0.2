@@ -1,0 +1,74 @@
+/**
+ * Created by 艺术家 on 2017/3/12.
+ */
+
+/**
+ * Created by 艺术家 on 2017/3/12.
+ */
+
+import React, {Component} from 'react';
+import {Text, View, TouchableOpacity, Dimensions, ListView} from 'react-native';
+import Icon from "../../common/Icon.js";
+import  styles from "../../common/styles.js";
+import  Header from "../../component/HeaderBar/HeaderBar.js";
+import  JobData from  "./data/jobDdata.js";
+import Cell from "../../component/Cells/Cell.js";
+
+
+export default class Job extends Component {
+
+    constructor(props) {
+        super(props);
+        var ds = new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2});
+        this.state = {
+            dataSource: ds.cloneWithRows(JobData),
+        };
+    }
+
+    _backFun = (job) => {
+        this.props.navigator.pop();
+    };
+
+    componentWillMount() {
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(JobData)
+        })
+    }
+
+    componentDidMount() {
+
+    }
+
+    _selectJob(job) {
+        this.props.setJob(job);
+        this.props.navigator.pop();
+    }
+
+    render() {
+        return (
+            <View style={[styles.bgGrey, styles.primary]}>
+                <Header backFun={this._backFun} title={"选择行业"}/>
+                <View style={[styles.section, styles.bgWhite]}>
+                    <ListView
+                        contentContainerStyle={{height: 1000}}
+                        style={[{height: Dimensions.get('window').height - 84}]}
+                        dataSource={this.state.dataSource}
+                        enableEmptySections={true}
+                        removeClippedSubviews={false}
+                        renderRow={(rowData, sectionId, rowId) =>
+                            <TouchableOpacity activeOpacity ={1} 
+                                onPress={() => {
+                                    this._selectJob(rowData.value);
+                                }}
+                              style={[styles.cell, rowId >= JobData.length - 1 ? null : styles.cellBorder]}>
+                                <Text style={[styles.textLeft, styles.text16]}>
+                                    {rowData.value}
+                                </Text>
+                            </TouchableOpacity>
+                        }
+                    />
+                </View>
+            </View>
+        )
+    }
+}

@@ -1,0 +1,63 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component, } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  Navigator,
+  Alert,
+  TouchableOpacity,
+  NativeModules,
+  Platform,
+  WebView,
+  ScrollView,
+  DeviceEventEmitter,
+  NativeAppEventEmitter,
+  NetInfo,
+} from 'react-native';
+import { connect } from 'react-redux';
+
+// 类
+export default class HomePage extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      
+    };
+
+  }
+
+  // 加载完成
+  componentDidMount() {
+    //
+
+  }
+  componentWillMmount() {
+
+  }
+
+
+  // view卸载
+  componentWillUnmount() {
+    //
+
+  }
+
+  // render
+  render() {
+
+
+
+  }
+
+  // 自定义方法区域
+  // your method
+
+}

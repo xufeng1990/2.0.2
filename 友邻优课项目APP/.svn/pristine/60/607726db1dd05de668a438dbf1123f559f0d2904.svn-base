@@ -1,0 +1,90 @@
+
+//  TeacherIntroduce
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component, } from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  NativeModules,
+  DeviceEventEmitter,
+  Platform,
+} from 'react-native';
+
+import g_AppValue from '../../../configs/AppGlobal.js';
+import ScrollableTabView from 'react-native-scrollable-tab-view';
+import MyThumbTab from '../../../component/tabs/MyThumbTab.js';
+import MyThumbNote from './MyThumbNote.js';
+import MyThumbShow from './MyThumbShow.js';
+import *as RnNativeModules from '../../../configs/RnNativeModules.js';
+
+// 类
+const tabNames = ['心得', '课程'];
+export default class MyThumb extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      // your code
+    };
+  }
+
+  // 加载完成
+  componentDidMount() {
+    //
+  }
+
+  // view卸载
+  componentWillUnmount() {
+    DeviceEventEmitter.emit('showProfileTabBar', '1');
+  }
+
+  componentWillMount() {
+
+  }
+
+  _goBack() {
+    this.props.navigator.pop();
+    RnNativeModules.hideTabBar('show');
+  }
+
+  _goToPlayerView() {
+    RnNativeModules.goToPlayerView('0', false, '[]');
+  }
+
+  // render
+  render() {
+    return (
+      <View style={styles.container}>
+        <ScrollableTabView
+          style={{ marginTop: Platform.OS == 'ios' ? 20 * g_AppValue.precent : 0 * g_AppValue.precent }}
+          initialPage={0}
+          locked={true}
+          renderTabBar={() => <MyThumbTab navigator={this.props.navigator} goBack={this._goBack.bind(this)} goToPlayerView={() => { this._goToPlayerView() }} tabNames={tabNames} />}
+        >
+          <MyThumbNote isVip={this.props.isVip} tabLabel='心得' navigator={this.props.navigator} user_id={this.props.user_id} />
+          <MyThumbShow tabLabel='节目' navigator={this.props.navigator} user_id={this.props.user_id} />
+        </ScrollableTabView>
+      </View>
+    );
+  }
+}
+
+var styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff'
+  },
+})

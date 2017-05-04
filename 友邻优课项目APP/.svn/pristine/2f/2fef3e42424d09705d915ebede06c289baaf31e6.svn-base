@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.zhy.autolayout.AutoLinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/share_bg"
+    android:orientation="vertical">
+
+
+    <RelativeLayout
+        android:id="@+id/share2pengyouquan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@+id/share2pengyouquan_img"
+            android:background="#fff"
+            android:gravity="center"
+            android:padding="20dp"
+            android:text="分享到朋友圈"
+            android:textColor="#5a5a5a" />
+
+        <ImageView
+            android:id="@+id/share2pengyouquan_img"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="121px"
+            android:src="@mipmap/share_pengyouquan" />
+
+    </RelativeLayout>
+
+
+    <RelativeLayout
+        android:id="@+id/share2people"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toRightOf="@+id/share2people_img"
+            android:background="#fff"
+            android:gravity="center"
+            android:padding="20dp"
+            android:text="分享给好友"
+            android:textColor="#5a5a5a" />
+
+
+        <ImageView
+            android:id="@+id/share2people_img"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginLeft="121px"
+            android:src="@mipmap/share_people" />
+    </RelativeLayout>
+
+
+</com.zhy.autolayout.AutoLinearLayout>

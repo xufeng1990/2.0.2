@@ -1,0 +1,24 @@
+//
+//  CourseViewController.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/2/16.
+//  Copyright © 2017年 Facebook. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <React/RCTBridgeModule.h>
+#import "YLYKPlayerViewController.h"
+
+
+typedef void (^RCTPromiseResolveBlock)(id result);
+typedef void (^RCTPromiseRejectBlock)(NSString *code, NSString *message, NSError *error);
+
+@interface YLYKCourseViewController : UIViewController <RCTBridgeModule>
+{
+    RCTPromiseResolveBlock _resolveBlock;
+    RCTPromiseRejectBlock _rejectBlock;
+}
+- (void)openPlayerController:(NSString *)courseId resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
+
+@end

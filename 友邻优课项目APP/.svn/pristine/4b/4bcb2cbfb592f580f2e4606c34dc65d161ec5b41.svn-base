@@ -1,0 +1,144 @@
+package com.reactmodules.userinfo;
+
+import android.app.Activity;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.luck.picture.lib.model.FunctionConfig;
+import com.luck.picture.lib.model.FunctionOptions;
+import com.luck.picture.lib.model.PictureConfig;
+import com.tbruyelle.rxpermissions2.RxPermissions;
+import com.yalantis.ucrop.entity.LocalMedia;
+import com.zhuomogroup.ylyk.activity.YLMainActivity;
+
+import java.util.List;
+
+import io.reactivex.functions.Consumer;
+
+import static android.Manifest.permission.CAMERA;
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+import static com.reactmodules.consts.ModuleName.YLYK_IMAGE_SELECT_MODULE;
+
+/**
+ * Created by xyb on 2017/4/24.
+ */
+
+public class YLYKImageSelectModule extends ReactContextBaseJavaModule {
+
+
+    public YLYKImageSelectModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return YLYK_IMAGE_SELECT_MODULE;
+    }
+
+
+    @ReactMethod
+    public void openCamera(final Promise promise) {
+
+        final Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            if (currentActivity instanceof YLMainActivity) {
+
+                RxPermissions.getInstance(currentActivity)
+                        .request(CAMERA,WRITE_EXTERNAL_STORAGE).subscribe(new Consumer<Boolean>() {
+                    @Override
+                    public void accept(Boolean aBoolean) throws Exception {
+
+
+                        FunctionOptions.Builder builder = new FunctionOptions.Builder()
+                                .setType(FunctionConfig.TYPE_IMAGE)
+                                .setCropMode(FunctionConfig.CROP_MODEL_1_1)
+                                .setCompress(true)
+                                .setSelectMode(FunctionConfig.MODE_SINGLE)
+                                .setEnableCrop(true);
+                        FunctionOptions functionOptions = builder.create();
+                        PictureConfig.getPictureConfig().init(functionOptions).startOpenCamera(currentActivity, new PictureConfig.OnSelectResultCallback() {
+                            @Override
+                            public void onSelectSuccess(List<LocalMedia> list) {
+                                if (list != null && list.size()>0) {
+                                    for (LocalMedia localMedia : list) {
+                                        WritableMap writableMap = new WritableNativeMap();
+                                        writableMap.putString("url",localMedia.getCompressPath());
+                                        promise.resolve(writableMap);
+                                    }
+                                }
+
+                            }
+                        });
+                    }
+                });
+
+
+            }
+        }
+
+    }
+
+    @ReactMethod
+    public void onenImageGrid(final Promise promise){
+
+        final Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            if (currentActivity instanceof YLMainActivity) {
+
+                RxPermissions.getInstance(currentActivity)
+                        .request(CAMERA,WRITE_EXTERNAL_STORAGE).subscribe(new Consumer<Boolean>() {
+                    @Override
+                    public void accept(Boolean aBoolean) throws Exception {
+
+
+                        FunctionOptions.Builder builder = new FunctionOptions.Builder()
+                                .setType(FunctionConfig.TYPE_IMAGE)
+                                .setCropMode(FunctionConfig.CROP_MODEL_1_1)
+                                .setCompress(true)
+                                .setSelectMode(FunctionConfig.MODE_SINGLE)
+                                .setEnableCrop(true);
+                        FunctionOptions functionOptions = builder.create();
+                        PictureConfig.getPictureConfig().init(functionOptions).openPhoto(currentActivity, new PictureConfig.OnSelectResultCallback() {
+                            @Override
+                            public void onSelectSuccess(List<LocalMedia> list) {
+                                if (list != null && list.size()>0) {
+                                    for (LocalMedia localMedia : list) {
+                                        WritableMap writableMap = new WritableNativeMap();
+                                        writableMap.putString("url",localMedia.getCompressPath());
+                                        promise.resolve(writableMap);
+                                    }
+                                }
+
+                            }
+                        });
+                    }
+                });
+
+
+            }
+        }
+
+    }
+
+
+    @ReactMethod
+    public void selectImageFromAlbumOrCamera(String from,Promise promise){
+        if (from.equals("album")) {
+            onenImageGrid(promise);
+        }else if (from.equals("camera")){
+            openCamera(promise);
+        }
+
+    }
+
+
+
+
+
+
+
+}

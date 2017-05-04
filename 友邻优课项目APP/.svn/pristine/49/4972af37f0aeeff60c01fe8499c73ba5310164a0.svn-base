@@ -1,0 +1,88 @@
+//  头像编辑
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+} from 'react-native';
+//common
+//configs
+import g_AppValue from '../../configs/AppGlobal.js';
+// 类
+export default class PictureEditing extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      // your code
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+
+  }
+  componentWillMount(){
+
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+
+  // render
+  render(){
+    return (
+
+      <View style={styles.container}>
+        <View style={{backgroundColor:'#ffffff',alignItems:'center'}}>
+            <Text>选择方式</Text>
+          <View style={styles.cellView}>
+              <Text>拍照</Text>
+          </View>
+          <View style={styles.cellView}>
+              <Text>相册选取</Text>
+          </View>
+          <View style={styles.cellView}>
+              <Text>取消</Text>
+          </View>
+
+          </View>
+      </View>
+    );
+  }
+
+  // 自定义方法区域
+  // your method
+
+}
+
+var styles = StyleSheet.create({
+  container:{
+    flex:1,
+    backgroundColor:'red',
+    flexDirection:'column-reverse',
+  },
+  cellView:{
+    width:g_AppValue.screenWidth,
+    height:50,
+    justifyContent:'center',
+    alignItems:'center',
+    borderWidth:1,
+    borderColor:'black',
+  }
+})

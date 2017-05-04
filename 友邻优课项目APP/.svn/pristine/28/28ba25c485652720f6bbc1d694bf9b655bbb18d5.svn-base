@@ -1,0 +1,226 @@
+package com.zhuomogroup.ylyk.activity;
+
+import android.content.Context;
+import android.content.Intent;
+import android.support.v4.view.ViewPager;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.StaggeredGridLayoutManager;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.adapter.YLPhotoAdapter;
+import com.zhuomogroup.ylyk.adapter.YLSelectPhotoAdapter;
+import com.zhuomogroup.ylyk.adapter.YLSelectRecycViewAdapter;
+import com.zhuomogroup.ylyk.base.YLBaseActivity;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import me.iwf.photopicker.PhotoPicker;
+import me.iwf.photopicker.PhotoPreview;
+
+import static me.iwf.photopicker.PhotoPicker.KEY_SELECTED_PHOTOS;
+
+/**
+ * Created by xyb on 2017/3/9.
+ */
+
+public class YLPhotoActivity extends YLBaseActivity implements View.OnClickListener, ViewPager.OnPageChangeListener {
+
+    private ViewPager photoViewPager;
+    private RecyclerView selectRecyclerView;
+    private TextView titleCenterText;
+    private TextView closeText;
+    private ImageView backImg;
+    private YLSelectPhotoAdapter ylSelectPhotoAdapter;
+    private ArrayList<String> selectedPhotos;
+    private YLSelectRecycViewAdapter ylSelectRecycViewAdapter;
+
+
+    @Override
+    public int bindLayout() {
+        return R.layout.activity_photo;
+    }
+
+    @Override
+    public void initView(View view) {
+        selectRecyclerView = (RecyclerView) view.findViewById(R.id.select_recyclerView);
+        photoViewPager = (ViewPager) view.findViewById(R.id.photoViewPager);
+        closeText = (TextView) view.findViewById(R.id.close_text);
+        titleCenterText = (TextView) view.findViewById(R.id.title_center_text);
+        backImg = (ImageView) view.findViewById(R.id.back_img);
+
+
+    }
+
+    @Override
+    public void doBusiness(Context mContext) {
+
+
+        Intent intent = getIntent();
+        if (intent != null) {
+            selectedPhotos = intent.getStringArrayListExtra("selectedPhotos");
+
+                if (selectedPhotos.size() == 0) {
+                    PhotoPicker.builder()
+                            .setPhotoCount(YLPhotoAdapter.MAX)
+                            .setShowCamera(true)
+                            .setPreviewEnabled(false)
+                            .setSelected(selectedPhotos)
+                            .start(this);
+                }
+        }
+        backImg.setOnClickListener(this);
+        closeText.setOnClickListener(this);
+
+        ylSelectPhotoAdapter = new YLSelectPhotoAdapter(this);
+        photoViewPager.setAdapter(ylSelectPhotoAdapter);
+        ylSelectPhotoAdapter.setPaths(selectedPhotos);
+
+
+        photoViewPager.addOnPageChangeListener(this);
+        ylSelectRecycViewAdapter = new YLSelectRecycViewAdapter(selectedPhotos, this);
+        LinearLayoutManager linearLayoutManager = new LinearLayoutManager(this);
+        linearLayoutManager.setOrientation(LinearLayoutManager.HORIZONTAL);
+
+        linearLayoutManager.setStackFromEnd(true);
+        linearLayoutManager.setReverseLayout(true);
+        StaggeredGridLayoutManager slManager = new StaggeredGridLayoutManager(1, StaggeredGridLayoutManager.HORIZONTAL);
+        slManager.setReverseLayout(true);
+        selectRecyclerView.setLayoutManager(linearLayoutManager);
+
+        ylSelectRecycViewAdapter.setOnClickListener(new YLSelectRecycViewAdapter.OnClickListener() {
+            @Override
+            public void onDelete(int position) {
+                photoViewPager.removeAllViews();
+                selectedPhotos.remove(position);
+                ylSelectPhotoAdapter.setPaths(selectedPhotos);
+                ylSelectRecycViewAdapter.notifyDataSetChanged();
+                setTitleText(photoViewPager.getCurrentItem(), selectedPhotos.size());
+
+                selectRecyclerView.scrollToPosition(position-1);
+            }
+
+            @Override
+            public void onSelect(int position) {
+                photoViewPager.setCurrentItem(position);
+
+                setTitleText(photoViewPager.getCurrentItem(), selectedPhotos.size());
+            }
+        });
+        selectRecyclerView.setAdapter(ylSelectRecycViewAdapter);
+
+        setTitleText(photoViewPager.getCurrentItem(), selectedPhotos.size());
+
+
+        if (selectedPhotos.size() != 9) {
+            selectRecyclerView.scrollToPosition(selectedPhotos.size());
+        } else {
+            selectRecyclerView.scrollToPosition(selectedPhotos.size() - 1);
+        }
+
+
+    }
+
+    /**
+     * 设置title标题
+     * @param position 图像数据的下标
+     * @param size 图像数据的长度
+     */
+    private void setTitleText(int position, int size) {
+        selectRecyclerView.scrollToPosition(position);
+        if (size == 0) {
+            titleCenterText.setVisibility(View.GONE);
+        } else {
+            titleCenterText.setVisibility(View.VISIBLE);
+            position++;
+            titleCenterText.setText(position + "/" + size);
+        }
+    }
+
+    @Override
+    public void resume() {
+
+    }
+
+    @Override
+    public void destroy() {
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.close_text:
+                onBackPressed();
+                break;
+            case R.id.back_img:
+                onBackPressed();
+                break;
+
+        }
+
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == RESULT_OK &&
+                (requestCode == PhotoPicker.REQUEST_CODE || requestCode == PhotoPreview.REQUEST_CODE)) {
+
+            List<String> photos = null;
+            if (data != null) {
+                photos = data.getStringArrayListExtra(KEY_SELECTED_PHOTOS);
+            }
+            selectedPhotos.clear();
+
+            if (photos != null) {
+                selectedPhotos.addAll(photos);
+            }
+
+            photoViewPager.removeAllViews();
+
+            ylSelectPhotoAdapter.setPaths(selectedPhotos);
+
+            ylSelectRecycViewAdapter.notifyDataSetChanged();
+            setTitleText(photoViewPager.getCurrentItem(), selectedPhotos.size());
+            if (selectedPhotos.size() != 9) {
+                selectRecyclerView.scrollToPosition(selectedPhotos.size());
+            } else {
+                selectRecyclerView.scrollToPosition(selectedPhotos.size() - 1);
+            }
+
+            if (selectedPhotos.size() == 0) {
+                onBackPressed();
+            }
+        }
+    }
+
+    @Override
+    public void onPageScrolled(int position, float positionOffset, int positionOffsetPixels) {
+
+    }
+
+    @Override
+    public void onPageSelected(int position) {
+        setTitleText(photoViewPager.getCurrentItem(), selectedPhotos.size());
+    }
+
+    @Override
+    public void onPageScrollStateChanged(int state) {
+
+    }
+
+
+    @Override
+    public void onBackPressed() {
+        Intent intent = new Intent();
+        intent.putExtra(KEY_SELECTED_PHOTOS, selectedPhotos);
+        setResult(RESULT_OK, intent);
+        finish();
+        super.onBackPressed();
+    }
+}

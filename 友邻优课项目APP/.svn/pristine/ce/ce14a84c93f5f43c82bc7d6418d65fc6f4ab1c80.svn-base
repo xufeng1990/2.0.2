@@ -1,0 +1,322 @@
+package com.zhuomogroup.ylyk.adapter;
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Rect;
+import android.os.Bundle;
+import android.support.v7.widget.GridLayoutManager;
+import android.support.v7.widget.RecyclerView;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.gson.Gson;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.activity.YLNewAudioActivity;
+import com.zhuomogroup.ylyk.base.YLBaseUrl;
+import com.zhuomogroup.ylyk.bean.CourseTipsBean;
+import com.zhuomogroup.ylyk.bean.LearnBean;
+import com.zhuomogroup.ylyk.bean.ObjectJS;
+import com.zhuomogroup.ylyk.utils.Utils;
+import com.zhy.autolayout.utils.AutoUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
+/**
+ * Created by xyb on 2017/3/17.
+ */
+
+public class YLLearnListAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
+
+    private static final int LEARN = 0;
+    private static final int TIPS = 1;
+    private Context mContext;
+    private ArrayList<JSONObject> jsonObjects;
+    private LayoutInflater inflater;
+    private static final String LEARN_STRING = "学习";
+    private static final String LEARN_MIN = "分钟";
+
+    public YLLearnListAdapter(Context mContext, ArrayList<JSONObject> jsonObjects) {
+        this.mContext = mContext;
+        this.jsonObjects = jsonObjects;
+        inflater = LayoutInflater.from(mContext);
+    }
+
+    @Override
+    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        RecyclerView.ViewHolder viewHolder = null;
+        View view;
+        switch (viewType) {
+            case LEARN:
+                view = inflater.inflate(R.layout.item_learn_listen, parent, false);
+                viewHolder = new LearnViewHolder(view);
+                break;
+            case TIPS:
+                view = inflater.inflate(R.layout.item_learn_tips, parent, false);
+                viewHolder = new TipsViewHolder(view);
+                break;
+        }
+        return viewHolder;
+    }
+
+    @Override
+    public void onBindViewHolder(RecyclerView.ViewHolder holder, final int position) {
+        if (holder instanceof LearnViewHolder) {
+            JSONObject jsonObject = jsonObjects.get(position);
+            try {
+                JSONObject json = jsonObject.getJSONObject("json");
+                Gson gson = new Gson();
+                LearnBean learnBean = gson.fromJson(json.toString(), LearnBean.class);
+                int courseId = learnBean.getCourse().getId();
+                String courseName = learnBean.getCourse().getName();
+                int in_time = learnBean.getIn_time();
+                int listened_time = learnBean.getListened_time();
+                ((LearnViewHolder) holder).courseName.setText(courseName);
+//                ((LearnViewHolder) holder).courseTeacher
+                ((LearnViewHolder) holder).learnAlltimeOne.setText(LEARN_STRING + ((int) listened_time / 60) + LEARN_MIN);
+                long time = in_time * 1000L;
+                Date date = new Date(time);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String format = dateFormat.format(date);
+
+
+                ((LearnViewHolder) holder).learnTime.setText(format.substring(11, 16));
+                Glide.with(mContext)
+                        .load(YLBaseUrl.BASE_URL_HEAD + "course/" + courseId + "/cover")
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .into(((LearnViewHolder) holder).courseImg);
+
+                final Intent intent = new Intent(mContext, YLNewAudioActivity.class);
+                Bundle objectJS = new Bundle();
+                ObjectJS demo = new ObjectJS();
+                demo.setCourseId(courseId);
+                objectJS.putParcelable("ObjectJS",demo);
+                intent.putExtra("ObjectJS",objectJS);
+                ((LearnViewHolder) holder).course_re.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        mContext.startActivity(intent);
+                    }
+                });
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            if (position == getItemCount() - 1) {
+                ((LearnViewHolder)holder).lineTime.setVisibility(View.GONE);
+            }
+
+
+
+
+
+        } else if (holder instanceof TipsViewHolder) {
+            JSONObject jsonObject = jsonObjects.get(position);
+            try {
+                JSONObject json = jsonObject.getJSONObject("json");
+                Gson gson = new Gson();
+                CourseTipsBean courseTipsBean = gson.fromJson(json.toString(), CourseTipsBean.class);
+                String content = courseTipsBean.getContent();
+                List<String> images = courseTipsBean.getImages();
+                int in_time = courseTipsBean.getIn_time();
+                CourseTipsBean.CourseBean course = courseTipsBean.getCourse();
+                int courseId = course.getId();
+                String courseName = course.getName();
+
+
+
+                ((TipsViewHolder) holder).courseName.setText(courseName);
+//                ((LearnViewHolder) holder).courseTeacher
+                ((TipsViewHolder) holder).learnAlltimeOne.setText("发布心得");
+                long time = in_time * 1000L;
+                Date date = new Date(time);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                String format = dateFormat.format(date);
+                content = content.replaceAll("<br\\s*\\/?>","\\r\\n");
+                ((TipsViewHolder) holder).learnTime.setText(format.substring(11, 16));
+                ((TipsViewHolder) holder).userTips.setText(content);
+
+                Glide.with(mContext)
+                        .load(YLBaseUrl.BASE_URL_HEAD + "course/" + courseId + "/cover")
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .into(((TipsViewHolder) holder).courseImg);
+
+                YLImageViewAdapter ylImageViewAdapter = new YLImageViewAdapter(images, mContext);
+                ((TipsViewHolder) holder).itemRecyclerView.setLayoutManager(new GridLayoutManager(mContext, 3));
+                ((TipsViewHolder) holder).itemRecyclerView.setAdapter(ylImageViewAdapter);
+                SpaceItemDecoration spaceItemDecoration = new SpaceItemDecoration(8);
+                ((TipsViewHolder) holder).itemRecyclerView.addItemDecoration(spaceItemDecoration);
+
+                final Intent intent = new Intent(mContext, YLNewAudioActivity.class);
+                Bundle objectJS = new Bundle();
+                ObjectJS demo = new ObjectJS();
+                demo.setCourseId(courseId);
+                objectJS.putParcelable("ObjectJS",demo);
+                intent.putExtra("ObjectJS",objectJS);
+                ((TipsViewHolder) holder).course_re.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        mContext.startActivity(intent);
+                    }
+                });
+
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            if (position == getItemCount() - 1) {
+                ((TipsViewHolder) holder).lineTime.setVisibility(View.GONE);
+            }
+
+        }
+
+
+    }
+
+    @Override
+    public int getItemCount() {
+        return jsonObjects.size();
+    }
+
+
+    @Override
+    public int getItemViewType(int position) {
+        JSONObject jsonObject = jsonObjects.get(position);
+        try {
+            String type = jsonObject.getString("type");
+            if (type.equals("learn")) {
+                return LEARN;
+            } else if (type.equals("tips")) {
+                return TIPS;
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        return 2;
+    }
+
+
+    public ArrayList<JSONObject> getJsonObjects() {
+        return jsonObjects;
+    }
+
+    public void setJsonObjects(ArrayList<JSONObject> jsonObjects) {
+        this.jsonObjects = jsonObjects;
+        this.notifyDataSetChanged();
+    }
+
+    @Override
+    public long getItemId(int position) {
+        return super.getItemId(position);
+    }
+
+
+    public class LearnViewHolder extends RecyclerView.ViewHolder {
+        @BindView(R.id.learn_time)
+        TextView learnTime;
+        @BindView(R.id.img_type)
+        ImageView imgType;
+        @BindView(R.id.learn_alltime_one)
+        TextView learnAlltimeOne;
+        @BindView(R.id.course_img)
+        ImageView courseImg;
+        @BindView(R.id.course_name)
+        TextView courseName;
+        @BindView(R.id.course_teacher)
+        TextView courseTeacher;
+        @BindView(R.id.base)
+        RelativeLayout base;
+        @BindView(R.id.line_time)
+        View lineTime;
+        @BindView(R.id.course_re)
+        RelativeLayout course_re;
+
+        public LearnViewHolder(View itemView) {
+            super(itemView);
+            AutoUtils.autoSize(itemView);
+            ButterKnife.bind(this, itemView);
+        }
+
+    }
+
+
+    public class TipsViewHolder extends RecyclerView.ViewHolder {
+
+        @BindView(R.id.learn_time)
+        TextView learnTime;
+        @BindView(R.id.img_type)
+        ImageView imgType;
+        @BindView(R.id.learn_alltime_one)
+        TextView learnAlltimeOne;
+        @BindView(R.id.user_tips)
+        TextView userTips;
+        @BindView(R.id.item_recyclerView)
+        RecyclerView itemRecyclerView;
+        @BindView(R.id.course_img)
+        ImageView courseImg;
+        @BindView(R.id.course_name)
+        TextView courseName;
+        @BindView(R.id.course_teacher)
+        TextView courseTeacher;
+        @BindView(R.id.base)
+        RelativeLayout base;
+        @BindView(R.id.course_re)
+        RelativeLayout course_re;
+        @BindView(R.id.line_time)
+        View lineTime;
+
+        public TipsViewHolder(View itemView) {
+            super(itemView);
+            AutoUtils.autoSize(itemView);
+            ButterKnife.bind(this, itemView);
+        }
+
+    }
+
+
+    public class SpaceItemDecoration extends RecyclerView.ItemDecoration {
+        int mSpace;
+
+        /**
+         * @param space 传入的值，其单位视为dp
+         */
+        public SpaceItemDecoration(int space) {
+            this.mSpace = Utils.dip2px(mContext, space);
+
+        }
+
+        @Override
+        public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
+            int itemCount = getItemCount();
+            int pos = parent.getChildAdapterPosition(view);
+
+            outRect.left = 0;
+            outRect.top = 0;
+            outRect.bottom = mSpace;
+
+
+            if (pos != (itemCount - 1)) {
+                outRect.right = 0;
+            } else {
+                outRect.right = 0;
+            }
+        }
+    }
+
+
+}

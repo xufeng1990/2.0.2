@@ -1,0 +1,84 @@
+//
+//  SearchViewController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/24.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "SearchViewController.h"
+#import "CBLProgressHUD.h"
+#import <PYSearch.h>
+#import "NativeNetwork.h"
+#import "YLYKCourse.h"
+#import "NSStringTools.h"
+#import "MJExtension.h"
+#import "SearchResultCell.h"
+#import "UIImageView+WebCache.h"
+#import "SearchResultViewController.h"
+@interface SearchViewController ()<PYSearchViewControllerDelegate,UITableViewDelegate,UITableViewDataSource>
+
+
+@property (nonatomic, strong) NSMutableArray *courseArray;
+@property (nonatomic, strong) UITableView *tableView;
+@end
+
+@implementation SearchViewController
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    [self.navigationController.navigationBar setBackgroundColor:[UIColor whiteColor]];
+    UIImage *image = [UIImage imageNamed:@"nav_back"];
+    UIImage *rightImage = [UIImage imageNamed:@"nav_share"];
+    image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    rightImage = [rightImage imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+    self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:rightImage style:UIBarButtonItemStyleDone target:self action:@selector(share)];
+    self.navigationController.navigationBar.translucent = NO;
+    self.navigationController.interactivePopGestureRecognizer.delegate = (id)self;
+    [self.navigationController setNavigationBarHidden:NO animated:YES];
+    self.view.backgroundColor = [UIColor redColor];
+    self.courseArray = [NSMutableArray array];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+    PYSearchViewController *searchVC = [PYSearchViewController searchViewControllerWithHotSearches:nil searchBarPlaceholder:@"搜索课程" didSearchBlock:^(PYSearchViewController *searchViewController, UISearchBar *searchBar, NSString *searchText) {
+        
+        NSDictionary *parameters = @{@"keyword":searchText};
+        
+        [[NativeNetwork sharedInstance] getCourseList:parameters success:^(id responseObject) {
+            XXZQLog(@"%@",responseObject);
+            [self.courseArray removeAllObjects];
+            NSMutableArray *resultArray = [NSStringTools getArrayWithJSONString:responseObject];
+            for (NSDictionary *dict in resultArray) {
+                YLYKCourse *course = [YLYKCourse mj_objectWithKeyValues:dict];
+                [self.courseArray addObject:course];
+            }
+            
+            SearchResultViewController *result = [[SearchResultViewController alloc] init];
+            result.searchText = searchText;
+            result.resultArray = self.courseArray;
+            [searchViewController.navigationController pushViewController:result animated:YES];
+        } failure:^(NSError *error) {
+            
+        }];
+    }];
+    searchVC.delegate = self;
+//    searchVC.showSearchHistory = NO;
+    searchVC.searchHistoriesCount = 6;
+    searchVC.searchBar.frame = CGRectMake(100, 0, 100 , 32);
+    searchVC.searchBarBackgroundColor = [UIColor colorWithRed:242/255.0 green:245/255.0 blue:246/255.0 alpha:1.0];
+    [searchVC.navigationItem.rightBarButtonItem setTintColor:[UIColor colorWithRed:90/255.0 green:90/255.0 blue:90/255.0 alpha:1.0]];
+    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:searchVC];
+    [self presentViewController:nav  animated:NO completion:nil];
+
+}
+
+
+@end

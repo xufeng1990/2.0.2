@@ -1,0 +1,279 @@
+package com.reactmodules.storage;
+
+import android.content.Context;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
+import com.reactmodules.request.YLBaseService;
+import com.zhuomogroup.ylyk.utils.EncryptionUtil;
+import com.zhuomogroup.ylyk.utils.SharedPreferencesUtil;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Map;
+import java.util.TreeMap;
+
+import static com.reactmodules.consts.ModuleName.YLYK_SERVICE_CACHE_MODULE;
+import static com.zhuomogroup.ylyk.consts.YLBaseUrl.BASE_URL_HEAD;
+
+/**
+ * Created by xyb on 2017/4/19.
+ */
+
+public class YLYKServiceCacheModule extends ReactContextBaseJavaModule {
+    private final Context context;
+    private YLBaseService service;
+
+    public YLYKServiceCacheModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        context = reactContext.getApplicationContext();
+        service = new YLBaseService(reactContext.getApplicationContext());
+
+    }
+
+    @Override
+    public String getName() {
+        return YLYK_SERVICE_CACHE_MODULE;
+    }
+
+    /**
+     * 获得课程列表的缓存
+     *
+     * @param queryJson
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheCourseList(ReadableMap queryJson, Promise promise) {
+        try {
+            String nativeString = service.getNativeString((ReadableNativeMap) queryJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("course");
+
+
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            TreeMap<String, String> params = service.getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+            String baseUrl = service.getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+                // FIXME: 2017/4/19 与rn沟通
+            }
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+    /**
+     * 获得专辑列表缓存
+     *
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheAlbumList(ReadableMap parameters, Promise promise) {
+
+        try {
+            String nativeString = service.getNativeString((ReadableNativeMap) parameters);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+
+
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+            TreeMap<String, String> params = service.getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+
+
+            String baseUrl = service.getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+                // FIXME: 2017/4/19 与rn沟通
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获得日历的列表缓存
+     *
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheNoteList(ReadableMap parameters, Promise promise) {
+        try {
+            String nativeString = service.getNativeString((ReadableNativeMap) parameters);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+            JSONArray url = new JSONArray();//url 数组
+            url.put("note");
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            TreeMap<String, String> params = service.getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+            String baseUrl = service.getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+                // FIXME: 2017/4/19 与RN沟通
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获得banner list 缓存
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheBannerList(Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+            JSONArray url = new JSONArray();//url 数组
+            url.put("banner");
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            TreeMap<String, String> params = service.getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+            String baseUrl = service.getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获得专辑信息缓存
+     *
+     * @param album_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheAlbumById(String album_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+
+
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+
+            TreeMap<String, String> params = service.getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+
+            String baseUrl = service.getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}

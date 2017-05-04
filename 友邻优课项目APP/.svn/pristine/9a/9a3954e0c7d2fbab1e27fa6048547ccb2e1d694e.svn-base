@@ -1,0 +1,352 @@
+//
+//  CanlendarViewController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/15.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "CalendarViewController.h"
+#import "FyCalendarView.h"
+#import "NativeNetwork.h"
+#import "NSStringTools.h"
+#import "ListenTraceViewController.h"
+#import "CBLProgressHUD.h"
+#import <PYSearch.h>
+#import "NativeNetwork.h"
+#import "YLYKCourse.h"
+#import "NSStringTools.h"
+#import "NativeNetwork.h"
+#import "AppDelegate.h"
+#import "LoginViewController.h"
+#define WS(weakSelf)  __weak __typeof(&*self)weakSelf = self;
+
+@interface CalendarViewController ()
+@property (strong, nonatomic) FyCalendarView *calendarView;
+@property (nonatomic, strong) NSDate *date;
+@property (nonatomic, strong) NSMutableArray *currentSignDates;
+@end
+
+@implementation CalendarViewController
+
+- (void)viewDidLoad
+{
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+    self.date = [self getNowDateFromat];
+    NSString *year = [self getYearWithDate:self.date];
+    NSString *month = [self getMonthWithDate:self.date];
+    [self getSignDateWithYear:year andMonth:month];
+    UIImage *image = [UIImage imageNamed:@"nav_back"];
+    image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+    self.navigationController.navigationBar.translucent = NO;
+    self.navigationItem.title = @"学习日历";
+    [self.navigationController setNavigationBarHidden:NO animated:YES];
+}
+
+- (NSDate *)getNowDateFromat
+{
+    NSDate *date = [NSDate date];
+    NSTimeZone *timeZone = [NSTimeZone timeZoneWithName:@"Asia/Shanghai"];
+    NSInteger delta = [timeZone secondsFromGMT];
+    NSDate *localeDate = [date  dateByAddingTimeInterval:delta];
+    return localeDate;
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [super viewWillAppear:animated];
+ 
+    NSUserDefaults *user = [NSUserDefaults standardUserDefaults];
+    NSString *firstComeInTeacherDetail = @"isFirstCalendar";
+    if (![user objectForKey:firstComeInTeacherDetail]) {
+        [self makeFunctionGuide];
+    }
+}
+- (void)makeFunctionGuide
+{
+    NSUserDefaults *user = [NSUserDefaults standardUserDefaults];
+    NSString *firstComeInTeacherDetail = @"isFirstCalendar";
+    if (![user objectForKey:firstComeInTeacherDetail]) {
+        [user setObject:firstComeInTeacherDetail forKey:firstComeInTeacherDetail];
+        [user synchronize];
+        [self makeGuideView];
+    }
+}
+
+- (void)makeGuideView
+{
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    UIImageView *imageView1 = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"calendar_detail"]];
+    imageView1.frame = CGRectMake(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    [window addSubview:imageView1];
+    imageView1.userInteractionEnabled = YES;
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(hide:)];
+    [imageView1 addGestureRecognizer:tap];
+}
+
+- (void)hide:(UITapGestureRecognizer *)tap
+{
+    UIImageView *imageView = (UIImageView *)tap.view;
+    [imageView removeFromSuperview];
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    UIImageView *imageView1 = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"calendar"]];
+    imageView1.frame = CGRectMake(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    [window addSubview:imageView1];
+    imageView1.userInteractionEnabled = YES;
+    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(remove:)];
+    [imageView1 addGestureRecognizer:tapGesture];
+}
+
+- (void)remove:(UITapGestureRecognizer *)tap
+{
+    UIImageView *imageView = (UIImageView *)tap.view;
+    [imageView removeFromSuperview];
+}
+
+- (void)getSignDateWithYear:(NSString *)year andMonth:(NSString *)month
+{
+    NSDictionary *parameters = @{@"year":year, @"month":month};
+    
+    NSString *netStatus = [[NativeNetwork sharedInstance] getSystemNetworkState];
+    
+    [[NativeNetwork sharedInstance] getSigninCalendar:parameters success:^(id responseObject){
+        NSMutableArray *signDates = [NSStringTools getArrayWithJSONString:responseObject];
+        NSMutableArray *arr  = [NSMutableArray array];
+        for (NSString *dateString in signDates) {
+            NSDate * date =  [self dateWithDateString:dateString];
+            [arr addObject:[self getDateWithDate:date]];
+        }
+        self.currentSignDates = arr;
+        [self setupCalendarViewWithSignDates];
+    } failure:^(NSError *error) {
+        if ([[self getErrorCodeWithError:error] integerValue] == 401) {
+            NSString * jsonString = [[NSUserDefaults standardUserDefaults] objectForKey:@"has_login"];
+            if (jsonString) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"您的登录已失效，请重新登录"];
+                LoginViewController *login = [[LoginViewController alloc] init];
+                
+                [self presentViewController:login animated:YES completion:nil];
+            } else {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"请登录"];
+                
+            }
+        } else if ([[self getErrorCodeWithError:error] integerValue] >499){
+            
+        } else {
+            if ([netStatus isEqualToString:@"notReachable"]) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"无法连接至网络，请检查网络设置"];
+                [CBLProgressHUD hideLoadingHUDInView:self.view];
+                [self creatErrorView];
+                return;
+            }
+              [self creatErrorView];
+        }
+    }];
+}
+
+- (NSString *)getErrorCodeWithError:(NSError *)error {
+    NSData * errmessageData = [error.userInfo objectForKey:@"com.alamofire.serialization.response.error.data"];
+    NSString * errorString = [[NSString alloc] initWithData:errmessageData encoding:NSUTF8StringEncoding];
+    NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:errorString];
+    NSString * errorCode = [dict objectForKey:@"error_code"];
+    return errorCode;
+}
+
+- (void)creatErrorView
+{
+    UIImageView *imageView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"error_network"]];
+//    imageView.frame = CGRectMake(0, 0, 200, 200);
+    imageView.center = CGPointMake(SCREEN_WIDTH * 0.5, 200);
+    [self.view addSubview:imageView];
+    
+    UILabel *label = [[UILabel alloc] initWithFrame:CGRectMake(0, 0, SCREEN_WIDTH, 30)];
+    label.center = CGPointMake(SCREEN_WIDTH * 0.5, 300);
+    label.text = @"无法连接到服务器，请检查你的网络设置";
+    [label setFont:[UIFont systemFontOfSize:15]];
+    label.textAlignment = NSTextAlignmentCenter;
+    [self.view addSubview:label];
+    
+}
+
+- (void)setupCalendarViewWithSignDates
+{
+    [self.calendarView removeFromSuperview];
+    self.calendarView = [[FyCalendarView alloc] initWithFrame:CGRectMake(10, 30, SCREEN_WIDTH - 20, SCREEN_WIDTH - 20)];
+    //日期状态
+    self.calendarView.allDaysArr = [NSArray arrayWithArray:self.currentSignDates];
+    [self.view addSubview:self.calendarView];
+    self.calendarView.date = self.date;
+    WS(weakSelf)
+    self.calendarView.calendarBlock =  ^(NSInteger day, NSInteger month, NSInteger year){
+//        NSLog(@"%li-%li-%li", (long)year,(long)month,(long)day);
+        
+        NSString *dateStr = [NSString stringWithFormat:@"%li-%li-%li", (long)year,(long)month,(long)day];
+        
+        NSDateFormatter* formater = [[NSDateFormatter alloc] init];
+        [formater setDateFormat:@"YYYY-MM-dd"];
+        NSDate* date = [formater dateFromString:dateStr];
+//        NSLog(@"%@", date);
+        ListenTraceViewController *listenTrace = [[ListenTraceViewController alloc] init];
+
+        listenTrace.startTime = [weakSelf getStartTime:date];
+        listenTrace.month = [NSString stringWithFormat:@"%ld",(long)month];
+        listenTrace.day = [NSString stringWithFormat:@"%ld",(long)day];
+        [weakSelf.navigationController pushViewController:listenTrace animated:YES];
+        
+    };
+    
+    self.calendarView.nextMonthBlock = ^(){
+        NSDate *date = [weakSelf.calendarView nextMonth:weakSelf.date];
+        BOOL state = [weakSelf iscurrentMonthWithDate:date];
+        if (state) {
+            weakSelf.date = date;
+            [weakSelf setupNextMonth];
+        }
+    };
+    self.calendarView.lastMonthBlock = ^(){
+        NSDate *date = [weakSelf.calendarView lastMonth:weakSelf.date];
+        BOOL state = [weakSelf iscurrentMonthWithDate:date];
+        if (state) {
+            weakSelf.date = date;
+            [weakSelf setupLastMonth];
+        }
+    };
+}
+
+- (BOOL)iscurrentMonthWithDate:(NSDate *)date
+{
+    NSString *year = [self getYearWithDate:date];
+    NSString *month = [self getMonthWithDate:date];
+
+    
+    NSInteger yearInt = [year integerValue] * 12;
+    NSInteger monthInt = [month integerValue];
+    NSInteger yearMonth = yearInt + monthInt;
+    NSInteger todayInt = [self getTodayMonthAndYear];
+    
+    if (yearMonth > todayInt) {
+        [CBLProgressHUD showTextHUDInWindowWithText:@"已经是当前月"];
+        return NO;
+    } else if(yearMonth < todayInt - 6){
+        [CBLProgressHUD showTextHUDInWindowWithText:@"您最多查看半年以前的记录"];
+        return NO;
+    } else {
+        return YES;
+    }
+
+}
+
+
+- (void)setupNextMonth {
+    NSString *year = [self getYearWithDate:self.date];
+    NSString *month = [self getMonthWithDate:self.date];
+    [self getSignDateWithYear:year andMonth:month];
+}
+
+- (void)setupLastMonth {
+    NSString *year = [self getYearWithDate:self.date];
+    NSString *month = [self getMonthWithDate:self.date];
+    [self getSignDateWithYear:year andMonth:month];
+}
+
+- (void)back
+{
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (void)share
+{
+//    SearchViewController *search = [[SearchViewController alloc] init];
+//    [self.navigationController pushViewController:search animated:YES];
+}
+
+- (NSString *)getYearWithDate:(NSDate *)date
+{
+    NSDateFormatter *df = [[NSDateFormatter alloc] init];//格式化
+    [df setDateFormat:@"yyyy"];
+    NSString *year = [df stringFromDate:date];
+    return year;
+}
+
+- (NSString *)getMonthWithDate:(NSDate *)date
+{
+    NSDateFormatter *df = [[NSDateFormatter alloc] init];//格式化
+
+    [df setDateFormat:@"MM"];
+    
+    NSString *month = [df stringFromDate:date];
+    return month;
+}
+
+- (NSString *)getDateWithDate:(NSDate *)date
+{
+    NSDateFormatter *df = [[NSDateFormatter alloc] init];//格式化
+    
+    [df setDateFormat:@"d"];
+    
+    NSString *dateStr = [df stringFromDate:date];
+    return dateStr;
+}
+
+- (NSDate *)dateWithDateString:(NSString *)dateString
+{
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateStyle:NSDateFormatterMediumStyle];
+    [formatter setTimeStyle:NSDateFormatterShortStyle];
+    [formatter setDateFormat:@"YYYY-MM-dd HH:mm:ss"];
+    NSDate *date = [formatter dateFromString:dateString];
+    return date;
+}
+
+- (NSString *)getStartTime:(NSDate *)date
+{
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *components = [calendar components:NSCalendarUnitYear|NSCalendarUnitMonth|NSCalendarUnitDay fromDate:date];
+    NSDate *startDate = [calendar dateFromComponents:components];
+    //    NSTimeInterval *timer = [startDate timeIntervalSince1970];
+//    NSTimeZone *timeZone = [NSTimeZone systemTimeZone];
+    NSTimeZone *timeZone = [NSTimeZone timeZoneWithName:@"Asia/Shanghai"];
+    NSInteger delta = [timeZone secondsFromGMT];
+    NSString *timeSp = [NSString stringWithFormat:@"%ld", (long)[startDate timeIntervalSince1970] - delta];
+//    NSLog(@"timeSp:%@",timeSp);
+    return timeSp;
+}
+
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (NSMutableArray *)currentSignDates
+{
+    if (!_currentSignDates) {
+        _currentSignDates = [NSMutableArray array];
+    }
+    return _currentSignDates;
+}
+
+
+- (NSInteger)getTodayMonthAndYear
+{
+    NSDate *date = [NSDate date];
+    NSTimeZone *zone = [NSTimeZone systemTimeZone];
+    NSInteger interval = [zone secondsFromGMTForDate: date];
+    NSDate *localeDate = [date  dateByAddingTimeInterval: interval];
+
+    NSString *year = [self getYearWithDate:localeDate];
+    NSString *month = [self getMonthWithDate:localeDate];
+    
+    NSInteger yearInt = [year integerValue] * 12;
+    
+    NSInteger monthInt = [month integerValue];
+    
+    
+    NSInteger yearMonth = yearInt + monthInt;
+    
+    return yearMonth;
+}
+
+@end

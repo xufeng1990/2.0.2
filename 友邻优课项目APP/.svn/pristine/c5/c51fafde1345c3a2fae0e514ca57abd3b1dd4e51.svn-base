@@ -1,0 +1,20 @@
+//
+//  NoteTraceCell.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/16.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "BaseTraceCell.h"
+#import "TraceModel.h"
+
+@interface NoteTraceCell : BaseTraceCell
+@property (weak, nonatomic) IBOutlet UILabel *timeLineLabel;
+@property (weak, nonatomic) IBOutlet UILabel *contentLabel;
+@property (weak, nonatomic) IBOutlet UIView *imagesView;
+@property (weak, nonatomic) IBOutlet UIImageView *courseImageView;
+@property (weak, nonatomic) IBOutlet UILabel *courseNameLabel;
+@property (weak, nonatomic) IBOutlet UILabel *teacherNameLabel;
+- (void)setTraceModel:(TraceModel *)traceModel;
+@end

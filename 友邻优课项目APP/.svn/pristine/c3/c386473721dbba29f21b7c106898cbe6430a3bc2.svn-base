@@ -1,0 +1,206 @@
+/**
+ * Created by 艺术家 on 2017/3/7.
+ */
+
+import React, { Component } from 'react';
+
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    Alert,
+    Dimensions,
+    NativeModules,
+    eviceEventEmitter,
+    ProgressBarAndroid,
+    DeviceEventEmitter,
+} from 'react-native';
+
+import styles from "../../common/styles.js";
+import Util from "../../common/util.js";
+import Enums from "../../common/enums.js";
+import Icon from "../../common/Icon.js";
+import * as RnNativeModules from "../../configs/RnNativeModules.js";
+import CachedImage from 'react-native-cached-image';
+import  BlankPages from  "../../component/AlbumCell/BlankPages.js";
+
+
+import AlbumCourseList from "./AlbumCourseList.js"
+
+const BASE_URL = Enums.baseUrl;
+
+export default class DownloadCourse extends Component {
+    constructor(props) {
+        super(props);
+        const ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
+        this.state = {
+            dataSource: ds.cloneWithRows([]),
+        };
+    }
+
+    //props 改变
+    componentWillReceiveProps(newData) {
+        if (newData.isShow) {
+            RnNativeModules.getDownloadList().then(downloadList => {
+                if (downloadList != this.rawData) {
+                    this.rawData = downloadList;
+                    this._getStateData(downloadList);
+                }
+            })
+        }
+    }
+
+    //挂载
+    componentDidMount() {
+        //获取下载列表
+        RnNativeModules.getDownloadList().then(downloadList => {
+            this.rawData = downloadList;
+            this._getStateData(downloadList);
+        });
+    }
+
+    //删除操作
+    deleteItem(rowId) {
+        let newData = JSON.stringify(this.state.dataSource._dataBlob.s1);
+        let newDataSource = JSON.parse(newData);
+        Util.alert({
+            msg: "确定删除该专辑的所有课程？",
+            okBtn: "删除",
+            okFun: () => {
+                newDataSource[rowId].isShow = false;
+                let courseIdList = this.state.dataSource._dataBlob.s1[rowId].courseList.map(item => item.id);
+                RnNativeModules.deleteDownload(courseIdList, true);
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+                });
+            }
+        })
+
+    }
+
+    _onTapAlbum(rowData) {
+        this.props.navigator.push({
+            component: AlbumCourseList,
+            params: {
+                dataSource: rowData.courseList,
+                name: rowData.name,
+
+            }
+        })
+    }
+
+    render() {
+        return (
+            <View style={[styles.primary, styles.bgGrey]}>
+                { this.state.dataSource._dataBlob.s1.length == 0? <BlankPages contentText={"你还没有下载过任何专辑"} ImageUrl={require("../../imgs/dowload.png")} /> :
+                <ListView style={styles.listView}
+                    dataSource={this.state.dataSource}
+                    enableEmptySections={true}
+                    renderRow={(rowData, sectionId, rowId) =>
+                        rowData.isShow ?
+                            <TouchableOpacity  activeOpacity ={1}  onPress={() => {
+                                this._onTapAlbum(rowData);
+                            }}
+                                style={[styles.section, styles.container, styles.row, styles.bgWhite, pageStyles.container]}>
+                                <CachedImage source={{ uri: rowData.cover }}
+                                    style={{ width: 130, height: 73 }} />
+                                <View style={[styles.primary, styles.container, pageStyles.borderRight,]}>
+                                    <Text style={[styles.textBlack, styles.text14, styles.textLeft, { marginVertical: 4 }]}>
+                                        {rowData.name}
+                                    </Text>
+                                    <View style={[{ marginTop: 6 }]}>
+                                        <Text style={[styles.textBlack, styles.text13, styles.textLeft]}>{"共下载" + rowData.length + "节目"}</Text>
+                                        {/*<Text style={[styles.textGrey, styles.text11, styles.textLeft,]}>*/}
+                                            {/*{"共" + (rowData.totalSize / 1024 / 1024).toFixed(1) + "MB"}*/}
+                                        {/*</Text>*/}
+                                    </View>
+                                </View>
+                                <TouchableOpacity  activeOpacity ={1}  style={[styles.alignCenter, { width: 56 }]} onPress={() => {
+                                    this.deleteItem(rowId);
+                                }}>
+                                    <Text style={[styles.icon, styles.textGrey, styles.text20]}>{Icon.delete}</Text>
+                                </TouchableOpacity>
+                            </TouchableOpacity> : null
+                    }
+                />
+                }
+                {/*<BottomCheckbox checkedCallBack={()=>{this.checkedAllCallback()}}*/}
+                {/*onPressBtnCallBack={()=>{this.downloadCallback()}}*/}
+                {/*checkState={this.state.isCheckedAll} />*/}
+            </View>
+        );
+    }
+
+    _getStateData(downloadList) {
+        let downloadDoneList = JSON.parse(downloadList).filter((item) =>
+            +item.flag == Enums.downloads.DOWNLOAD_DONE
+        );
+        if (downloadDoneList && downloadDoneList.length > 0) {
+            //将下载中的列表加到state中
+            let sourceData = [];
+            downloadDoneList.forEach((item) => {
+                let albumIndex = -1;
+                sourceData.forEach((album, index) => {
+                    if (album.id == item.extra.album.id) {
+                        albumIndex = index;
+                        return;
+                    }
+                });
+
+                if (albumIndex == -1) {
+                    sourceData.push({
+                        id: item.extra.album.id,
+                        name: item.extra.album.name,
+                        courseList: [{
+                            id: item.extra.id || 0,
+                            name: item.extra.name || "友邻优课",
+                            teachers: item.extra.teachers || "",
+                            duration: item.extra.duration,
+                            durationFormat: Util.timeFormat(item.extra.duration),
+                            totalSize: item.totalSize,
+                            cover: BASE_URL + "course/" + item.extra.id + "/cover$c240w180h",
+                            isShow: true,
+                        }],
+                        totalSize: item.totalSize,
+                        isShow: true,
+                        cover: BASE_URL + "album/" + item.extra.album.id + "/cover",
+                        length: 1,
+                    })
+                } else {
+                    sourceData[albumIndex].courseList.push({
+                        id: item.extra.id || 0,
+                        name: item.extra.name || "友邻优课",
+                        teachers: item.extra.teachers || "",
+                        duration: item.extra.duration,
+                        durationFormat: Util.timeFormat(item.extra.duration),
+                        totalSize: item.totalSize,
+                        cover: BASE_URL + "course/" + item.extra.id + "/cover$c240w180h",
+                        isShow: true,
+                    });
+                    sourceData[albumIndex].totalSize = sourceData[albumIndex].totalSize + item.totalSize;
+                    sourceData[albumIndex].length++;
+                }
+            });
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows(sourceData),
+            });
+        }
+    }
+
+}
+
+var pageStyles = StyleSheet.create({
+    container: {
+        paddingVertical: 10
+    },
+    borderRight: {
+        borderRightColor: "#f2f5f6",
+        borderRightWidth: 1,
+    },
+});

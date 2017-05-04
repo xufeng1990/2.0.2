@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">友邻优课</string>
+    <string name="main_home">最新</string>
+    <string name="main_me">我</string>
+    <string name="main_idea">心得</string>
+    <string name="main_know">课程</string>
+    <string name="telephone_login">手机登录</string>
+    <string name="u_content_u">登录即同意《<u>友邻优课用户许可协议</u>》</string>
+    <string name="photo_close">完成</string>
+</resources>

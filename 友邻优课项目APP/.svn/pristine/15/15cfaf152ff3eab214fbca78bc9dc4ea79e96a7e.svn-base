@@ -1,0 +1,16 @@
+package com.reactutils.base;
+
+/**
+ * Created by xyb on 2017/4/18.
+ */
+
+public class ModuleNameBase {
+    public static final String BRIDGE_NATIVE = "BridgeNative";
+    public static final String INTENT_MODULE = "IntentModule";
+    public static final String DOWN_LOAD = "DownLoad";
+    public static final String ENCRYPTION_MODULE = "EncryptionModule";
+    public static final String NATIVE_NETWORK = "NativeNetwork";
+    public static final String STORAGE = "Storage";
+
+
+}

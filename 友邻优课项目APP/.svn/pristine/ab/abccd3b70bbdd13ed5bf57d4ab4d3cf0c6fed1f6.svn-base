@@ -1,0 +1,323 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#ffffff"
+    android:orientation="vertical">
+
+    <include layout="@layout/include_title" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <android.support.v4.widget.NestedScrollView
+            android:id="@+id/scrollView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <com.zhy.autolayout.AutoRelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <com.zhy.autolayout.AutoRelativeLayout
+                    android:id="@+id/center_re"
+                    android:layout_width="match_parent"
+                    android:layout_height="200px">
+
+                    <com.zhy.autolayout.AutoRelativeLayout
+                        android:id="@+id/center_oral"
+                        android:layout_width="170px"
+                        android:layout_height="170px"
+                        android:layout_centerInParent="true"
+                        android:background="@drawable/learn_center_bg">
+
+                        <ImageView
+                            android:layout_width="139px"
+                            android:layout_height="139px"
+                            android:layout_centerInParent="true"
+                            android:src="@drawable/learn_center_img" />
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_centerInParent="true">
+
+                            <RelativeLayout
+                                android:id="@+id/center_re_text"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_centerHorizontal="true">
+
+                                <TextView
+                                    android:id="@+id/min_text"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="0"
+                                    android:textColor="#b53430"
+                                    android:textSize="24px" />
+
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_alignBaseline="@+id/min_text"
+                                    android:layout_toRightOf="@+id/min_text"
+                                    android:text="分钟"
+                                    android:textColor="#9a9b9c"
+                                    android:textSize="13px" />
+                            </RelativeLayout>
+
+
+                            <TextView
+                                android:id="@+id/today_center_text"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:layout_below="@+id/center_re_text"
+                                android:layout_marginTop="10px"
+                                android:gravity="center"
+                                android:text=""
+                                android:textSize="13px" />
+
+
+                        </RelativeLayout>
+
+
+                    </com.zhy.autolayout.AutoRelativeLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/all_time_re"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerVertical="true"
+                        android:layout_marginLeft="25px"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:id="@+id/learn_alltime_lin"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_centerHorizontal="true">
+
+                            <TextView
+                                android:id="@+id/learn_alltime"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textSize="18px"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignBaseline="@+id/learn_alltime"
+                                android:layout_toRightOf="@+id/learn_alltime"
+                                android:text="分钟"
+                                android:textColor="#9a9b9c"
+                                android:textSize="13px" />
+                        </LinearLayout>
+
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_below="@+id/learn_alltime_lin"
+                            android:layout_centerHorizontal="true"
+                            android:layout_marginTop="7px"
+                            android:text="累计学习"
+                            android:textColor="#9a9b9c"
+                            android:textSize="13px" />
+                    </RelativeLayout>
+
+                    <RelativeLayout
+                        android:id="@+id/learn_line_re"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignParentRight="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginRight="25px"
+                        android:visibility="gone">
+
+                        <LinearLayout
+                            android:id="@+id/learn_allday_lay"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_centerHorizontal="true">
+
+                            <TextView
+                                android:id="@+id/learn_allday"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0"
+                                android:textSize="18px"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="天"
+                                android:textColor="#9a9b9c"
+                                android:textSize="13px" />
+
+                        </LinearLayout>
+
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_below="@+id/learn_allday_lay"
+                            android:layout_marginTop="7px"
+                            android:text="连续学习"
+                            android:textColor="#9a9b9c"
+                            android:textSize="13px" />
+                    </RelativeLayout>
+
+                </com.zhy.autolayout.AutoRelativeLayout>
+
+                <View
+                    android:id="@+id/view_center"
+                    android:layout_width="match_parent"
+                    android:layout_height="10px"
+                    android:layout_below="@id/center_re"
+                    android:background="#f0f5f6" />
+
+                <RelativeLayout
+                    android:id="@+id/learm_more"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/view_center"
+                    android:layout_centerInParent="true"
+                    android:layout_marginBottom="20px"
+                    android:layout_marginTop="20px"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:id="@+id/view_left"
+                        android:layout_width="100px"
+                        android:layout_height="1px"
+                        android:layout_centerVertical="true"
+                        android:layout_marginRight="20px"
+                        android:layout_toLeftOf="@+id/text"
+                        android:background="@drawable/leanr_more_left" />
+
+                    <TextView
+                        android:id="@+id/text"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_centerInParent="true"
+                        android:text="学习详情"
+                        android:textColor="#9a9b9c"
+                        android:textSize="16px" />
+
+                    <View
+                        android:id="@+id/view_right"
+                        android:layout_width="100px"
+                        android:layout_height="1px"
+                        android:layout_centerVertical="true"
+                        android:layout_marginLeft="20px"
+                        android:layout_toRightOf="@+id/text"
+                        android:background="@drawable/leanr_more_right" />
+
+                </RelativeLayout>
+
+
+                <android.support.v7.widget.RecyclerView
+                    android:id="@+id/recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:layout_below="@+id/learm_more">
+
+                </android.support.v7.widget.RecyclerView>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/recycler_view"
+                    android:layout_margin="30px"
+                    android:gravity="center"
+                    android:text="没有更多学习记录"
+                    android:textColor="#c8c8c8"
+                    android:textSize="11px" />
+
+            </com.zhy.autolayout.AutoRelativeLayout>
+
+        </android.support.v4.widget.NestedScrollView>
+
+        <RelativeLayout
+            android:id="@+id/null_re"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/null_page_img"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="80px"
+                android:scaleType="centerInside"
+                android:src="@mipmap/null_page_img" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/null_page_img"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="30px"
+                android:text="无学习记录" />
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/loading_re"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#fff">
+
+            <com.reactutils.loadingview.LoadingFrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true">
+
+            </com.reactutils.loadingview.LoadingFrameLayout>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/null_network"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            android:background="#fff">
+
+            <ImageView
+                android:id="@+id/null_network_img"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="120px"
+                android:src="@mipmap/null_network" />
+
+            <TextView
+                android:id="@+id/center_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/null_network_img"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="79px"
+                android:text="无法连接到服务器，请检查你的网络设置"
+                android:textSize="14px" />
+
+            <TextView
+                android:id="@+id/setting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/center_text"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="40px"
+                android:text=""
+                android:textColor="#b53430"
+                android:textSize="14px" />
+        </RelativeLayout>
+
+    </RelativeLayout>
+
+
+</LinearLayout>

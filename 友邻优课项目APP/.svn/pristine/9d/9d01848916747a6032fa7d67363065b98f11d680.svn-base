@@ -1,0 +1,29 @@
+//
+//  TraceModel.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/16.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "TraceModel.h"
+#import "NoteTraceCell.h"
+#import "CourseTraceCell.h"
+
+@implementation TraceModel
+
+- (NSString *)cellIdentifier
+{
+    if (_showType == TraceShowTypeNote) {
+        return NSStringFromClass([NoteTraceCell class]);
+    } else {
+        return NSStringFromClass([CourseTraceCell class]);
+    }
+}
+
++ (NSDictionary *)mj_replacedKeyFromPropertyName
+{
+    return @{@"traceId": @"id"};
+}
+
+@end

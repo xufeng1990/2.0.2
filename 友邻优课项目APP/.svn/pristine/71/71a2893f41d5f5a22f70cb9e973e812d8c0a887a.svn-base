@@ -1,0 +1,23 @@
+//
+//  CommandsModel.h
+//  YLYK-App
+//
+//  Created by 友邻优课 on 2017/1/19.
+//  Copyright © 2017年 Beijing Zhuomo Culture Media Co., Ltd. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface CommandsModel : NSObject
+
+@property (nonatomic,copy) NSString * authorization;
+
+@property (nonatomic,assign) NSString *  command;
+
+@property (nonatomic,assign) NSInteger  courseId;
+
+@property (nonatomic,assign) NSUInteger userId;
+
+@property (nonatomic,assign) BOOL isVip;
+
+@end

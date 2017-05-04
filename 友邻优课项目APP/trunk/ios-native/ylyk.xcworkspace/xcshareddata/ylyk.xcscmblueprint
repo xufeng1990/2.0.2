@@ -1,0 +1,24 @@
+{
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyRepositoryLocationsKey" : {
+    "5ea6b4b7-1261-8e48-b0ff-248f0b432e24" : {
+
+    }
+  },
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyStatesKey" : {
+    "5ea6b4b7-1261-8e48-b0ff-248f0b432e24" : 9223372036854775807
+  },
+  "DVTSourceControlWorkspaceBlueprintIdentifierKey" : "9B45A43D-A569-413D-903E-C782741D1528",
+  "DVTSourceControlWorkspaceBlueprintWorkingCopyPathsKey" : {
+    "5ea6b4b7-1261-8e48-b0ff-248f0b432e24" : "..\/..\/svn\/YLYK"
+  },
+  "DVTSourceControlWorkspaceBlueprintNameKey" : "ylyk",
+  "DVTSourceControlWorkspaceBlueprintVersion" : 204,
+  "DVTSourceControlWorkspaceBlueprintRelativePathToProjectKey" : "ylyk.xcworkspace",
+  "DVTSourceControlWorkspaceBlueprintRemoteRepositoriesKey" : [
+    {
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryURLKey" : "https:\/\/114.55.107.218:8443\/svn\/ylyk",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositorySystemKey" : "com.apple.dt.Xcode.sourcecontrol.Subversion",
+      "DVTSourceControlWorkspaceBlueprintRemoteRepositoryIdentifierKey" : "5ea6b4b7-1261-8e48-b0ff-248f0b432e24"
+    }
+  ]
+}

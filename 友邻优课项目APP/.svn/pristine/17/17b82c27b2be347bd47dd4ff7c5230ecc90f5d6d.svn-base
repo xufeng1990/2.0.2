@@ -1,0 +1,1318 @@
+package com.reactutils.request;
+
+import android.content.Context;
+import android.support.annotation.NonNull;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
+import com.reactutils.callback.ServiceStringCallback;
+import com.zhy.http.okhttp.OkHttpUtils;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
+
+import okhttp3.RequestBody;
+
+import static com.reactutils.base.ModuleNameBase.NATIVE_NETWORK;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.base.YLUrlSetting.JSON_MEDIA_TYPE;
+import static com.zhuomogroup.ylyk.network.Signature.UrlHeaders;
+import static com.zhuomogroup.ylyk.network.Signature.UrlSignature;
+
+/**
+ * Created by xyb on 2017/2/21 at 友邻优课 2017
+ */
+
+public class YLServiceModule extends ReactContextBaseJavaModule {
+    private static final String GET = "get";
+    private static final String PUT = "put";
+    private static final String DELETE = "delete";
+    private static final String POST = "post";
+    private final Context context;
+
+
+    public YLServiceModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        context = reactContext.getApplicationContext();
+    }
+
+    @Override
+    public String getName() {
+        return NATIVE_NETWORK;
+    }
+
+    /**
+     * 获得 参数地址
+     *
+     * @param jsonObject
+     * @return
+     * @throws JSONException
+     */
+    @NonNull
+    private String getBaseUrl(JSONObject jsonObject) throws JSONException {
+        JSONArray url = jsonObject.getJSONArray("url");
+
+        String baseUrl = "";
+        for (int i = 0; i < url.length(); i++) {
+            baseUrl = baseUrl + url.getString(i) + "/";
+        }
+        if (baseUrl.length() > 0) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl;
+    }
+
+
+    /**
+     * 获得排序map
+     *
+     * @param jsonObject1
+     * @return
+     * @throws JSONException
+     */
+    @NonNull
+    private TreeMap<String, String> getParams(JSONObject jsonObject1) throws JSONException {
+        JSONObject jsonObject = new JSONObject(jsonObject1.getString("query"));
+        Iterator<String> keys = jsonObject.keys();
+        TreeMap<String, String> params = new TreeMap<>();
+        while (keys.hasNext()) {
+            String key = (String) keys.next();
+            params.put(key, jsonObject.getString(key));
+        }
+        return params;
+    }
+
+
+    /**
+     * 无body 通用的get方法
+     *
+     * @param promise
+     * @param jsonObject
+     * @throws JSONException
+     */
+    private void baseService(Promise promise, JSONObject jsonObject) throws JSONException {
+        String baseUrl = getBaseUrl(jsonObject);// 参数
+        TreeMap<String, String> params = getParams(jsonObject);
+        String urlData = "";
+        if (params.size() > 0) {
+            for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+            }
+            urlData = urlData.substring(1);
+            urlData = "?" + urlData;
+        }
+        String type = jsonObject.getString("type");
+        if (GET.equals(type)) {
+            OkHttpUtils.get()
+                    .url(BASE_URL_HEAD + baseUrl + UrlSignature(params))
+                    .headers(UrlHeaders(context))
+                    .build()
+                    .execute(new ServiceStringCallback(promise, BASE_URL_HEAD + baseUrl + urlData, context));
+        } else if (PUT.equals(type)) {
+            RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE,
+                    jsonObject.getJSONObject("body").toString());
+            OkHttpUtils.put()
+                    .url(BASE_URL_HEAD + baseUrl + UrlSignature(params))
+                    .headers(UrlHeaders(context))
+                    .requestBody(requestBody)
+                    .build()
+                    .execute(new ServiceStringCallback(promise, context));
+        } else if (DELETE.equals(type)) {
+            RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE,
+                    jsonObject.getJSONObject("body").toString());
+            OkHttpUtils.delete()
+                    .url(BASE_URL_HEAD + baseUrl + UrlSignature(params))
+                    .headers(UrlHeaders(context))
+                    .requestBody(requestBody)
+                    .build()
+                    .execute(new ServiceStringCallback(promise, context));
+        } else if (POST.equals(type)) {
+            OkHttpUtils.postString()
+                    .url(BASE_URL_HEAD + baseUrl + UrlSignature(params))
+                    .headers(UrlHeaders(context))
+                    .content(jsonObject.getJSONObject("body").toString())
+                    .mediaType(JSON_MEDIA_TYPE)
+                    .build()
+                    .execute(new ServiceStringCallback(promise, context));
+        }
+    }
+
+    /**
+     * 获取推荐用户列表
+     *
+     * @param limit
+     * @param promise
+     */
+    @ReactMethod
+    public void getUserHotList(String limit, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            JSONObject query = new JSONObject();
+            JSONArray jsonArray = new JSONArray();
+            jsonArray.put("user");
+            if (!"".equals(limit)) {
+                query.put("limit", limit);
+            }
+            query.put("is_hot", true);
+            jsonObject.put("url", jsonArray);
+            jsonObject.put("query", query);
+            jsonObject.put("type", GET);
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    /**
+     * 获取指定用户的信息
+     *
+     * @param user_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getUserById(String user_id, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("user");
+            url.put(user_id);
+
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("type", GET);
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 修改指定用户的信息
+     *
+     * @param user_id
+     * @param promise
+     */
+    @ReactMethod
+    public void updateUser(String user_id, ReadableMap updateUserJson, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(getNativeString((ReadableNativeMap) updateUserJson));// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("user");
+            url.put(user_id);
+
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("type", PUT);
+            jsonObject.put("body", body);
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    private String getNativeString(ReadableNativeMap updateUserJson) throws JSONException {
+        String string = updateUserJson.toString();
+        JSONObject object = new JSONObject(string);
+        JSONObject nativeMap1 = object.getJSONObject("NativeMap");
+
+        return nativeMap1.toString();
+    }
+
+
+    /**
+     * 修改指定用户的绑定手机
+     *
+     * @param user_id
+     * @param promise
+     */
+    @ReactMethod
+    public void updateUserMobilephone(String user_id, String mobilephone, String captcha, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("user");
+            url.put(user_id);
+            url.put("mobilephone");
+            body.put("mobilephone", mobilephone);
+            if (!"".equals(captcha)) {
+                body.put("captcha", captcha);
+                jsonObject.put("type", PUT);
+            } else {
+                jsonObject.put("type", POST);
+            }
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    /**
+     * 修改指定用户的代言人
+     *
+     * @param user_id
+     * @param promise
+     */
+    @ReactMethod
+    public void updateUserDealer(String user_id, String dealer_code, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("user");
+            url.put(user_id);
+            url.put("dealer");
+
+            body.put("dealer_code", dealer_code);
+
+            jsonObject.put("type", PUT);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    /**
+     * 获取指定用户的任务
+     *
+     * @param user_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getUserTaskById(String user_id, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("user");
+            url.put(user_id);
+            url.put("task");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    /**
+     * 获取收货地址列表
+     *
+     * @param
+     * @param promise
+     */
+    @ReactMethod
+    public void getAddressList(Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("address");
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 创建新的收货地址
+     *
+     * @param addressJson 地址json
+     * @param promise
+     */
+    @ReactMethod
+    public void createAddress(ReadableMap addressJson, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("address");
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 修改指定的收货地址
+     *
+     * @param address_id  地址标签id
+     * @param addressJson 修改地址的 json
+     */
+    @ReactMethod
+    public void updateAddress(String address_id, ReadableMap addressJson, Promise promise) {
+        try {
+
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("address");
+            url.put(address_id);
+
+            jsonObject.put("type", PUT);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 删除指定的收货地址
+     *
+     * @param address_id 删除的地址id
+     */
+    @ReactMethod
+    public void deleteAddress(String address_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("address");
+            url.put(address_id);
+
+            jsonObject.put("type", DELETE);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定用户的粉丝列表
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getFansList(ReadableMap addressJson, Promise promise) {
+        try {
+
+
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("fans");
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定用户的关注列表
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getFolloweeList(ReadableMap addressJson, Promise promise) {
+        try {
+
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("followee");
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 关注指定的用户
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void createFollowee(ReadableMap addressJson, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("followee");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 取消关注指定的用户
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void deleteFollowee(ReadableMap addressJson, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("followee");
+
+
+            jsonObject.put("type", DELETE);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定教师的信息
+     *
+     * @param teacher_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getTeacherById(String teacher_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("teacher");
+            url.put(teacher_id);
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    @ReactMethod
+    public void getTeacherList(ReadableMap addressJson, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) addressJson);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("teacher");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取专辑列表
+     *
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getAlbumList(ReadableMap parameters, Promise promise) {
+        try {
+
+
+            String nativeString = getNativeString((ReadableNativeMap) parameters);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定专辑的信息
+     *
+     * @param album_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getAlbumById(String album_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 点赞指定的专辑
+     *
+     * @param album_id
+     * @param promise
+     */
+    @ReactMethod
+    public void likeAlbum(String album_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+            url.put("like");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定专辑的评论列表
+     *
+     * @param album_id
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getAlbumCommentList(String album_id, ReadableMap parameters, Promise promise) {
+        try {
+
+            String nativeString = getNativeString((ReadableNativeMap) parameters);
+
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query;
+            query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+            url.put("comment");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 创建新的专辑评论
+     *
+     * @param album_id
+     * @param bodyJson
+     * @param promise
+     */
+    @ReactMethod
+    public void createAlbumComment(String album_id, ReadableMap bodyJson, Promise promise) {
+        try {
+
+            String nativeString = getNativeString((ReadableNativeMap) bodyJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+            url.put("comment");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取课程列表
+     *
+     * @param queryJson
+     * @param promise
+     */
+    @ReactMethod
+    public void getCourseList(ReadableMap queryJson, Promise promise) {
+        try {
+
+            String nativeString = getNativeString((ReadableNativeMap) queryJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("course");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定课程的信息
+     *
+     * @param course_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getCourseById(String course_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("course");
+            url.put(course_id);
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 收藏指定的课程
+     *
+     * @param course_id
+     * @param promise
+     */
+    @ReactMethod
+    public void likeCourse(String course_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("course");
+            url.put(course_id);
+            url.put("like");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 取消收藏指定的课程
+     *
+     * @param course_id
+     * @param promise
+     */
+    @ReactMethod
+    public void unlikeCourse(String course_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("course");
+            url.put(course_id);
+            url.put("like");
+
+
+            jsonObject.put("type", DELETE);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取笔记列表
+     *
+     * @param queryJson
+     * @param promise
+     */
+    @ReactMethod
+    public void getNoteList(ReadableMap queryJson, Promise promise) {
+        try {
+
+
+            String nativeString = getNativeString((ReadableNativeMap) queryJson);
+
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("note");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定笔记的信息
+     *
+     * @param note_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getNoteById(String note_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("note");
+            url.put(note_id);
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 图片上传
+     *
+     * @param note_id
+     * @param promise
+     */
+    @ReactMethod
+    public void createNote(String note_id, Promise promise) {
+        // TODO: 2017/2/22 图片上传封装
+    }
+
+    /**
+     * 删除指定的笔记
+     *
+     * @param note_id
+     * @param promise
+     */
+    @ReactMethod
+    public void deleteNote(String note_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("note");
+            url.put(note_id);
+
+
+            jsonObject.put("type", DELETE);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 点赞指定的笔记
+     *
+     * @param note_id
+     * @param promise
+     */
+    @ReactMethod
+    public void likeNote(String note_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("note");
+            url.put(note_id);
+            url.put("like");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    /**
+     * 点赞指定的笔记
+     *
+     * @param note_id
+     * @param promise
+     */
+    @ReactMethod
+    public void unlikeNote(String note_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("note");
+            url.put(note_id);
+            url.put("like");
+
+
+            jsonObject.put("type", DELETE);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 打卡
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void createSignin(Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("signin");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取打卡日历
+     *
+     * @param queryJson
+     * @param promise
+     */
+    @ReactMethod
+    public void getSigninCalendar(ReadableMap queryJson, Promise promise) {
+        try {
+
+            String nativeString = getNativeString((ReadableNativeMap) queryJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("signin");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取条幅列表
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getBannerList(Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("banner");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    @ReactMethod
+    public void getXdyById(String xdyId, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("xdy");
+            url.put(xdyId);
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    @ReactMethod
+    public void createOrder(ReadableMap readableMap, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) readableMap);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+            JSONObject query = new JSONObject();
+            JSONArray url = new JSONArray();//url 数组
+            url.put("order");
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+            baseService(promise, jsonObject);
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+}

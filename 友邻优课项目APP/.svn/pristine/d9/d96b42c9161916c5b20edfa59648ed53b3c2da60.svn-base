@@ -1,0 +1,188 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component,} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    WebView,
+    Dimensions,
+    Modal,
+    DeviceEventEmitter,
+    ActivityIndicator,
+    BackAndroid,
+    Platform,
+    StatusBar,
+    PixelRatio,
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+// import VideoPlayer from 'react-native-video-player';
+import VideoPlayer from 'react-native-video-controls';
+import Util from '../../common/util.js';
+// import Video from 'react-native-video'; // eslint-disable-line
+import Loading from '../Loading/Loading.js';
+
+
+import YLYKNatives from "../../configs/ylykbridges/YLYKNatives.js";
+import YLYKServices from "../../configs/ylykbridges/YLYKServices.js";
+import YLYKStorages from "../../configs/ylykbridges/YLYKStorages.js";
+
+
+// 类
+//
+
+
+
+var {width, height} = Dimensions.get('window');
+export default class VideoView extends Component {
+    // 构造函数
+    constructor(props) {
+        super(props);
+        this.state = {
+
+        };
+    }
+    // 加载完成
+    componentDidMount() {
+        console.log("width: " + width + ", height: " + height);
+    }
+    componentWillMount() {
+    }
+    // view卸载
+    componentWillUnmount() {
+        if (this.props.hideTabBar == 0) {
+            return;
+        } else {
+            YLYKNatives.$showOrHideTabbar.showOrHideTabbar('show');
+        }
+    }
+
+    _onError() {
+        Util.alert({
+            msg: '视频加载出现错误,请稍后再试',
+            oneBtn: '确定',
+            cancelBtn: '取消',
+            okFun: () => {this._back()},
+            cancelFun:()=>{this._back()}
+        })
+    }
+
+
+    _back() {
+        this.props.navigator.pop();
+    }
+
+    _paused(){
+      this._back();
+    }
+    render() {
+        return (
+                <View style={{height: width, width: height, marginTop: (height-width)/2,  marginLeft: (width-height)/2, backgroundColor: 'red', transform: [{ rotateZ: '90deg' }]}}>
+                <VideoPlayer
+                      source={!this.props.videoSource ? { uri: 'https://mv-static.youlinyouke.com/web/declaration-1490083383-160k44100.mp4' } : { uri: this.props.videoSource }}//视频播放地址
+                      playInBackground={ false }
+                      playWhenInactive={ false }
+                      resizeMode={ 'cover' }
+                      paused={ this.state.paused }
+                      repeat={ true }
+                      muted={ false }
+                      title={ this.props.albumName }
+                      volume={ 1 }
+                      rate={ 1 }
+                      controlTimeout={ 15000 }
+                      navigator={ this.props.navigator }
+                      seekColor={ 'red' }
+                      style={{flex: 1, backgroundColor: 'green'}}
+                      onError={ () => {this._onError()} }
+                      onBack={ () => {this._back()} }
+                      onEnd={ () => {this._paused()} }
+                    />
+                </View>
+
+        );
+    }
+    // 自定义方法区域
+    // your method
+}
+// <View style={styles.playView} >
+//   <Text style={styles.playButton} >播放</Text>
+// </View>
+//
+//
+//
+// //  <TouchableOpacity onPress={() => { this._backText() }}>
+//       <Image style={styles.backImage} source={require('../../imgs/close.png')}/>
+//   </TouchableOpacity>
+//         <Video
+        //     ref={(ref) => { this.player = ref }}
+        //     source={!this.props.videoSource ? { uri: 'https://mv.static.youlinyouke.com/web/declaration-1490083383-160k44100.mp4' } : { uri: this.props.videoSource }}//视频播放地址
+        //     style={styles.video}      //样式
+        //     volum={4}                 //声音放大倍数
+        //     paused={this.state.play}            //true暂停 false开始
+        //     rate={this.state.rate}    // 0 暂停 1正常
+        //     muted={this.state.muted}  //true静音 false 正常
+        //     resizeMode="cover"
+        //     repeat={this.state.repeat}//
+        //     playInBackground={false}
+        //     onLoadStart={() => { this._onLoadStart() }} //视频开始加载回调
+        //     onLoad={this._onLoad}           //视频加载完毕回调
+        //     onProgress={this._onProgress}   //每隔250ms调用一次
+        //     onEnd={this._onEnd}             //视频加载结束回调
+        //     onError={this._onError}         //视频加载错误回调
+        // >
+        // </Video>
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: 'black',
+    },
+    video: {
+        marginTop: 180 * g_AppValue.precent,
+        width: width,
+        height: 215 * g_AppValue.precent,
+        //backgroundColor:'red',
+    },
+    playView: {
+        width: width,
+        height: 20 * g_AppValue.precent,
+        backgroundColor: 'red',
+        justifyContent: 'center',
+    },
+    playButtonView: {
+        // marginLeft:10,
+        // fontSize:14,
+        // fontFamily:'iconfont',
+        width: width,
+        height: 215 * g_AppValue.precent,
+        //backgroundColor:'green',
+        //  opacity:0.5,
+    },
+    playButton: {
+        width: width,
+        height: 215 * g_AppValue.precent,
+        backgroundColor: 'red',
+        opacity: 0.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    backImage: {
+        width: 18 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+        marginTop: 30 * g_AppValue.precent,
+        marginLeft: 15 * g_AppValue.precent,
+    },
+
+})

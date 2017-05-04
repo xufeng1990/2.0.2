@@ -1,0 +1,346 @@
+package com.zhuomogroup.ylyk;
+
+import android.app.Activity;
+import android.app.Application;
+import android.content.Context;
+import android.support.multidex.MultiDex;
+import android.util.Log;
+
+import com.RNFetchBlob.RNFetchBlobPackage;
+import com.actionsheet.ActionSheetPackage;
+import com.brentvatne.react.ReactVideoPackage;
+import com.danikula.videocache.HttpProxyCacheServer;
+import com.danikula.videocache.ProxyCacheUtils;
+import com.danikula.videocache.file.FileNameGenerator;
+import com.facebook.drawee.backends.pipeline.Fresco;
+import com.facebook.react.ReactApplication;
+import com.facebook.react.ReactInstanceManager;
+import com.facebook.react.ReactNativeHost;
+import com.facebook.react.ReactPackage;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.soloader.SoLoader;
+import com.lzy.okgo.OkGo;
+import com.lzy.okserver.download.DownloadService;
+import com.qiyukf.unicorn.api.SavePowerConfig;
+import com.qiyukf.unicorn.api.StatusBarNotificationConfig;
+import com.qiyukf.unicorn.api.Unicorn;
+import com.qiyukf.unicorn.api.YSFOptions;
+import com.reactmodules.MainReactPackage;
+import com.reactmodules.callback.BaseStringCallback;
+import com.rnfs.RNFSPackage;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.WXAPIFactory;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhuomogroup.ylyk.qiyu.FrescoImageLoader;
+import com.zhuomogroup.ylyk.utils.SystemUtil;
+import com.zhy.changeskin.SkinManager;
+import com.zhy.http.okhttp.OkHttpUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.lang.ref.WeakReference;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Stack;
+import java.util.concurrent.TimeUnit;
+
+import cn.jpush.android.api.JPushInterface;
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+
+import static com.zhuomogroup.ylyk.consts.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.consts.YLUrlSetting.JSON_MEDIA_TYPE;
+
+//import ca.jaysoo.extradimensions.ExtraDimensionsPackage;
+
+
+public class MainApplication extends Application implements ReactApplication {
+
+    public static final long MAX_SIZE = 300 * 1024 * 1024L;
+    public static final String APP_ID = "wxf56d7d93bc226f2e";
+    public static final String APP_SECRET = "15dc6a4d1b4e9f8f3037c01f1acfbc1e";
+    public static final String QIYU_APPKEY = "d2638f57cf2a61b584537fbfa91b8f03";
+    public static final String BUGOUT_APPKEY = "8579474c2bbcbd0bfe6215fb5317dff8";
+
+    public static final String BASE_APP_KEY = "398374a3b6bb1d1238a1e3dd1af6bcf2";
+    public static final String BASE_AUTHORIZATION = "NjFhNDI1ZTYwMjdjNDY4Yzg3NWVmNjIyZWY0ZDcxY2I6YW5vbnltb3VzOi0x";
+    public static final int LAST_CSS_CODE = 20161231;
+    private IWXAPI iwxapi;
+    private YSFOptions ysfOptions; // 七鱼 客服系统 设置
+
+    private ReactContext mReactContext;
+
+    /**
+     * 对外提供整个应用生命周期的Context
+     **/
+    private static Context instance;
+    /***
+     * 寄存整个应用Activity
+     **/
+    private final Stack<WeakReference<Activity>> activitys = new Stack<WeakReference<Activity>>();
+
+
+    public ReactContext getReactContext() {
+        return mReactContext;
+    }
+
+
+    private final ReactNativeHost mReactNativeHost = new ReactNativeHost(this) {
+        @Override
+        public boolean getUseDeveloperSupport() {
+            return BuildConfig.DEBUG;
+        }
+
+        @Override
+        protected List<ReactPackage> getPackages() {
+
+            return Arrays.<ReactPackage>asList(
+                    new com.facebook.react.shell.MainReactPackage()
+//                    , new GrowingIOPackage()
+                    , new ActionSheetPackage() // <-- add this line
+                    , new RNFSPackage()
+                    , new RNFetchBlobPackage()
+                    , new MainReactPackage() //  添加自己的内容
+                    , new ReactVideoPackage()
+//                    ,new ExtraDimensionsPackage()  // <--- add here
+            );
+        }
+
+
+    };
+
+
+    @Override
+    public ReactNativeHost getReactNativeHost() {
+        return mReactNativeHost;
+    }
+
+    private void registerReactInstanceEventListener() {
+        mReactNativeHost.getReactInstanceManager().addReactInstanceEventListener(mReactInstanceEventListener);
+    }
+
+    private void unRegisterReactInstanceEventListener() {
+        mReactNativeHost.getReactInstanceManager().removeReactInstanceEventListener(mReactInstanceEventListener);
+    }
+
+    private final ReactInstanceManager.ReactInstanceEventListener mReactInstanceEventListener = new ReactInstanceManager.ReactInstanceEventListener() {
+        @Override
+        public void onReactContextInitialized(ReactContext context) {
+            if (context != null) {
+                mReactContext = context;
+            }
+        }
+    };
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+
+        SkinManager.getInstance().init(this);
+//        if (LeakCanary.isInAnalyzerProcess(this)) {
+//            // This process is dedicated to LeakCanary for heap analysis.
+//            // You should not init your app in this process.
+//            return;
+//        }
+//        LeakCanary.install(this);
+
+
+        if (instance == null) {
+            instance = this;
+        }
+
+        if (iwxapi == null) {
+            iwxapi = WXAPIFactory.createWXAPI(this, APP_ID, true);
+            iwxapi.registerApp(APP_ID);
+        }
+
+
+        OkGo.init(this);
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .retryOnConnectionFailure(true)//失败重试
+                .connectTimeout(15000L, TimeUnit.MILLISECONDS)
+                .readTimeout(15000L, TimeUnit.MILLISECONDS)
+                //其他配置
+                .build();
+
+        OkHttpUtils.initClient(okHttpClient);
+
+        if (ysfOptions == null) {
+            ysfOptions = ysfOptions();
+        }
+
+        if (!Unicorn.init(this, QIYU_APPKEY, ysfOptions, new FrescoImageLoader(this))) {
+            Log.w("ylyk", "init qiyu sdk error!");
+        }
+
+        if (SystemUtil.inMainProcess(this)) {
+            Fresco.initialize(this);
+        }
+
+//        JPushInterface.setDebugMode(true);
+        JPushInterface.init(this);
+        String registrationID = JPushInterface.getRegistrationID(this);
+        if (!(("".equals(registrationID)) || (null == registrationID))) {
+            try {
+                JSONObject object = new JSONObject();
+                object.put("client_id", registrationID);
+                object.put("token", "");
+                object.put("device", "android");
+                RequestBody requestBody = RequestBody.create(JSON_MEDIA_TYPE,
+                        object.toString());
+                OkHttpUtils.put()
+                        .url(BASE_URL_HEAD + "push" + Signature.UrlSignature())
+                        .headers(Signature.UrlHeaders(this))
+                        .requestBody(requestBody)
+                        .build()
+                        .execute(new BaseStringCallback() {
+                            @Override
+                            public void onError(Call call, Exception e, int id) {
+                                e.printStackTrace();
+                            }
+
+                            @Override
+                            public void onResponse(String response, int id) {
+
+                            }
+                        });
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+
+        }
+
+
+        SoLoader.init(this, false);
+        registerReactInstanceEventListener();
+
+        DownloadService.getDownloadManager().getThreadPool().setCorePoolSize(1);
+//        String CHANNEL = "AppStore";
+//        try {
+//            ApplicationInfo appInfo = getPackageManager().getApplicationInfo(getPackageName(),
+//                    PackageManager.GET_META_DATA);
+//            CHANNEL = appInfo.metaData.getString("CHANNEL");
+//        } catch (PackageManager.NameNotFoundException e) {
+//            e.printStackTrace();
+//        }
+
+//        GrowingIO.startWithConfiguration(this, new Configuration()
+//                .useID()
+//                .trackAllFragments()
+//                .setChannel(CHANNEL));
+    }
+
+
+
+
+    /**
+     * 对外提供Application Context
+     *
+     * @return
+     */
+    public static Context gainContext() {
+        return instance;
+    }
+
+
+    /*******************************************Application中存放的Activity操作（压栈/出栈）API（开始）*****************************************/
+
+    /**
+     * 将Activity压入Application栈
+     *
+     * @param task 将要压入栈的Activity对象
+     */
+    public void pushTask(WeakReference<Activity> task) {
+        activitys.push(task);
+    }
+
+    /**
+     * 将传入的Activity对象从栈中移除
+     *
+     * @param task
+     */
+    public void removeTask(WeakReference<Activity> task) {
+        activitys.remove(task);
+    }
+
+    /**
+     * 根据指定位置从栈中移除Activity
+     *
+     * @param taskIndex Activity栈索引
+     */
+    public void removeTask(int taskIndex) {
+        if (activitys.size() > taskIndex)
+            activitys.remove(taskIndex);
+    }
+
+    /**
+     * 将栈中Activity移除至栈顶
+     */
+    public void removeToTop() {
+        int end = activitys.size();
+        int start = 1;
+        for (int i = end - 1; i >= start; i--) {
+            if (!activitys.get(i).get().isFinishing()) {
+                activitys.get(i).get().finish();
+            }
+        }
+    }
+
+    /**
+     * 移除全部（用于整个应用退出）
+     */
+    public void removeAll() {
+        //finish所有的Activity
+        for (WeakReference<Activity> task : activitys) {
+            if (!task.get().isFinishing()) {
+                task.get().finish();
+            }
+        }
+    }
+
+
+    private HttpProxyCacheServer proxy;
+
+    public static HttpProxyCacheServer getProxy(Context context) {
+        MainApplication app = (MainApplication) context.getApplicationContext();
+        return app.proxy == null ? (app.proxy = app.newProxy()) : app.proxy;
+    }
+
+    private HttpProxyCacheServer newProxy() {
+
+        return new HttpProxyCacheServer.Builder(this).maxCacheSize(MAX_SIZE).fileNameGenerator(new FileNameGenerator() {
+            @Override
+            public String generate(String url) {
+                return ProxyCacheUtils.computeMD5(url);
+            }
+        }).build();
+    }
+
+
+    private YSFOptions ysfOptions() {
+        YSFOptions options = new YSFOptions();
+        options.statusBarNotificationConfig = new StatusBarNotificationConfig();
+        options.statusBarNotificationConfig.notificationSmallIconId = R.mipmap.ic_launcher;
+        options.savePowerConfig = new SavePowerConfig();
+        return options;
+    }
+
+    public IWXAPI getIwxapi() {
+        return iwxapi;
+    }
+
+
+    public YSFOptions getYsfOptions() {
+        return ysfOptions;
+    }
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+        MultiDex.install(this);
+    }
+}

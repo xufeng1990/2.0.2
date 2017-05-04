@@ -1,0 +1,23 @@
+//
+//  NoteView.m
+//  testView
+//
+//  Created by 友邻优课 on 2017/2/23.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "Note11View.h"
+
+@implementation Note11View
+
+- (instancetype)initWithFrame:(CGRect)frame
+{
+    self = [super initWithFrame: frame];
+    if (self) {
+        //
+        
+    }
+    return self;
+}
+
+@end

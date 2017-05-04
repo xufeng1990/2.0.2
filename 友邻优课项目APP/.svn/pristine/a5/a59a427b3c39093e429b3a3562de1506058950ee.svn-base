@@ -1,0 +1,68 @@
+package com.zhuomogroup.ylyk.network;
+
+import android.content.Context;
+
+import com.reactutils.encryption.EncryptionTools;
+import com.zhuomogroup.ylyk.utils.GMTTimeUtils;
+import com.zhuomogroup.ylyk.utils.SPUtils;
+import com.zhuomogroup.ylyk.utils.UserAgentUtils;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeMap;
+
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_AUTHORIZATION;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.USERID_Authorization;
+
+/**
+ * Created by xyb on 2017/2/20 at 友邻优课 2017
+ */
+
+public class Signature {
+    /**
+     * 多参数加密返回
+     * @param params
+     * @return
+     */
+    public static String UrlSignature(TreeMap<String, String> params) {
+        long timeMillis = System.currentTimeMillis() / 1000;
+        int random = (int) (1 + Math.random() * (10000 - 1 + 1000));
+        params.put("nonce", random + "");
+        params.put("timestamp", timeMillis + "");
+        String urlData = "";
+        for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+            urlData += "&"+stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+        }
+        urlData = urlData.substring(1);
+        String signature = EncryptionTools.MD5(urlData);
+        return "?" + urlData + "&signature=" + signature;
+    }
+
+    /**
+     * 无参数加密返回
+     * @return
+     */
+    public static String UrlSignature() {
+        long timeMillis = System.currentTimeMillis() / 1000;
+        int random = (int) (1 + Math.random() * (10000 - 1 + 1000));
+        String urlData = "nonce=" + random + "&timestamp=" + timeMillis;
+        String signature = EncryptionTools.MD5(urlData);
+        return "?" + urlData + "&signature=" + signature;
+    }
+
+    /**
+     * 添加公用请求头
+     * @param context
+     * @return
+     */
+    public static Map<String, String> UrlHeaders(Context context) {
+        HashMap<String, String> stringStringHashMap = new HashMap<>();
+        stringStringHashMap.put("Content-Type", "application/json");
+        stringStringHashMap.put("User-Agent", UserAgentUtils.getUserAgent(context) + UserAgentUtils.MANIFEST + UserAgentUtils.getVersionName(context));
+        stringStringHashMap.put("X-Date", GMTTimeUtils.GetGMTZone());
+        String Authorization = (String) SPUtils.get(context, USERID_Authorization, BASE_AUTHORIZATION);
+        stringStringHashMap.put("Authorization", "USERID " + Authorization);
+        return stringStringHashMap;
+    }
+
+}

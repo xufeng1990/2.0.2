@@ -1,0 +1,124 @@
+//
+//  CalendarBridge.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/19.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKUserTraceNativeModule.h"
+#import "YLYKCalendarViewController.h"
+#import "YLYKListenTraceViewController.h"
+#import "YLYKUserServiceModule.h"
+#import "NSStringTools.h"
+#import "YLYKTraceModel.h"
+#import "MJExtension.h"
+
+@implementation YLYKUserTraceNativeModule
+
+RCT_EXPORT_MODULE();
+
+#pragma mark -打开学习日历
+RCT_REMAP_METHOD(openCalendarViewController, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    //主要这里必须使用主线程发送,不然有可能失效
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKCalendarViewController *calendar = [[YLYKCalendarViewController alloc] init];
+        
+        //        [nav presentViewController:calendar animated:YES completion:nil];
+        [nav pushViewController:calendar animated:YES];
+    });
+}
+
+RCT_EXPORT_METHOD(goToCalendar)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKCalendarViewController *calendar = [[YLYKCalendarViewController alloc] init];
+        //        [nav presentViewController:calendar animated:YES completion:nil];
+        [nav pushViewController:calendar animated:YES];
+    });
+}
+
+RCT_EXPORT_METHOD(goToListenTraceWithStartTime:(NSString *)startTime)
+{
+    
+    NSString *dateStr = startTime;
+    NSDateFormatter* formater = [[NSDateFormatter alloc] init];
+    
+    //    [formater setTimeZone:[NSTimeZone timeZoneWithName:@"Asia/Shanghai"]];
+    [formater setDateFormat:@"YYYY-MM-dd"];
+    NSDate* date = [formater dateFromString:dateStr];
+    NSString *timeStr = [NSString stringWithFormat:@"%ld",(long)[date timeIntervalSince1970] - 28800];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        YLYKListenTraceViewController *listenTrace = [[YLYKListenTraceViewController alloc] init];
+        listenTrace.startTime = timeStr;
+        //        NSDate* date = [NSDate dateWithTimeIntervalSince1970:[startTime integerValue]];
+        listenTrace.month = [NSString stringWithFormat:@"%ld",[self month:date]];
+        listenTrace.day = [NSString stringWithFormat:@"%ld",[self day:date]];
+        [nav pushViewController:listenTrace animated:YES];
+    });
+}
+
+RCT_EXPORT_METHOD(getLearnTimeWithStartTime:(NSString *)startTime andEndTime:(NSString *)endTime resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:startTime, @"start_time", endTime, @"end_time", @"100", @"limit",nil];
+    NSDate *datenow = [NSDate date];//现在时间,你可以输出来看下是什么格式
+    NSString *timeSp = [NSString stringWithFormat:@"%ld", (long)[datenow timeIntervalSince1970]];
+    __block NSInteger totalLearnTime = 0;
+    NSString *key = [NSString stringWithFormat:@"DateLearnTime%@",startTime];
+    
+    // 说明是两天以前的数据
+    if ([startTime integerValue] <= [timeSp integerValue] - 24*60*60*2) {
+        totalLearnTime = [[NSUserDefaults standardUserDefaults] integerForKey:key];
+        if (totalLearnTime >0) {
+            totalLearnTime = [[NSUserDefaults standardUserDefaults] integerForKey:key];
+            resolve([NSString stringWithFormat:@"%ld",(long)totalLearnTime]);
+        } else {
+            [YLYKUserServiceModule getUserTraceById:USERID parameters:dict success:^(id responseObject) {
+                NSArray *array = [NSStringTools getArrayWithJSONString:responseObject];
+                for (NSDictionary *dic in array) {
+                    YLYKTraceModel *model = [YLYKTraceModel mj_objectWithKeyValues:dic];
+                    if (model.listened_time) {
+                        totalLearnTime += model.listened_time;
+                    }
+                }
+                resolve([NSString stringWithFormat:@"%ld",(long)totalLearnTime]);
+                [[NSUserDefaults standardUserDefaults] setInteger:totalLearnTime forKey:key];
+            } failure:^(NSError *error) {
+                reject(@"",@"",error);
+            }];
+        }
+    } else {
+        [YLYKUserServiceModule getUserTraceById:USERID parameters:dict success:^(id responseObject) {
+            NSArray *array = [NSStringTools getArrayWithJSONString:responseObject];
+            for (NSDictionary *dic in array) {
+                YLYKTraceModel *model = [YLYKTraceModel mj_objectWithKeyValues:dic];
+                if (model.listened_time) {
+                    totalLearnTime += model.listened_time;
+                }
+            }
+            resolve([NSString stringWithFormat:@"%ld",(long)totalLearnTime]);
+            [[NSUserDefaults standardUserDefaults] setInteger:totalLearnTime forKey:key];
+        } failure:^(NSError *error) {
+            reject(@"",@"",error);
+        }];
+    }
+}
+
+
+- (NSInteger)day:(NSDate *)date{
+    NSDateComponents *components = [[NSCalendar currentCalendar] components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay) fromDate:date];
+    return [components day];
+}
+
+
+- (NSInteger)month:(NSDate *)date{
+    NSDateComponents *components = [[NSCalendar currentCalendar] components:(NSCalendarUnitYear | NSCalendarUnitMonth | NSCalendarUnitDay) fromDate:date];
+    return [components month];
+}
+
+@end

@@ -1,0 +1,452 @@
+//  心得列表
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component} from 'react';
+import {
+    AppRegistry,
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    Platform,
+    NetInfo,
+    InteractionManager
+} from 'react-native';
+
+import UltimateListView from "react-native-ultimate-listview";
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import CourseNote from '../../component/AlbumCell/courseNote.js';
+import Service from '../../configs/Service.js';
+import Util from '../../common/util.js';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import Loading from "../../component/Loading/Loading.js";
+import Icon from "../../common/Icon.js";
+import Header from "../../component/HeaderBar/HeaderBar.js";
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import BusinessDetails from '../Note/BusinessDetails.js';
+
+var service = Service.service;
+// 类
+export default class NoteListView extends Component {
+    // 构造函数
+    _alldata = [];//页面数据
+    _dataSource = new ListView.DataSource({rowHasChanged: (row1, row2) => row1 !== row2});
+    constructor(props) {
+        super(props);
+        this.state = {
+            hotSource: [],//精选数据
+            dataSource: this._dataSource.cloneWithRows([]),
+            courseInfo: {},//Info对象
+            isLoading: true,//加载圈
+            currentImageUrl: ""
+        };
+
+        this.hotNoteList = [];
+        this.courseId = 0;
+        this.userInfo = {};
+        this.loadingCount = 0;
+    }
+
+    // 加载
+    componentWillMount() {
+        let that = this;
+
+        if (Platform.OS === 'android') {
+          //判断网路状态
+            NetInfo.addEventListener('change', (res) => {
+
+                if (res == 'none' || res == 'NONE') {
+
+                    g_AppValue.isConnected = false
+
+                } else {
+
+                    g_AppValue.isConnected = true
+                }
+            });
+        }
+
+        //获取用户信息
+        RnNativeModules.getUserInfo()
+        .then((userInfo) => {
+
+            userInfo = JSON.parse(userInfo);
+
+            that.userInfo = userInfo;
+        });
+
+        let courseInfo = g_AppValue.courseInfo;
+        let courseId = '';
+
+        if (Platform.OS === 'ios') {
+
+            courseId = courseInfo.id;
+
+        } else {
+
+            courseId = JSON.parse(courseInfo).id;
+        };
+
+        that.courseId = courseId;
+        //获取精选心得数据
+        service.getNoteList({'page': 1, 'is_hot': 'true', 'course_id': courseId}).then((data) => {
+
+            that.hotNoteList = JSON.parse(data);
+
+            that.setState({hotSource: that.hotNoteList, isLoading: false});
+
+        }).catch((err) => {
+
+        });
+
+        // 获取课程信息
+        service.getCourseById(courseId + "")
+        .then((courseData) => {
+
+            if (!courseData.id) {
+
+                courseData = JSON.parse(courseData);
+            }
+
+            that.setState({courseInfo: courseData, isLoading: false});
+
+        }).catch((err) => {
+
+        });
+
+    }
+
+    _renderHeader() {
+
+        var courseData = this.state.courseInfo;
+        var hotNoteList = this.hotNoteList;
+        if (!courseData.teachers)
+            return;
+
+        return (
+            <View>
+
+                <View style={[styles.backgroundView, {backgroundColor: '#fff'}]}
+                  >
+                    <Image style={styles.leftImage} source={!courseData.id ? require('../../imgs/43.png'):{uri: ImgUrl.baseImgUrl + 'course/' + courseData.id + '/cover'}}/>
+
+                    <View style={styles.rightBigView}>
+                        <Text numberOfLine={2} style={styles.titleText}>{courseData.name}</Text>
+
+                        <View style={styles.teacherNameView}>
+                            <Text style={styles.teacherNameText}>{courseData.teachers[0].name + "\t\t"}|</Text>
+                            <Text style={styles.timeText}>{"\t\t" + Util.timeFormat(courseData.duration)}</Text>
+                        </View>
+
+                    </View>
+
+                </View>
+
+                {hotNoteList.length == 0 ? null
+                    : <View style={styles.selectView}
+                            keyC={this.state.hotNoteList}>
+
+                        <View style={styles.selectHeaderView}>
+                            <Text style={styles.selectHeaderText}>精选心得</Text>
+                        </View>
+
+                        <View style={styles.selectView}>
+
+                            {hotNoteList.map((item, i) => this._selectView(item, i))}
+
+                        </View>
+                    </View>}
+
+                <View style={styles.selectHeaderView}>
+
+                    <Text style={styles.selectHeaderText}>全部心得</Text>
+
+                </View>
+
+            </View>
+        );
+    }
+
+      //跳转同学详情页
+    _studentDetailsView(fansId, rowID) {
+
+        this.props.navigator.push({
+            component: BusinessDetails,
+            params: {
+                fansId: fansId,
+                rowID: rowID,
+                hideHeader: 1,
+            }
+        })
+    }
+
+    //精选心得
+    _selectView(item, i) {
+        var fansId = item.user.id;
+        var rowID = i;
+        let str = item.content;
+        let st = str.replace(/<br>/g, '\n');
+        let noteId = item.id;
+        let isLiked = item.is_liked;
+        if (!item.images) {return;};
+
+        return (
+          <CourseNote
+            headerImageAction= {()=>{this._studentDetailsView(fansId,rowID)}}
+            headPortraitImage={!item.user.id ? require('../../imgs/11.png') : {uri: ImgUrl.baseImgUrl + 'user/' + item.user.id + '/avatar'}}
+            name={item.user.nickname}
+            time={Util.getDiffTime(new Date(item.in_time * 1000))}
+            content={st}
+            noteId={noteId}
+            thumbNumber={item.like_count}
+            imagesData={item.images}
+            isLiked={isLiked}
+            />
+          );
+    }
+
+    //全部新的
+    _renderRow(rowData, sectionID, rowID) {
+        var fansId = rowData.user.id;
+        let str = rowData.content;
+        let st = str.replace(/<br>/g, '\n');
+        let noteId = rowData.id;
+        let isLiked = rowData.is_liked;
+        let isMe = rowData.user.id == this.userInfo.id;
+
+        return (
+          <CourseNote
+            headerImageAction= {()=>{this._studentDetailsView(fansId,rowID)}}
+            headPortraitImage={!rowData.user.id ? require('../../imgs/11.png') : {uri: ImgUrl.baseImgUrl + 'user/' + rowData.user.id + '/avatar'}}
+            name={rowData.user.nickname}
+            time={Util.getDiffTime(new Date(rowData.in_time * 1000))}
+            content={st}
+            noteId={noteId}
+            isMe={isMe}
+            imagesData={rowData.images}
+            isLiked={isLiked}
+            thumbNumber={rowData.like_count}
+            thumActionFnc={() => {}}
+            />
+
+            );
+    }
+
+    //去分享
+    _goToShare() {}
+
+    //返回
+    _backFun() {
+
+        RnNativeModules.NoteListViewController();
+    }
+
+    render() {
+        let selectData = this.state.hotNoteList;
+        // console.log('"isLoading"' + this.state.isLoading)
+        return (
+            <View style={styles.container}>
+                {Platform.OS !== "ios" ? <Header backFun={this._backFun} title={"心得列表"} rightBtn={Icon.share} rightFun={this._goToShare()}/> : null}
+                {this.state.isLoading
+                    ? null
+                    : g_AppValue.isConnected
+                    ? <UltimateListView
+                        ref='listView'
+                        onFetch={this._onListRefersh.bind(this)}
+                        enableEmptySections
+                        //----Normal Mode----
+                        separator={false}
+                        headerView={this._renderHeader.bind(this)}
+                        rowView={this._renderRow.bind(this)}
+                        refreshableTitleWillRefresh="下拉刷新..."
+                        refreshableTitleInRefreshing="下拉刷新..."
+                        refreshableTitleDidRefresh="Finished"
+                        refreshableTitleDidRefreshDuration={10000}
+                        allLoadedText=''
+                        waitingSpinnerText=''
+                        />
+
+                        : <BlankPages ImageUrl={require('../../imgs/none.png')} contentText='无法连接到服务器,请检查你的网络设置'/>
+                      }
+
+            </View>
+        );
+    }
+
+      //获取数据
+    _getCourseList(page, callback, options) {
+
+        const pageLimit = 10;
+
+        let that = this;
+
+        Service.service.getNoteList({'page': page, 'limit': pageLimit, 'course_id': this.courseId})
+        .then((data) => {
+
+            if (page <= 1) {
+
+                that._alldata = [];
+            };
+            var resultData = JSON.parse(data);
+
+            for (var i = 0; i < resultData.length; i++) {
+
+                that._alldata.push(resultData[i]);
+            };
+
+            that.setState({
+
+                dataSource: that.state.dataSource.cloneWithRows(that._alldata),
+
+                isLoading: false
+            });
+
+            options.pageLimit = pageLimit;
+            callback(resultData, options);
+
+        }).catch((err) => {
+
+            this.setState({isLoading: false})
+
+        })
+
+    }
+
+    _onListRefersh(page = 1, callback, options) {
+
+        this._getCourseList(page, callback, options);
+    }
+
+}
+
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f2f5f6'
+    },
+    headerView: {
+        width: g_AppValue.screenWidth,
+        height: Platform.OS === "ios"? 64 * g_AppValue.precent : 44 * g_AppValue.precent,
+        borderWidth: 1 * g_AppValue.precent,
+        borderColor: '#b2b2b2'
+    },
+    headerContentView: {
+        width: g_AppValue.screenWidth,
+        height: 24 * g_AppValue.precent,
+        marginTop: 31 * g_AppValue.precent,
+        flexDirection: 'row'
+    },
+    headerTitle: {
+        marginTop: 2 * g_AppValue.precent,
+        marginLeft: 130 * g_AppValue.precent,
+        fontSize: 18 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    backButtomA: {
+        marginTop: 2 * g_AppValue.precent,
+        width: 10 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+        marginLeft: 12 * g_AppValue.precent
+    },
+    backButtom: {
+        width: 10 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+
+    },
+    gotoPalyButtomA: {
+        marginLeft: 113 * g_AppValue.precent,
+        width: 24 * g_AppValue.precent,
+        height: 24 * g_AppValue.precent,
+        marginRight: 11 * g_AppValue.precent
+    },
+    gotoPalyButtom: {
+        width: 24 * g_AppValue.precent,
+        height: 24 * g_AppValue.precent,
+
+    },
+    backgroundView: {
+        height: 110 * g_AppValue.precent,
+        width: g_AppValue.screenWidth,
+        flexDirection: 'row',
+        marginBottom: 10 * g_AppValue.precent
+    },
+    leftImage: {
+        width: 120 * g_AppValue.precent,
+        height: 90 * g_AppValue.precent,
+        marginTop: 10 * g_AppValue.precent,
+        marginLeft: 13 * g_AppValue.precent
+    },
+    rightBigView: {
+        marginLeft: 15 * g_AppValue.precent,
+        marginTop: 24 * g_AppValue.precent,
+        width: 206 * g_AppValue.precent,
+        height: 64 * g_AppValue.precent,
+    },
+    titleText: {
+        fontSize: 14 * g_AppValue.precent,
+        fontWeight: 'bold',
+        color: '#5a5a5a'
+    },
+    teacherNameView: {
+        height: 15 * g_AppValue.precent,
+        width: 150 * g_AppValue.precent,
+        marginTop: 28 * g_AppValue.precent,
+        flexDirection: 'row'
+    },
+    teacherNameText: {
+        fontSize: 12 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    timeText: {
+        marginTop: 2 * g_AppValue.precent,
+        fontSize: 11 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    playButton: {
+        position: 'absolute',
+        width: 24 * g_AppValue.precent,
+        height: 24 * g_AppValue.precent,
+        right: 21 * g_AppValue.precent,
+        top: 65 * g_AppValue.precent,
+    },
+    selectView: {
+        flex: 1,
+        backgroundColor: '#f2f5f6'
+    },
+    selectHeaderView: {
+        width: g_AppValue.screenWidth,
+        height: 56 * g_AppValue.precent,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#ffffff'
+    },
+    selectHeaderText: {
+        fontSize: 16 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    footerMoreView: {
+        marginTop: -10 * g_AppValue.precent,
+        width: g_AppValue.screenWidth,
+        height: 35 * g_AppValue.precent,
+        backgroundColor: '#f8fafb',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 10 * g_AppValue.precent
+    },
+    footerMoreText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c'
+    }
+})

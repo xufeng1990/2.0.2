@@ -1,0 +1,11 @@
+package com.zhuomogroup.ylyk.controinterface;
+
+import android.app.Activity;
+
+/**
+ * Created by xyb on 2017/3/24.
+ */
+
+public interface QIYUInterface {
+    void pushInterFace(Activity context);
+}

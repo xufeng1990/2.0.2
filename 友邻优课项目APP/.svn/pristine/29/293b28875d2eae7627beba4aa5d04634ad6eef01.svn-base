@@ -1,0 +1,78 @@
+package com.reactutils.callback;
+
+import android.content.Context;
+import android.widget.Toast;
+
+import com.facebook.react.bridge.Promise;
+import com.google.gson.Gson;
+import com.reactutils.encryption.EncryptionUtil;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.bean.RequestBean;
+import com.zhuomogroup.ylyk.utils.SPUtils;
+
+import okhttp3.Call;
+
+/**
+ * Created by xyb on 2017/2/22 at 友邻优课 2017
+ */
+
+public class ServiceStringCallback extends BaseStringCallback {
+
+
+    private static final int HTTP_500 = 500;
+    private static final int HTTP_600 = 600;
+    private Context currentActivity;
+    private String baseUrl = "";
+    private Promise promise;
+
+    /**
+     * 封装请求返回参数
+     *
+     * @param promise         RN回调方法
+     * @param baseUrl         数据地址 做MD5转换 缓存key值
+     * @param currentActivity 上下文
+     */
+    public ServiceStringCallback(Promise promise, String baseUrl, Context currentActivity) {
+        this.baseUrl = baseUrl;
+        this.promise = promise;
+        this.currentActivity = currentActivity;
+    }
+
+    /**
+     * 封装请求返回参数
+     *
+     * @param promise         RN回调方法
+     * @param currentActivity 上下文
+     */
+    public ServiceStringCallback(Promise promise, Context currentActivity) {
+        this.promise = promise;
+        this.currentActivity = currentActivity;
+    }
+
+    @Override
+    public void onError(Call call, Exception e, int id) {
+        e.printStackTrace();
+        Toast.makeText(currentActivity, R.string.http_exception, Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onResponse(String response, int id) {
+        Gson gson = new Gson();
+        RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+        if (requestBean.isResult()) {
+            response = requestBean.getResponse();
+            if (!"".equals(baseUrl)) {
+                SPUtils.put(currentActivity, EncryptionUtil.MD5(baseUrl), response);
+            }
+            promise.resolve(response);
+        } else {
+            if (requestBean.getCode() >= HTTP_500 && requestBean.getCode() <= HTTP_600) {
+                Toast.makeText(currentActivity, R.string.http_500, Toast.LENGTH_LONG).show();
+            }
+            promise.reject(requestBean.getCode() + "", requestBean.getResponse());
+        }
+
+    }
+
+
+}

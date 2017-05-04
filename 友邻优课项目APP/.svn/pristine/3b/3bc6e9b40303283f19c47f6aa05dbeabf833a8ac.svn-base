@@ -1,0 +1,326 @@
+//
+//  YLYKPlayerControlView.m
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/25.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKPlayerControlView.h"
+
+@implementation YLYKPlayerControlView
+
+#pragma mark - Init
+-(instancetype)initWithFrame:(CGRect)frame{
+    
+    self = [super initWithFrame:frame];
+    if (self) {
+        [self configView];
+        [self loadView];
+    }
+    return self;
+}
+
+- (void)configView {
+    
+    [self addSubview:self.playControlBtn];
+    [self addSubview:self.backBtn];
+    [self addSubview:self.playBtn];
+    [self addSubview:self.forwardBtn];
+    [self addSubview:self.speedBtn];
+    [self addSubview:self.progressView];
+    [self addSubview:self.playTimeLbl];
+    [self addSubview:self.remainTimeLbl];
+    [self addSubview:self.slider];
+
+}
+
+/**   加载视图  **/
+- (void)loadView {
+    CGFloat space = 71;
+    CGRect frame = CGRectMake(32, 11 / 2.0, 18, 18);
+    
+    //播放控制按钮
+    self.playControlBtn.frame = frame;
+    
+    //循环播放提示
+    frame  = CGRectMake(16, self.playControlBtn.bottom + 11, 50, 11);
+    self.playCycleLbl.frame = frame;
+    
+    //后退播放按钮
+    frame.origin.x    = self.playControlBtn.right + space;
+    frame.origin.y    = 11 / 2.0;
+    frame.size.width  = 14;
+    frame.size.height = 9;
+    self.backBtn.frame = frame;
+    
+    //播放暂停按钮
+    frame.origin.x    = self.backBtn.right + space;
+    frame.origin.y    = 0;
+    frame.size.width  = 39;
+    frame.size.height = 39;
+    self.playBtn.frame = frame;
+    
+    //前进按钮
+    frame.origin.x    = self.playBtn.right + space;
+    frame.origin.y    = 15 / 2.0;
+    frame.size.width  = 14;
+    frame.size.height = 9;
+    self.forwardBtn.frame = frame;
+    
+    //加速按钮
+    frame.origin.x    = self.forwardBtn.right + space;
+    frame.origin.y    = 11 / 2.0;
+    frame.size.width  = 18;
+    frame.size.height = 18;
+    self.speedBtn.frame = frame;
+
+    //播放进度条progressView
+    frame = CGRectMake(20, self.playBtn.bottom + 62, 416, 3);
+    self.progressView.frame = frame;
+    
+    //当前播放时间
+    frame = CGRectMake(20, self.progressView.bottom + 10, 40, 11);
+    self.playTimeLbl.frame = frame;
+    self.playTimeLbl.text  = @"00:00";
+    
+    //剩余播放时间
+    frame = CGRectMake(self.progressView.right - 40, self.progressView.bottom + 10, 40, 11);
+    self.remainTimeLbl.frame = frame;
+    self.remainTimeLbl.text  = @"00:00";
+    
+    
+}
+
+#pragma mark - 通过过代码块获取回调方法
+/*
+ *通过代码块获取回调方法
+ */
+
+- (void)getControlEventCallBack:(YLYKPlayerControlEventBlock)controlEventBlock {
+    self.controlEventBlock = controlEventBlock;
+}
+
+- (void)getSliderEventCallBack:(YLYKPlayerSliderEventBlock)sliderEventBlock {
+    self.sliderEventBlock = sliderEventBlock;
+
+}
+
+#pragma mark - 播放控制台按钮事件
+
+/*
+ *循环播放按钮
+ */
+- (void)cyclePlay:(UIButton *)sender {
+    self.controlEventBlock(sender.tag);
+}
+
+/*
+ *后退播放按钮
+ */
+- (void)backPlay:(UIButton *)sender {
+    self.controlEventBlock(sender.tag);
+}
+
+/*
+ *播放暂停按钮
+ */
+- (void)playOrPause:(UIButton *)sender {
+    self.controlEventBlock(sender.tag);
+}
+
+/*
+ *前进播放按钮
+ */
+- (void)forwardPlay:(UIButton *)sender {
+    self.controlEventBlock(sender.tag);
+}
+
+/*
+ *加速播放按钮
+ */
+- (void)speedPlay:(UIButton *)sender {
+    self.controlEventBlock(sender.tag);
+}
+
+
+#pragma mark -slider手势相关：slider
+//移动滑块调整播放进度
+- (void)sliderValueChanged:(UISlider *)sender {
+    self.sliderEventBlock(YLYKSliderEventValueChanged,sender);
+}
+
+- (void)touchCancel:(UISlider *)sender {
+    self.sliderEventBlock(YLYKSliderEventTouchCancel,sender);
+}
+
+- (void)touchUp:(UISlider *)sender {
+    self.sliderEventBlock(YLYKSliderEventTouchUp,sender);
+}
+
+
+#pragma mark - Getter Methods
+
+/*
+ *播放循环控制按钮
+ */
+- (UIButton *)playControlBtn {
+    if (!_playControlBtn) {
+        _playControlBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_playControlBtn setImage:[UIImage imageNamed:@"player_playControl_normal"] forState:UIControlStateNormal];
+        [_playControlBtn addTarget:self action:@selector(cyclePlay:) forControlEvents:UIControlEventTouchUpInside];
+        [_playControlBtn setTag:YLYKPlayerControlEventCycle];
+    }
+    return _playControlBtn;
+}
+/*
+ *播放循环提示Label
+ */
+- (UILabel *)playCycleLbl{
+    if (!_playCycleLbl) {
+        _playCycleLbl = [YLYKCreateBasicControlManager showLabInView:self
+                                                                 rect:CGRectZero
+                                                                 text:nil
+                                                            textColor:KColor_9a9b9c
+                                                             textFont:FONT11
+                                                         textAligment:NSTextAlignmentRight
+                                                        numberOfLines:1];
+        _playCycleLbl.backgroundColor = [UIColor whiteColor];
+    }
+    return _playCycleLbl;
+}
+/*
+ *后退播放按钮
+ */
+- (UIButton *)backBtn {
+    if (!_backBtn) {
+        _backBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_backBtn setImage:[UIImage imageNamed:@"player_playControl_normal"] forState:UIControlStateNormal];
+        [_backBtn addTarget:self action:@selector(backPlay:) forControlEvents:UIControlEventTouchUpInside];
+        [_backBtn setTag:YLYKPlayerControlEventBack];
+    }
+    return _backBtn;
+}
+
+/*
+ *播放暂停按钮
+ */
+- (UIButton *)playBtn {
+    if (!_playBtn) {
+        _playBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_playBtn setImage:[UIImage imageNamed:@"player_play_nor"] forState:UIControlStateNormal];
+        [_playBtn addTarget:self action:@selector(playOrPause:) forControlEvents:UIControlEventTouchUpInside];
+        [_playBtn setTag:YLYKPlayerControlEventPlay];
+
+    }
+    return _playBtn;
+}
+
+/*
+ *前进按钮
+ */
+- (UIButton *)forwardBtn {
+    if (!_forwardBtn) {
+        _forwardBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_forwardBtn setImage:[UIImage imageNamed:@"player_playControl_normal"] forState:UIControlStateNormal];
+        [_forwardBtn addTarget:self action:@selector(forwardPlay:) forControlEvents:UIControlEventTouchUpInside];
+        [_forwardBtn setTag:YLYKPlayerControlEventForward];
+    }
+    return _forwardBtn;
+}
+
+/*
+ *加速按钮
+ */
+- (UIButton *)speedBtn {
+    if (!_speedBtn) {
+        _speedBtn = [UIButton buttonWithType:UIButtonTypeCustom];
+        [_speedBtn setImage:[UIImage imageNamed:@"player_playControl_normal"] forState:UIControlStateNormal];
+        [_speedBtn addTarget:self action:@selector(speedPlay:) forControlEvents:UIControlEventTouchUpInside];
+        [_speedBtn setTag:YLYKPlayerControlEventSpeed];
+    }
+    return _speedBtn;
+}
+
+/*
+ *播放进度条progressView
+ */
+- (UIProgressView *)progressView {
+    if (!_progressView) {
+        _progressView = [[UIProgressView alloc]init];
+    }
+    return _progressView;
+}
+
+/*
+ *当前播放时间
+ */
+- (UILabel *)playTimeLbl{
+    if (!_playTimeLbl) {
+        _playTimeLbl = [YLYKCreateBasicControlManager showLabInView:self
+                                                            rect:CGRectZero
+                                                            text:nil
+                                                       textColor:KColor_9a9b9c
+                                                        textFont:FONT11
+                                                    textAligment:NSTextAlignmentLeft
+                                                   numberOfLines:1];
+        _playTimeLbl.backgroundColor = [UIColor whiteColor];
+    }
+    return _playTimeLbl;
+}
+
+/*
+ *剩余播放时间
+ */
+- (UILabel *)remainTimeLbl{
+    if (!_remainTimeLbl) {
+        _remainTimeLbl = [YLYKCreateBasicControlManager showLabInView:self
+                                                               rect:CGRectZero
+                                                               text:nil
+                                                          textColor:KColor_9a9b9c
+                                                           textFont:FONT11
+                                                       textAligment:NSTextAlignmentRight
+                                                      numberOfLines:1];
+        _remainTimeLbl.backgroundColor = [UIColor whiteColor];
+    }
+    return _remainTimeLbl;
+}
+
+
+- (YLYKSlider *)slider {
+    if (!_slider) {
+        //左右轨的图片
+        UIImage *stetchLeftTrack     = [UIImage imageNamed:@"slider_bg"];
+        UIImage *stetchRightTrack    = [UIImage imageNamed:@"play_toumiingmengceng"];
+        //滑块图片
+        UIImage *thumbImage          = [UIImage imageNamed:@"slider"];
+        UIImage *thumbImageHighlight = [UIImage imageNamed:@"slider_seleted"];
+        _slider = [[YLYKSlider alloc] initWithFrame:CGRectMake(20, self.playBtn.bottom + 56 + 30, 416, 30)];
+        _slider.maximumTrackTintColor = [UIColor clearColor];
+        _slider.backgroundColor = [UIColor clearColor];
+        _slider.value = 0.0;
+        _slider.minimumValue = 0.0;
+        _slider.maximumValue = 1.0;
+        [_slider setMinimumTrackImage:stetchLeftTrack forState:UIControlStateNormal];
+        [_slider setMaximumTrackImage:stetchRightTrack forState:UIControlStateNormal];
+        //注意这里要加UIControlStateHightlighted的状态，否则当拖动滑块时滑块将变成原生的控件
+        [_slider setThumbImage:thumbImageHighlight forState:UIControlStateHighlighted];
+        [_slider setThumbImage:thumbImage forState:UIControlStateNormal];
+        //滑块拖动时的事件
+        [_slider addTarget:self action:@selector(sliderValueChanged:) forControlEvents:UIControlEventValueChanged];
+        [_slider addTarget:self action:@selector(touchUp:) forControlEvents:UIControlEventTouchUpInside];
+        [_slider addTarget:self action:@selector(touchCancel:) forControlEvents:UIControlEventAllTouchEvents];
+    }
+    return _slider;
+}
+
+
+/*
+// Only override drawRect: if you perform custom drawing.
+// An empty implementation adversely affects performance during animation.
+- (void)drawRect:(CGRect)rect {
+    // Drawing code
+}
+*/
+
+@end

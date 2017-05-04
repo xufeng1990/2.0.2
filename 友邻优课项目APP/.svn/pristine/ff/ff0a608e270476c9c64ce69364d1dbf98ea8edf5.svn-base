@@ -1,0 +1,220 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  WebView,
+  Dimensions,
+  Modal,
+  DeviceEventEmitter,
+  ActivityIndicator
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+import VideoPlayer from 'react-native-video-player';
+import Util from '../../common/util.js';
+import Video from 'react-native-video'; // eslint-disable-line
+// 类
+var {width,height} = Dimensions.get('window');
+export default class VideoView extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      play:false,
+      anima:true,
+
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+    //
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+  _onLoadStart(){
+      console.log('视频开始加载回调');
+      // this.setState({
+      //   animating:!this.state.animating,
+      // })
+  }
+  _onLoad(){
+
+
+  }
+  _onProgress(){
+
+      console.log('每隔250ms调用一次')
+  }
+  _onEnd(){
+    DeviceEventEmitter.emit('hideModal','1');
+      console.log('视频加载结束回调')
+  }
+  _onError(e){
+
+    Util.alertDialog({
+      msg:'视频加载出现错误,请稍后再试',
+      oneBtn:'',
+      cancelBtn:'取消',
+      oneFun:()=>{this.goBack()},
+    })
+  }
+  playAgain(){
+    this._onLoadStart();
+  }
+  goBack(){
+      DeviceEventEmitter.emit('hideModal','1');
+  }
+
+
+
+  // <VideoPlayer
+  //
+  //    video={{ uri: 'http://us.sinaimg.cn/004hClTkjx079lQCBLMj01040100ydVR0k01.mp4?label=mp4_hd&Expires=1490351461&ssig=8xb7DE2Lja&KID=unistore,video' }}
+  //    videoWidth={width}
+  //    videoHeight={height}
+  //
+  //
+  //  />
+  // //     <VideoPlayer
+  //
+  //       video={{ uri: 'https://mv.static.youlinyouke.com/web/declaration-1490083383-160k44100.mp4' }}
+  //       videoWidth={width}
+  //       videoHeight={height}
+  //
+  //
+  //     />
+
+    // _bigView(){
+    //   this.player.presentFullscreenPlayer()
+    // }
+    // _touchView(){
+    //   console.log('点击播放按钮了 ')
+    //   this.setState({hideView:true,})
+    // }
+    // _buttonPlay(){
+    //   console.log('点击播放按钮了 ')
+    //   this.setState({hideView:false,})
+    // }
+    // _playButtonView(){
+    //   return(
+    //      <TouchableHighlight onPress = {()=>this._buttonPlay()}>
+    //     <View style={styles.playButton}>
+    //    <TouchableHighlight onPress = {()=>this._buttonPlay()}>
+    //        <Image style = {{width:40,height:40,backgroundColor:'yellow'}}></Image>
+    //        </TouchableHighlight>
+    //      </View>
+    //       </TouchableHighlight>
+    //   )
+    // }
+    _backText(){
+      this.setState({play:true})
+      DeviceEventEmitter.emit('hideModal','1');
+    }
+  render(){
+    return (
+
+      <View style={styles.container}>
+        <TouchableOpacity onPress={()=>{this._backText()}}>
+        <Image style={styles.backImage} source={require('../../imgs/close.png')} />
+      </TouchableOpacity>
+    <Video
+      ref={(ref) => {this.player = ref}}
+             source={!this.props.videoSource ? {uri:'https://mv.static.youlinyouke.com/web/declaration-1490083383-160k44100.mp4'} :{uri:this.props.videoSource}}//视频播放地址
+              style={styles.video}      //样式
+              volum={4}                 //声音放大倍数
+              paused={this.state.play}            //true暂停 false开始
+              rate={this.state.rate}    // 0 暂停 1正常
+              muted={this.state.muted}  //true静音 false 正常
+              resizeMode={this.state.resizeMode}//
+              repeat={this.state.repeat}//
+              onLoadStart={this._onLoadStart} //视频开始加载回调
+              onLoad={this._onLoad}           //视频加载完毕回调
+              onProgress={this._onProgress}   //每隔250ms调用一次
+              onEnd={this._onEnd}             //视频加载结束回调
+              onError={this._onError}         //视频加载错误回调
+          >
+        
+    </Video>
+
+      </View>
+    );
+  }
+
+  // 自定义方法区域
+  // your method
+
+}
+// <View style={styles.playView} >
+//   <Text style={styles.playButton} >播放</Text>
+// </View>
+
+
+var styles = StyleSheet.create({
+  container:{
+    flex:1,
+  backgroundColor:'black',
+  },
+  video:{
+    marginTop:180*g_AppValue.precent,
+    width:width,
+    height:215*g_AppValue.precent,
+    //backgroundColor:'red',
+  },
+  playView:{
+      width:width,
+      height:20*g_AppValue.precent,
+      backgroundColor:'red',
+      justifyContent:'center',
+  },
+  playButtonView:{
+    // marginLeft:10,
+    // fontSize:14,
+    // fontFamily:'iconfont',
+    width:width,
+    height:215*g_AppValue.precent,
+    //backgroundColor:'green',
+  //  opacity:0.5,
+
+  },
+    playButton:{
+    width:width,
+    height:215*g_AppValue.precent,
+    backgroundColor:'red',
+     opacity:0.5,
+    justifyContent:'center',
+    alignItems:'center',
+
+  },
+  backImage:{
+    width:18*g_AppValue.precent,
+    height:18*g_AppValue.precent,
+    marginTop:30*g_AppValue.precent,
+    marginLeft:15*g_AppValue.precent,
+
+
+  },
+  centering: {
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 8,
+},
+})

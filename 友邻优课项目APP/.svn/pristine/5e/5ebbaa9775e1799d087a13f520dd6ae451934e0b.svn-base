@@ -1,0 +1,211 @@
+//  AlbumShows
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  DeviceEventEmitter,
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+import Icon from "../../common/Icon.js";
+import Download from "../../pages/Download/Download.js";
+import Util from '../../common/util.js';
+import Service from '../../configs/Service.js';
+import *as RnNativeModules from '../../configs/RnNativeModules.js';
+import Pay from "../../pages/Pay/pay.js";
+
+// 类
+export default class AlbumShows extends Component {
+  // 构造函数
+     _sortingView1 = true;
+  constructor(props) {
+
+    super(props);
+    this.state = {
+      sortingView2:this.props.is_finished,
+      noLogin:false,
+
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+  goToQiView(){
+    RnNativeModules.goToQiYu();
+  }
+
+  //打开支付
+  goToPayView(){
+    this.props.navigator.push({
+      component: Pay
+    })
+  }
+
+  //打开下载页面
+  _goToDownloadView(){
+    RnNativeModules.getUserInfo().then((info)=>{
+        if (info == 0 || info == '0') {
+          Util.AppToast('请先登录');
+          this.setState({
+              noLogin:false,
+          })
+        }else {
+          this.setState({
+              noLogin:true,
+          })
+          if(!info.id){
+            info = JSON.parse(info);
+          }
+
+           if(!Util.isVip(info)) {
+              Util.alertDialog({
+                msg:'成为友邻学员即可下载任意课程!',
+                oneBtn:'立即入学',
+                okBtn:'咨询阿树老师',
+                cancelBtn:'取消',
+                okFun:()=>{this.goToQiView()},
+                oneFun:()=>{this.goToPayView()},
+              })
+           }else{
+              this.props.navigator.push({
+
+                component: Download,
+                params:{
+                  albumId:this.props.albumId,
+                  albumName:this.props.albumName,
+                }
+
+              })
+           }
+        }
+    })
+
+
+
+
+    // }else {
+    //   Util.alert({
+    //     msg:'成为友林学员即可下载任意课程!',
+    //     oneBtn:'立即入学',
+    //     okBtn:'咨询阿树老师',
+    //     cancelBtn:'取消',
+    //     okFun:()=>{this.goToQiView()},
+    //     oneBtn:()=>{this.goToPayView()},
+    //   })
+    // }
+
+
+  }
+  _sortingView(){
+
+    if (this._sortingView1) {
+        DeviceEventEmitter.emit('changSorting',1);
+  this.setState({
+    sortingView2:!this.state.sortingView2
+
+})
+
+this._sortingView1 = false
+} else {
+    DeviceEventEmitter.emit('changSorting',1);
+  this.setState({
+    sortingView2:!this.state.sortingView2
+  })
+  this._sortingView1 = true
+}
+  }
+
+  render(){
+    //console.log('fffffffffffff' + this.props.is_finished[this.props.rowID])
+
+    return (
+      <View style ={{flex:1}}>
+        <View style = {styles.topView}>
+          <View style={styles.leftView} >
+            <Text style={styles.numberText} > {this.props.is_finished ?  '共' + this.props.course_count + '集'   :'更新至' + this.props.course_count + '集'}</Text>
+            <Image style = {styles.lineImage} />
+            <TouchableOpacity activeOpacity ={1} onPress={()=>{this._sortingView()}}>
+            <Text style={[styles.numberText,{marginLeft:7* g_AppValue.precent}]}>{this.state.sortingView2 ? '正序' : '倒序'}</Text>
+            </TouchableOpacity>
+          </View>
+          <TouchableOpacity activeOpacity ={1} onPress={()=>{this._goToDownloadView()}} >
+          <View style={styles.rightView} >
+                <Text style={[styles.numberText,{ fontFamily: 'iconfont'}]}>{Icon.download}</Text>
+                <Text style={styles.numberText}>下载</Text>
+          </View>
+            </TouchableOpacity>
+        </View>
+      </View>
+
+    );
+  }
+  // <Text style={styles.numberText}>
+  //   <Text style={[styles.numberText,{ fontFamily: 'iconfont'}]}>{Icon.filter}</Text>
+  //   筛选
+  // </Text>
+
+
+}
+var styles = StyleSheet.create({
+  topView:{
+    // marginTop:5,
+  //  borderTopWidth:1 * g_AppValue.precent,
+  //  borderTopColor:'#f2f5f6',
+    width:g_AppValue.screenWidth,
+    height:40 * g_AppValue.precent,
+    alignItems: 'center',
+    backgroundColor:'#ffffff',
+    flexDirection:'row',
+
+  },
+  leftView:{
+    flexDirection:'row',
+      alignItems: 'center',
+    marginLeft:12 * g_AppValue.precent,
+    width:175.5 * g_AppValue.precent,
+    //backgroundColor:'green',
+  },
+  numberText:{
+    fontSize:14 * g_AppValue.precent,
+    color:'#9a9b9c',
+  },
+  lineImage:{
+    width:1 * g_AppValue.precent,
+    height:14 * g_AppValue.precent,
+    backgroundColor:'black',
+    marginLeft:6 * g_AppValue.precent,
+  },
+  arrangementImage:{
+    width:16 * g_AppValue.precent,
+    height:14 * g_AppValue.precent,
+    backgroundColor:'black',
+    marginLeft:8 * g_AppValue.precent,
+  },
+  rightView:{
+    justifyContent:'flex-end',
+      alignItems: 'center',
+    flexDirection:'row',
+    width:175.5 * g_AppValue.precent,
+    //backgroundColor:'yellow',
+  },
+})

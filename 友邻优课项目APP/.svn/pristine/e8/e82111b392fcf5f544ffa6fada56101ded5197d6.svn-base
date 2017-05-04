@@ -1,0 +1,10 @@
+//获得数据接口
+//获得数据接口
+
+'use strict'
+import {NativeModules, Platform} from 'react-native';
+import g_AppValue from './AppGlobal.js';
+//ios获得知识首页数据object
+export function getCouse({}) {
+
+}

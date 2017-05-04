@@ -1,0 +1,11 @@
+package com.zhuomogroup.ylyk.controinterface;
+
+import java.util.ArrayList;
+
+/**
+ * Created by xyb on 2017/3/12.
+ */
+
+public interface PushTipsInterface {
+    void pushInterFace(String tips,int courseId, ArrayList<String> imgPaths);
+}

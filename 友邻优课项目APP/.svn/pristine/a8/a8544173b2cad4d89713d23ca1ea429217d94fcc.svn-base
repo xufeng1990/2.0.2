@@ -1,0 +1,25 @@
+//
+//  YLYKImagePickerController.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/11.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+typedef void(^imageArrayBlock)(NSMutableArray * imageArrayBlock);
+
+@interface YLYKImagePickerController : UIViewController
+
+/*
+ *图像数组
+ */
+@property (nonatomic,strong) NSMutableArray * imageArray;
+
+/*
+ *图像数组回调代码块
+ */
+@property (nonatomic,copy) imageArrayBlock imageArrayBlock;
+
+@end

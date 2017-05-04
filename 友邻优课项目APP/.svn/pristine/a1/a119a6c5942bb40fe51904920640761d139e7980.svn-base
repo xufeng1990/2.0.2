@@ -1,0 +1,216 @@
+package com.reactutils.request;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import static com.reactutils.request.YLBaseService.GET;
+import static com.reactutils.request.YLBaseService.POST;
+
+/**
+ * Created by xyb on 2017/4/19.
+ */
+
+public class YLAlbumModule extends ReactContextBaseJavaModule {
+
+
+    private YLBaseService service;
+
+    public YLAlbumModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        service = new YLBaseService(reactContext.getApplicationContext());
+    }
+
+    @Override
+    public String getName() {
+        return null;
+    }
+
+    /**
+     * 获取专辑列表
+     *
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getAlbumList(ReadableMap parameters, Promise promise) {
+        try {
+
+
+            String nativeString =   service.getNativeString((ReadableNativeMap) parameters);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            service.baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定专辑的信息
+     *
+     * @param album_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getAlbumById(String album_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            service.baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 点赞指定的专辑
+     *
+     * @param album_id
+     * @param promise
+     */
+    @ReactMethod
+    public void likeAlbum(String album_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+            url.put("like");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            service.baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 获取指定专辑的评论列表
+     *
+     * @param album_id
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getAlbumCommentList(String album_id, ReadableMap parameters, Promise promise) {
+        try {
+
+            String nativeString =   service.getNativeString((ReadableNativeMap) parameters);
+
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query;
+            query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+            url.put("comment");
+
+
+            jsonObject.put("type", GET);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            service.baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * 创建新的专辑评论
+     *
+     * @param album_id
+     * @param bodyJson
+     * @param promise
+     */
+    @ReactMethod
+    public void createAlbumComment(String album_id, ReadableMap bodyJson, Promise promise) {
+        try {
+
+            String nativeString =   service.getNativeString((ReadableNativeMap) bodyJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject(nativeString);// 主体json
+            JSONObject query = new JSONObject();
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+            url.put("comment");
+
+
+            jsonObject.put("type", POST);
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            service.baseService(promise, jsonObject);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+}

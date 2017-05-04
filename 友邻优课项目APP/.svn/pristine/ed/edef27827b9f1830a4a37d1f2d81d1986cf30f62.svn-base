@@ -1,0 +1,15 @@
+//
+//  ImageListCell.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/13.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+@interface ImageListCell : UITableViewCell
+@property (weak, nonatomic) IBOutlet UIImageView *imageView;
+@property (weak, nonatomic) IBOutlet UIButton *deleteBtn;
+- (IBAction)deleteImage:(id)sender;
+@end

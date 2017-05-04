@@ -1,0 +1,178 @@
+@import "style.00-variables";
+.ui-btn {
+	position: relative;
+	display: block;
+	width: 100%;
+	padding: 3px 9px;
+	box-sizing: border-box;
+	text-align: center;
+	text-decoration: none;
+	color: @white;
+	background-color: @grey;
+	border-radius: 5px;
+	border: none;
+	outline: none;
+	-webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+	overflow: hidden;
+	
+	&:not([class*="ui-line-"]) {
+        line-height: 2.2em;
+	}
+	
+    &:active {
+        color: @white;
+        background-color: @grey;
+    }
+    
+    &:disabled,
+    &[disabled] {
+        color: @white !important;
+        background-color: #ccc !important;   
+        border-color: #ccc !important;
+    }
+	
+	&.ui-inverted {
+	    color: @grey;
+        border: 1.5px solid @grey;
+		background-color: transparent;
+		&:active {
+            color: @white;
+            background-color: @grey;
+        }
+	}
+	
+	&.ui-red {
+		color: @white;
+		background-color: @red;
+		&:active {
+			background-color: @red-dark;
+		}
+		&.ui-inverted {
+			color: @red;
+			border: 1.5px solid @red;
+			background-color: transparent;
+			&:active {
+				color: @white;
+				background-color: @red;
+			}
+		}
+	}
+	
+	&.ui-yellow {
+		color: @white;
+		background: @yellow;
+		&:active {
+			background-color: @yellow-dark;
+		}
+		&.ui-inverted {
+			color: @yellow;
+			border: 1.5px solid @yellow;
+			background-color: transparent;
+			&:active {
+				color: @white;
+				background-color: @yellow;
+			}
+		}
+	}
+	
+	&.ui-orange {
+        color: @white;
+        background: @orange;
+        &:active {
+            background-color: @orange-dark;
+        }
+        &.ui-inverted {
+            color: @orange;
+            border: 1.5px solid @orange;
+            background-color: transparent;
+            &:active {
+                color: @white;
+                background-color: @orange;
+            }
+        }
+    }
+	
+	&.ui-blue {
+		color: @white;
+		background: @blue;
+		&:active {
+			background-color: @blue-dark;
+		}
+		&.ui-inverted {
+			color: @blue;
+			border: 1.5px solid @blue;
+			background-color: transparent;
+			&:active {
+				color: @white;
+				background-color: @blue;
+			}
+		}
+	}
+	
+	&.ui-green {
+		color: @white;
+		background: @green;
+		&:active {
+			background-color: @green-dark;
+		}
+		&.ui-inverted {
+			color: @green;
+			border: 1.5px solid @green;
+			background-color: transparent;
+			&:active {
+				color: @white;
+				background-color: @green;
+			}
+		}
+	}
+}
+
+.ui-link {
+    //padding-left: (@padding-lr / 2);
+    //padding-right: (@padding-lr / 2);
+    color: @grey;
+    
+    &:active {
+        color: #999;
+    }
+    
+    &.ui-white {
+        color: @white;
+    }
+    &.ui-black {
+        color: @black;
+    }
+    &.ui-grey {
+        color: @grey;
+    }
+    &.ui-red {
+        color: @red;
+        &:active {
+            color: @red-dark;
+        }
+    }
+    &.ui-yellow {
+        color: @yellow;
+        &:active {
+            color: @yellow-dark;
+        }
+    }
+    &.ui-orange {
+        color: @orange;
+        &:active {
+            color: @orange-dark;
+        }
+    }
+    &.ui-blue {
+        color: @blue;
+        &:active {
+            color: @blue-dark;
+        }
+    }
+    &.ui-green {
+        color: @green;
+        &:active {
+            color: @green-dark;
+        }
+    }
+}

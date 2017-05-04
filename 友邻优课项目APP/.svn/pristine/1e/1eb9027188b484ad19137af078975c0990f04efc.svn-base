@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+
+    android:layout_height="match_parent">
+
+    <RelativeLayout
+        android:id="@+id/title_re"
+        android:layout_width="match_parent"
+        android:background="#fff"
+        android:layout_height="45px">
+
+        <ImageView
+            android:id="@+id/back_img"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_centerVertical="true"
+            android:paddingLeft="12px"
+            android:paddingRight="12px"
+            android:src="@mipmap/title_back_img" />
+
+        <TextView
+            android:id="@+id/title_center_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:text="1/9"
+            android:textSize="18px"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/close_text"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:gravity="center"
+            android:paddingLeft="12px"
+            android:paddingRight="12px"
+            android:text="@string/photo_close"
+            android:textSize="18px" />
+
+
+    </RelativeLayout>
+
+
+    <android.support.v4.view.ViewPager
+        android:id="@+id/photoViewPager"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="#fff"
+        android:layout_above="@+id/select_recyclerView"
+        android:layout_below="@+id/title_re">
+
+
+    </android.support.v4.view.ViewPager>
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/select_recyclerView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#fff"
+        android:layout_alignParentBottom="true"
+        android:paddingBottom="9px"
+        android:paddingLeft="13px"
+        android:paddingRight="13px"
+        android:paddingTop="9px">
+
+    </android.support.v7.widget.RecyclerView>
+
+
+</RelativeLayout>

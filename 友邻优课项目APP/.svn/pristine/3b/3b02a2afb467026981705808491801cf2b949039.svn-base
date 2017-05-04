@@ -1,0 +1,132 @@
+//  TeacherIntroduce
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+} from 'react-native';
+import  g_AppValue from '../../../configs/AppGlobal.js';
+import ScrollableTabView from 'react-native-scrollable-tab-view';
+import TeacherAlbum from './teacherAlbumTab.js';
+import TeacherIntroduceTab from './TeacherIntroduceTab.js';
+import TeacherTab from '../../../component/tabs/TeacherTab.js';
+// 类
+ const tabNames = ['简介','专辑'];
+export default class TeacherIntroduce extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      // your code
+    };
+  }
+
+  // 加载完成
+  componentDidMount(){
+    //
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+_goBack(){
+  this.props.navigator.pop();
+}
+  // render
+  render(){
+    return (
+      <ScrollView>
+      <View style={styles.container}>
+        <View style = {styles.headerView} >
+          <TouchableWithoutFeedback style = {styles.actionLeftItem} onPress = {()=>this._goBack()} >
+          <Image  style={styles.leftItem}  />
+          </TouchableWithoutFeedback>
+          <TouchableWithoutFeedback style = {styles.actionRightItem}  >
+          <Image  style={styles.rightItem}   />
+          </TouchableWithoutFeedback>
+            <Image style={styles.headerImage} />
+            <Text style={styles.nameText} >夏鹏</Text>
+            <Text style={styles.introduceText} >资深英语教师培训师</Text>
+        </View>
+        <ScrollableTabView
+          initialPage ={0}
+           locked={true}
+          renderTabBar = {() => <TeacherTab tabNames = {tabNames} />}
+          >
+          <TeacherIntroduceTab    tabLabel = '简介' />
+          <TeacherAlbum tabLabel= '专辑' />
+
+        </ScrollableTabView>
+
+      </View>
+    </ScrollView>
+    );
+  }
+
+  // 自定义方法区域
+  // your method
+
+}
+
+var styles = StyleSheet.create({
+  container:{
+    flex:1,
+    backgroundColor:'#f2f5f6'
+  },
+  headerView:{
+    width:g_AppValue.screenWidth,
+    height:240,
+    backgroundColor:'#ffffff',
+    alignItems:'center',
+  },
+  actionLeftItem:{
+    position:'absolute',
+    top:33,
+    left:12,
+  },
+  leftItem:{
+    width:11,
+    height:18,
+  },
+  actionRightItem:{
+    position:'absolute',
+    top:31,
+    right:12,
+  },
+  rightItem:{
+    width:24,
+    height:24,
+    backgroundColor:'black',
+  },
+  headerImage:{
+    width:77,
+    height:77,
+    marginTop:62,
+  },
+  nameText:{
+    fontSize:14,
+    color:'#5a5a5a',
+    marginTop:10,
+  },
+  introduceText:{
+    fontSize:11,
+    color:'#9a9b9c',
+    marginTop:8,
+  }
+
+
+})

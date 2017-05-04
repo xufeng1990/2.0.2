@@ -1,0 +1,26 @@
+//rootProject.name = 'ylyk'
+
+include ':app',':VLC-SDK',':PhotoPicker', ':mcalendarview',':changeskin'
+//,':library'
+//,':rxdownload2'
+//, ':jcvideoplayer-lib'
+
+//, ':jpush-react-native'
+include ':react-native-action-sheet'
+//project(':reactamaplocation').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-amap-location')
+project(':react-native-action-sheet').projectDir = new File(rootProject.projectDir, '../ylyk_rn/node_modules/@yfuks/react-native-action-sheet/android')
+include ':Bugout-SDK'
+//include ':sdk'
+include ':react-native-video'
+project(':react-native-video').projectDir = new File(rootProject.projectDir, '../ylyk_rn/node_modules/react-native-video/android')
+include ':react-native-fs'
+project(':react-native-fs').projectDir = new File(rootProject.projectDir, '../ylyk_rn/node_modules/react-native-fs/android')
+include ':react-native-fetch-blob'
+project(':react-native-fetch-blob').projectDir = new File(rootProject.projectDir, '../ylyk_rn/node_modules/react-native-fetch-blob/android')
+
+//include ':ExtraDimensions'
+//project(':ExtraDimensions').projectDir = new File(rootProject.projectDir, '../ylyk_rn/node_modules/react-native-extra-dimensions-android/android')
+
+include ':ReactAndroid'
+
+project(':ReactAndroid').projectDir = new File(rootProject.projectDir, '../ylyk_rn/node_modules/react-native/ReactAndroid')

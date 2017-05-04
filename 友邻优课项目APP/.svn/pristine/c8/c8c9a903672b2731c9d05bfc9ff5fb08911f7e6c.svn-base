@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+
+    <RelativeLayout
+        android:id="@+id/searchView_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#fff"
+        android:paddingBottom="9px"
+        android:paddingTop="9px">
+
+        <RelativeLayout
+            android:id="@+id/search_re"
+            android:layout_width="295px"
+            android:layout_height="28px"
+            android:layout_marginLeft="12px"
+            android:background="@drawable/searchview_bg">
+
+
+            <ImageView
+                android:id="@+id/searc_view"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="8px"
+                android:src="@mipmap/searc_view" />
+
+            <EditText
+                android:id="@+id/searchView"
+                android:layout_width="match_parent"
+                android:layout_height="20px"
+                android:layout_centerVertical="true"
+                android:layout_toRightOf="@+id/searc_view"
+                android:background="@null"
+                android:imeOptions="actionSearch"
+                android:maxLength="16"
+                android:singleLine="true"
+                android:textSize="16px" />
+
+        </RelativeLayout>
+
+
+        <ImageView
+            android:id="@+id/search_clear"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/search_re"
+            android:layout_alignRight="@+id/search_re"
+            android:layout_alignTop="@+id/search_re"
+            android:paddingLeft="8px"
+            android:paddingRight="8px"
+            android:src="@mipmap/search_clear" />
+
+        <TextView
+            android:id="@+id/text_back"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignBottom="@+id/search_re"
+            android:layout_alignParentRight="true"
+            android:layout_alignTop="@+id/search_re"
+            android:gravity="center"
+            android:paddingRight="12px"
+            android:text="取消"
+            android:textColor="#5a5a5a"
+            android:textSize="14px" />
+
+
+    </RelativeLayout>
+
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/recycler_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/searchView_title"
+        android:layout_marginLeft="12px"
+        android:layout_marginRight="12px"
+        android:layout_marginTop="10px"
+        android:background="@android:color/darker_gray" />
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/searchView_title">
+
+        <RelativeLayout
+            android:id="@+id/null_search"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#fff">
+
+            <ImageView
+                android:id="@+id/null_search_img"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="120px"
+                android:src="@mipmap/null_search" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/null_search_img"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="79px"
+                android:text="暂无搜索记录"
+                android:textSize="14px" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/loading_re"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#fff"
+            android:visibility="gone">
+
+            <com.reactutils.view.MyFragment
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true">
+
+            </com.reactutils.view.MyFragment>
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:id="@+id/null_network"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#fff"
+            android:visibility="gone">
+
+            <ImageView
+                android:id="@+id/null_network_img"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="120px"
+                android:src="@mipmap/null_network" />
+
+            <TextView
+                android:id="@+id/center_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/null_network_img"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="79px"
+                android:text="无法连接到服务器，请检查你的网络设置"
+                android:textSize="14px" />
+
+            <TextView
+                android:id="@+id/setting"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@+id/center_text"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="40px"
+                android:text=""
+                android:textColor="#b53430"
+                android:textSize="14px" />
+        </RelativeLayout>
+    </RelativeLayout>
+
+
+</RelativeLayout>

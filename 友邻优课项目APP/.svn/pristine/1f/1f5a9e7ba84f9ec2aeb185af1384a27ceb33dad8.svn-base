@@ -1,0 +1,93 @@
+//
+//  YLYKPlayerManager.h
+//  YLYK-App
+//
+//  Created by 友邻优课 on 2017/1/20.
+//  Copyright © 2017年 Beijing Zhuomo Culture Media Co., Ltd. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import "YLYKCourse.h"
+@class YLYKCourse;
+
+#pragma mark - 自定义的代码块
+
+/*
+ *音频播放器当前时间代码块
+ *@param currentTime   音频当前播放时间
+ *@param spareTime     音频剩余播放时间
+ *@param totalLoadTime 总共加载时间
+ */
+typedef void(^currentTime)(int currentTime,float spareTime,float totalLoadTime); // progress
+
+/*
+ *音频播放器切换状态
+ *@param readyPlay   是否已准备播放
+ */
+typedef void(^readyPlay)(BOOL readyPlay); // player状态切换
+typedef void(^cycleBlock)(int cycle);
+typedef void(^switchObj)(NSObject *lastObj, NSObject *newObj); // 切换obj时的回调
+
+#pragma mark - playFinshhCallbackDelegate
+@protocol playFinshhCallbackDelegate <NSObject>
+
+- (void)DoSomethingWhenFinished;
+
+@end
+
+@interface YLYKPlayerManager : NSObject
+
+@property (nonatomic, copy) currentTime block;
+@property (nonatomic, copy) readyPlay readyPlayBlock;
+@property (nonatomic, copy) cycleBlock cycleBlock;
+
+@property (nonatomic, assign) int cycle;
+@property (nonatomic, assign) id <playFinshhCallbackDelegate> delegate;
+@property (nonatomic, assign) BOOL isplay;
+@property (nonatomic, assign) BOOL is_drag;
+
+/*
+ *创建音频播放器
+ *@param courseModel 课程类对象
+ *@param userId 用户ID
+ */
+- (void)createPlayer:(YLYKCourse *)courseModel withUserID:(NSInteger)userId;
+
+/*
+ *获取播放器单例
+ */
++ (instancetype)sharedPlayer;
+
+/*
+ *判断是否正在播放
+ */
+- (BOOL)isPlaying;
+
+/*
+ *播放音频
+ */
+- (void)play;
+
+/*
+ *暂停音频
+ */
+- (void)pause;
+
+/*
+ *拖动到指定位置进行播放音频
+ *@param position 播放进度
+ */
+- (void)seekTo:(float)position;
+
+/*
+ *获取当前时间
+ */
+- (NSInteger)getCurrentTime;
+
+/*
+ *设置音频播放速度
+ *
+ */
+- (void)setPlayingWithRate: (float)rate;
+
+@end

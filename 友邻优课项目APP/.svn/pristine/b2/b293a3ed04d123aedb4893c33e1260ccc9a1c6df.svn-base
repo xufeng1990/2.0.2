@@ -1,0 +1,16 @@
+//
+//  LoginViewController.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/6.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <React/RCTBridgeModule.h>
+typedef void(^loginSuccess)(NSString *userId);
+@interface LoginViewController : UIViewController <RCTBridgeModule>
+@property (nonatomic, copy) loginSuccess loginSuccess;
+
+- (void)text:(loginSuccess)block;
+@end

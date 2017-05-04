@@ -1,0 +1,27 @@
+/**
+ * //获取版本号
+ */
+
+'use strict'
+import {
+  NativeModules,
+  Platform
+} from 'react-native'
+
+var YLYKApplicationNativeModule = NativeModules.YLYKApplicationNativeModule;
+
+
+export default {
+  /**
+   * 获取版本号
+   */
+  getVersion: YLYKApplicationNativeModule.getVersion,
+  /**
+   * 获取build号
+   */
+  getBuild: YLYKApplicationNativeModule.getBuild,
+  /**
+   * 是否在reciew
+   */
+  getReviewVersion: Platform.OS === 'ios' ? YLYKApplicationNativeModule.getReviewVersion : undefined,
+}

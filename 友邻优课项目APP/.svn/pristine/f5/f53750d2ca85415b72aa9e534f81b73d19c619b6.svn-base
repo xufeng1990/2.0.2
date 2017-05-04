@@ -1,0 +1,620 @@
+package com.reactutils.userinfo;
+
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.widget.Toast;
+
+import com.alipay.PayResult;
+import com.alipay.sdk.app.PayTask;
+import com.facebook.react.bridge.Arguments;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.google.gson.Gson;
+import com.reactutils.callback.BaseStringCallback;
+import com.reactutils.controller.ReacBean;
+import com.tencent.mm.sdk.modelpay.PayReq;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.activity.YLCalendarActivity;
+import com.zhuomogroup.ylyk.activity.YLLearnPathActivity;
+import com.zhuomogroup.ylyk.activity.YLLoginActivity;
+import com.zhuomogroup.ylyk.activity.YLMainActivity;
+import com.zhuomogroup.ylyk.activity.YLSearchActivity;
+import com.zhuomogroup.ylyk.base.YLBaseUrl;
+import com.zhuomogroup.ylyk.bean.RequestBean;
+import com.zhuomogroup.ylyk.controller.QiYuActivityController;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhuomogroup.ylyk.pupwindow.SharePopupWindow;
+import com.zhuomogroup.ylyk.service.AudioPlaybackService;
+import com.zhuomogroup.ylyk.utils.SPUtils;
+import com.zhy.http.okhttp.OkHttpUtils;
+
+import org.greenrobot.eventbus.EventBus;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+
+import javax.annotation.Nullable;
+
+import cn.jpush.android.api.JPushInterface;
+import cn.jpush.android.api.TagAliasCallback;
+import okhttp3.Call;
+import okhttp3.MediaType;
+
+import static com.zhuomogroup.ylyk.activity.YLCalendarActivity.INTENT_LEARN_PATH;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.LAST_AUDIO_ID;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.USERID_AUTHORIZATION;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.USER_INFO;
+
+/**
+ * Created by xyb on 2017/3/21.
+ */
+
+public class BridgeNativeModule extends ReactContextBaseJavaModule {
+    private static final int THUMB_SIZE = 150;
+    public static final String BRIDGE_NATIVE = "BridgeNative";
+    public static final String APPLICATION_JSON_CHARSET_UTF_8 = "application/json; charset=utf-8";
+    public static Promise promise;
+    private final Context mContext;
+    private final ReactApplicationContext reactContext;
+    private String order_string;
+
+    private static final int SDK_PAY_FLAG = 1;
+    private Promise AliPromise;
+    public static final String ALI_PAY_WIN = "9000";
+    public static final String ALI_PAY_WAIT = "8000";
+    public static final String ALI_PAY_ERROR = "4000";
+    public static final String ALI_PAY_DOUBLE = "5000";
+    public static final String ALI_PAY_USER_CANCEL = "6001";
+    public static final String ALI_PAY_NET_ERROR = "6002";
+    public static final String ALI_PAY_NULL = "6004";
+    public static final String ALI_PAY_OTHER = "其它";
+    private Handler mHandler;
+
+    public BridgeNativeModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        mContext = reactContext.getApplicationContext();
+        this.reactContext = reactContext;
+    }
+
+    @Override
+    public String getName() {
+        return BRIDGE_NATIVE;
+    }
+
+    /**
+     * 获得用户的userid
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getUserID(Promise promise) {
+        try {
+            String user_info = (String) SPUtils.get(mContext, USER_INFO, "");
+            if (user_info.equals("")) {
+                promise.resolve(0 + "");
+            } else {
+                JSONObject object = new JSONObject(user_info);
+                int userId = object.getInt("id");
+                promise.resolve(userId + "");
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+
+    }
+
+    /**
+     * 注销登录方法
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void logout(Promise promise) {
+        SPUtils.remove(mContext, USER_INFO);
+        SPUtils.remove(mContext, USERID_AUTHORIZATION);
+        EventBus.getDefault().post("logout");
+        WritableNativeMap writableNativeMap = new WritableNativeMap();
+        writableNativeMap.putBoolean("LogoutSuccess", true);
+        sendTransMisson(reactContext, "LogoutSuccess", writableNativeMap);
+        JPushInterface.setAlias(mContext, "-1", new TagAliasCallback() {
+            @Override
+            public void gotResult(int i, String s, Set<String> set) {
+
+            }
+        });
+    }
+
+    /**
+     * @param reactContext
+     * @param eventName    事件名
+     * @param params       传惨
+     */
+    public void sendTransMisson(ReactContext reactContext, String eventName, @Nullable WritableMap params) {
+        reactContext
+                .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+
+                .emit(eventName, params);
+
+    }
+
+    /**
+     * 跳转到七鱼方法
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void goToQiyu(Promise promise) {
+        QiYuActivityController controller = new QiYuActivityController();
+        controller.pushInterFace(getCurrentActivity());
+    }
+
+    /**
+     * 打开登录页面
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void openLoginViewController(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            Intent intent = new Intent(currentActivity, YLLoginActivity.class);
+            ReacBean reacBean = new ReacBean();
+            reacBean.setFrom("ReactNative");
+            reacBean.setPromise(promise);
+            Bundle bundle = new Bundle();
+            bundle.putParcelable("reacBean", reacBean);
+            intent.putExtra("reacBean", bundle);
+            currentActivity.startActivity(intent);
+            this.promise = promise;
+        }
+    }
+
+
+    public static Promise getPromise() {
+        return promise;
+    }
+
+    public static void setPromise(Promise promise) {
+        BridgeNativeModule.promise = promise;
+    }
+
+    /**
+     * 获得学习时间
+     *
+     * @param startTime
+     * @param endTime
+     * @param promise
+     * @throws JSONException
+     */
+    @ReactMethod
+    public void getLearnTimeWithStartTime(String startTime, String endTime, final Promise promise) throws JSONException {
+        String user_info = (String) SPUtils.get(mContext, USER_INFO, "");
+        if (!user_info.equals("")) {
+            JSONObject jsonObject = new JSONObject(user_info);
+            int userId = jsonObject.getInt("id");
+            TreeMap<String, String> treeMap = new TreeMap<>();
+            treeMap.put("start_time", startTime + "");
+            treeMap.put("end_time", endTime + "");
+
+            OkHttpUtils.get()
+                    .url(BASE_URL_HEAD + "user/" + userId + "/trace" + Signature.UrlSignature(treeMap))
+                    .headers(Signature.UrlHeaders(mContext))
+                    .build()
+                    .execute(new BaseStringCallback() {
+                        @Override
+                        public void onError(Call call, Exception e, int id) {
+                            e.printStackTrace();
+                            promise.reject(e);
+                        }
+
+                        @Override
+                        public void onResponse(String response, int id) {
+                            try {
+
+                                JSONObject jsonObject1 = new JSONObject(response);
+                                boolean result = jsonObject1.getBoolean("result");
+                                int listen_time = 0;
+                                if (result) {
+                                    response = jsonObject1.getString("response");
+                                    JSONArray jsonArray = new JSONArray(response);
+                                    for (int i = 0; i < jsonArray.length(); i++) {
+                                        JSONObject json = jsonArray.getJSONObject(i);
+                                        int listened_time = json.getInt("listened_time");
+                                        listen_time += listened_time;
+                                    }
+                                    promise.resolve(listen_time + "");
+                                }
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                                promise.reject(e);
+                            }
+                        }
+                    });
+        } else {
+            promise.resolve(0 + "");
+        }
+    }
+
+    /**
+     * 打开日历页面
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void goToCalendar(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        Intent intent = new Intent(currentActivity, YLCalendarActivity.class);
+        currentActivity.startActivity(intent);
+    }
+
+    /**
+     * 打开日历页面
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void goToLearnPath(String format, Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        Intent intent = new Intent(currentActivity, YLLearnPathActivity.class);
+        intent.putExtra(INTENT_LEARN_PATH, format);
+        currentActivity.startActivity(intent);
+    }
+
+    /**
+     * 打开搜索页面
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void goToSearchView(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        Intent intent = new Intent(currentActivity, YLSearchActivity.class);
+        currentActivity.startActivity(intent);
+    }
+
+    /**
+     * 微信分享信息
+     *
+     * @param readableMap
+     * @param promise
+     */
+
+    @ReactMethod
+    public void shareWXMesage(ReadableMap readableMap, Promise promise) {
+        if (getCurrentActivity() != null) {
+            try {
+                final String nativeString = getNativeString((ReadableNativeMap) readableMap);
+                getCurrentActivity().runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        SharePopupWindow sharePopupWindow = new SharePopupWindow(getCurrentActivity(), nativeString);
+                        sharePopupWindow.showPopwindow(getCurrentActivity());
+                    }
+                });
+
+
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+    }
+
+    private String getNativeString(ReadableNativeMap updateUserJson) throws JSONException {
+        String string = updateUserJson.toString();
+        JSONObject object = new JSONObject(string);
+        JSONObject nativeMap1 = object.getJSONObject("NativeMap");
+
+        return nativeMap1.toString();
+    }
+
+    private String buildTransaction(final String type) {
+        return (type == null) ? String.valueOf(System.currentTimeMillis()) : type + System.currentTimeMillis();
+    }
+
+    /**
+     * 去微信支付方法
+     *
+     * @param readableMap
+     * @param promise
+     */
+    @ReactMethod
+    public void goToPay(ReadableMap readableMap, Promise promise) {
+        setPromise(promise);
+        String id = readableMap.getString("goods_id");
+        String count = readableMap.getString("count");
+        String chanel = readableMap.getString("channel");
+        JSONObject object = new JSONObject();
+        try {
+            object.put("goods_id", id);
+            object.put("channel", chanel);
+            object.put("count", count);
+            OkHttpUtils.postString()
+                    .headers(Signature.UrlHeaders(mContext))
+                    .url(YLBaseUrl.BASE_URL_HEAD + "order" + Signature.UrlSignature())
+                    .content(object.toString())
+                    .mediaType(MediaType.parse(APPLICATION_JSON_CHARSET_UTF_8))
+                    .build().execute(new BaseStringCallback() {
+                @Override
+                public void onError(Call call, Exception e, int id) {
+
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+                    try {
+                        Gson gson = new Gson();
+                        RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                        if (requestBean.isResult()) {
+                            response = requestBean.getResponse();
+                            JSONObject object1 = new JSONObject(response);
+                            boolean result = object1.getBoolean("result");
+                            JSONObject aPackage = object1.getJSONObject("package");
+                            if (result) {
+
+                                JSONObject payment = aPackage.getJSONObject("payment");
+                                sendMsg(payment);
+                            } else {
+                                String message = aPackage.getString("message");
+                                Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show();
+                            }
+
+                        }
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void sendMsg(JSONObject json) throws JSONException {
+        PayReq req = new PayReq();
+        //req.appId = "wxf8b4f85f3a794e77";  // 测试用appId
+        req.appId = json.getString("app_id");
+        req.partnerId = json.getString("partner_id");
+        req.prepayId = json.getString("prepay_id");
+        req.nonceStr = json.getString("nonce_str");
+        req.timeStamp = json.getString("timestamp");
+        req.packageValue = json.getString("package");
+        req.sign = json.getString("sign");
+        req.extData = "app data"; // optional
+        if (getCurrentActivity() != null) {
+            // 在支付之前，如果应用没有注册到微信，应该先调用IWXMsg.registerApp将应用注册到微信
+            MainApplication application = (MainApplication) getCurrentActivity().getApplication();
+            application.getIwxapi().sendReq(req);
+        }
+    }
+
+    /**
+     * 支付宝支付方法
+     *
+     * @param readableMap
+     * @param promise
+     */
+    @ReactMethod
+    public void goToPayALI(ReadableMap readableMap, final Promise promise) {
+        this.AliPromise = promise;
+        String id = readableMap.getString("goods_id");
+        String count = readableMap.getString("count");
+        String chanel = readableMap.getString("channel");
+        JSONObject object = new JSONObject();
+        try {
+            object.put("goods_id", id);
+            object.put("channel", chanel);
+            object.put("count", count);
+            OkHttpUtils.postString()
+                    .headers(Signature.UrlHeaders(mContext))
+                    .url(YLBaseUrl.BASE_URL_HEAD + "order" + Signature.UrlSignature())
+                    .content(object.toString())
+                    .mediaType(MediaType.parse(APPLICATION_JSON_CHARSET_UTF_8))
+                    .build().execute(new BaseStringCallback() {
+                @Override
+                public void onError(Call call, Exception e, int id) {
+
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+                    if (getCurrentActivity() != null) {
+                        try {
+
+                            Gson gson = new Gson();
+                            RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                            if (requestBean.isResult()) {
+                                response = requestBean.getResponse();
+                                JSONObject object1 = new JSONObject(response);
+                                boolean result = object1.getBoolean("result");
+                                JSONObject aPackage = object1.getJSONObject("package");
+                                if (result) {
+                                    JSONObject payment = aPackage.getJSONObject("payment");
+                                    order_string = payment.getString("order_string");
+                                    getCurrentActivity().runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            AliPayThread aliPayThread = new AliPayThread();
+                                            aliPayThread.start();
+                                            mHandler = new Handler() {
+                                                public void handleMessage(Message msg) {
+                                                    PayResult result = new PayResult((Map<String, String>) msg.obj);
+                                                    boolean isPay = false;
+                                                    switch (result.getResultStatus()) {
+                                                        case ALI_PAY_WIN:
+                                                            isPay = true;
+                                                            break;
+                                                        case ALI_PAY_WAIT:
+                                                            isPay = false;
+                                                            break;
+                                                        case ALI_PAY_ERROR:
+                                                            isPay = false;
+                                                            break;
+                                                        case ALI_PAY_DOUBLE:
+                                                            isPay = false;
+                                                            break;
+                                                        case ALI_PAY_USER_CANCEL:
+                                                            isPay = false;
+                                                            break;
+                                                        case ALI_PAY_NET_ERROR:
+                                                            isPay = false;
+                                                            break;
+                                                        case ALI_PAY_NULL:
+                                                            isPay = false;
+                                                            break;
+                                                        case ALI_PAY_OTHER:
+                                                            isPay = false;
+                                                            break;
+                                                    }
+
+                                                    if (AliPromise != null) {
+                                                        WritableMap map = Arguments.createMap();
+                                                        map.putBoolean("is_succeed", isPay);
+                                                        promise.resolve(map);
+                                                    }
+                                                }
+
+                                            };
+                                        }
+                                    });
+
+                                } else {
+                                    String message = aPackage.getString("message");
+                                    Toast.makeText(mContext, message, Toast.LENGTH_SHORT).show();
+                                }
+
+                            }
+
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                }
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 支付宝支付异步任务
+     *
+     * @author Simon
+     */
+    private class AliPayThread extends Thread {
+
+
+        @Override
+        public void run() {
+            PayTask alipay = new PayTask(getCurrentActivity());
+            Map<String, String> result = alipay.payV2(order_string, true);
+            Message msg = new Message();
+            msg.what = SDK_PAY_FLAG;
+            msg.obj = result;
+            mHandler.sendMessage(msg);
+        }
+    }
+
+    /**
+     * 现在是否正在播放方法
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void isPlayingOrPause(Promise promise) {
+        boolean play = AudioPlaybackService.isPlay();
+        WritableMap writableMap = new WritableNativeMap();
+        writableMap.putBoolean("isPlayingOrPause", play);
+        promise.resolve(writableMap);
+    }
+
+    /**
+     * 上一首是否有播放内容
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void isExistPlayedTrace(Promise promise) {
+        if (getCurrentActivity() != null) {
+            int i = (int) SPUtils.get(getCurrentActivity(), LAST_AUDIO_ID, 0);
+            if (i == 0) {
+                promise.resolve(false);
+            } else {
+                promise.resolve(true);
+            }
+        }
+    }
+
+    /**
+     * 将自己关闭
+     */
+    @ReactMethod
+    public void dismiss() {
+        final Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            if (currentActivity instanceof YLMainActivity) {
+                currentActivity.runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ((YLMainActivity) currentActivity).dismiss();
+                    }
+                });
+            }
+        }
+
+    }
+
+    /**
+     * 跳转到学习轨迹页面
+     *
+     * @param time
+     */
+    @ReactMethod
+    public void goToListenTraceWithStartTime(String time) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            Intent intent = new Intent(currentActivity, YLLearnPathActivity.class);
+            intent.putExtra(INTENT_LEARN_PATH, time);
+            currentActivity.startActivity(intent);
+        }
+    }
+
+    /**
+     * 获得虚拟按键的高度
+     *
+     * @param aliPromise
+     */
+    @ReactMethod
+    public void getNavigation(Promise aliPromise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            int dimensionPixelSize = currentActivity.getResources().getDimensionPixelSize(currentActivity.getResources().getIdentifier("navigation_bar_height", "dimen", "android"));
+            aliPromise.resolve(dimensionPixelSize + "");
+        }
+
+    }
+
+
+}

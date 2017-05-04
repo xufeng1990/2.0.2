@@ -1,0 +1,21 @@
+//
+//  AlbumTableViewCell.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/10.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+@interface AlbumTableViewCell : UITableViewCell
+@property (weak, nonatomic) IBOutlet UILabel *titleLabel;
+@property (weak, nonatomic) IBOutlet UILabel *teacherName;
+@property (weak, nonatomic) IBOutlet UILabel *timeLabel;
+@property (weak, nonatomic) IBOutlet UILabel *dateLabel;
+@property (weak, nonatomic) IBOutlet UIButton *playBtn;
+@property (weak, nonatomic) IBOutlet UIView *lineView1;
+@property (weak, nonatomic) IBOutlet UIView *lineView2;
+
+
+@end

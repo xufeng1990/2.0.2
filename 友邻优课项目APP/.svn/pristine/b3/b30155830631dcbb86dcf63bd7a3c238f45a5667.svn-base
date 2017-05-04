@@ -1,0 +1,36 @@
+//
+//  YLYKApplicationNativeModule.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/20.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKApplicationNativeModule.h"
+
+@implementation YLYKApplicationNativeModule
+
+RCT_EXPORT_MODULE();
+#pragma mark -获取版本号 2.0.0
+RCT_REMAP_METHOD(getVersion, resolved:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject) {
+    resolve([[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"]);
+}
+
+#pragma mark -获取build号 1702101
+RCT_REMAP_METHOD(getBuild, re:(RCTPromiseResolveBlock)resolve jecter:(RCTPromiseRejectBlock)reject) {
+    resolve([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+}
+
+#pragma mark -是否review
+RCT_REMAP_METHOD(getReviewVersion, reso:(RCTPromiseResolveBlock)resolve jecter:(RCTPromiseRejectBlock)reject) {
+    NSString *reviewVersion = [[NSUserDefaults standardUserDefaults] objectForKey:@"review_version_code"];
+    NSString *CurrentVersion = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
+    
+    if ([reviewVersion integerValue] <= [CurrentVersion integerValue]) {
+        resolve(@{@"isReview":@true});
+    } else {
+        resolve(@{@"isReview":@false});
+    }
+}
+
+@end

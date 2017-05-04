@@ -1,0 +1,45 @@
+//
+//  NSStringTools.h
+//  XXZQNetwork
+//
+//  Created by 友邻优课 on 2016/12/30.
+//  Copyright © 2016年 张琦. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <React/RCTBridgeModule.h>
+@interface NSStringTools : NSString <RCTBridgeModule>
+
++ (instancetype)sharedInstance;
+/**
+ *   获取随机数
+ */
++ (NSString *)getRandomString;
+/**
+ *   获取当前的时间戳
+ */
++ (NSString *)getTimeString;
+/**
+ *   对字符串进行MD5加密
+ */
++ (NSString *)getMD5String: (NSString *)str;
+/**
+ *   对字符串进行MD5加密
+ */
++ (NSDictionary *)getDictionaryWithJsonstring: (NSString *)jsonString;
+
++ (NSMutableArray *)getArrayWithJSONString:(NSString *)jsonString;
+
++ (NSString*)getSha1EncodeStringWithString: (NSString *)str;
+
++ (NSString *)getHmacSha1EncodeWithKey:(NSString *)key andStr:(NSString *)str;
+
++ (NSString *)getHMACMD5WithStringWithKey:(NSString *)key andStr:(NSString *)str;
+
++ (NSString *)jsonToString:(id)data;
+/**
+ *  获取设备类型
+ */
+
++ (NSString*)deviceVersion;
+@end

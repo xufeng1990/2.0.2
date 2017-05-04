@@ -1,0 +1,204 @@
+package com.reactutils.request;
+
+import android.app.Activity;
+import android.support.annotation.NonNull;
+import android.util.Log;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.reactutils.callback.MyStringCallback;
+import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.builder.GetBuilder;
+import com.zhy.http.okhttp.builder.OtherRequestBuilder;
+import com.zhy.http.okhttp.builder.PostStringBuilder;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
+
+import okhttp3.MediaType;
+import okhttp3.RequestBody;
+
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.network.Signature.UrlHeaders;
+import static com.zhuomogroup.ylyk.network.Signature.UrlSignature;
+
+/**
+ * Created by xyb on 2017/2/20.
+ */
+
+public class YLRequestModule extends ReactContextBaseJavaModule {
+
+
+    public YLRequestModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return "YLRequestModule";
+    }
+
+    /**
+     * @param jsObject {
+     *                 "url": [],
+     *                 "body": {},
+     *                 "query": {}
+     *                 }
+     * @param promise
+     */
+    @ReactMethod
+    public void get(String jsObject, final Promise promise) {
+        try {
+
+            Activity currentActivity = getCurrentActivity();
+            GetBuilder getBuilder = OkHttpUtils.get();
+            JSONObject jsonObject = new JSONObject(jsObject);
+
+            String baseUrl = getBaseUrl(jsonObject);// 参数
+
+            TreeMap<String, String> params = getParams(jsonObject);
+            String urlData = "";
+
+            if (params.size()>0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+
+            getBuilder.url(BASE_URL_HEAD + baseUrl + UrlSignature(params));
+
+            getBuilder.headers(UrlHeaders(currentActivity));
+
+            getBuilder.build().
+                    execute(new MyStringCallback(promise, BASE_URL_HEAD + baseUrl+urlData,currentActivity));
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     *  获得排序map
+     * @param jsonObject1
+     * @return
+     * @throws JSONException
+     */
+    @NonNull
+    private TreeMap<String, String> getParams(JSONObject jsonObject1) throws JSONException {
+        JSONObject jsonObject = new JSONObject(jsonObject1.getString("query"));
+        Iterator<String> keys = jsonObject.keys();
+        TreeMap<String, String> params = new TreeMap<>();
+        while (keys.hasNext()) {
+            String key = (String) keys.next();
+            params.put(key, jsonObject.getString(key));
+        }
+        return params;
+    }
+
+    /**
+     * 获得 参数地址
+     * @param jsonObject1
+     * @return
+     * @throws JSONException
+     */
+    @NonNull
+    private String getBaseUrl(JSONObject jsonObject1) throws JSONException {
+        JSONArray url = jsonObject1.getJSONArray("url");
+
+        String baseUrl = "";
+        for (int i = 0; i < url.length(); i++) {
+            baseUrl = baseUrl + url.getString(i) + "/";
+        }
+        if (baseUrl.length()>0) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl;
+    }
+
+    /**
+     *  put 请求
+     * @param jsObject
+     * @param promise
+     */
+    @ReactMethod
+    public void put(String jsObject, final Promise promise) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            OtherRequestBuilder put = OkHttpUtils.put();
+            JSONObject jsonObject = new JSONObject(jsObject);
+
+            String baseUrl = getBaseUrl(jsonObject);
+            put.url(BASE_URL_HEAD + baseUrl + UrlSignature());
+            put.headers(UrlHeaders(currentActivity));
+            RequestBody requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"), jsonObject.getJSONObject("body").toString());
+            put.requestBody(requestBody);
+            put.build().
+                    execute(new MyStringCallback(promise, "", currentActivity));
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+    /**
+     * post请求
+     * @param jsObject 解析jsonObject
+     * @param promise
+     */
+    @ReactMethod
+    public void post(String jsObject, final Promise promise) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            PostStringBuilder post = OkHttpUtils.postString();
+            JSONObject jsonObject = new JSONObject(jsObject);
+
+
+            String baseUrl = getBaseUrl(jsonObject);
+
+            post.url(BASE_URL_HEAD + baseUrl + UrlSignature());
+
+            post.content(jsonObject.getJSONObject("body").toString()).mediaType(MediaType.parse("application/json; charset=utf-8"));
+            post.headers(UrlHeaders(currentActivity));
+            post.build().
+                    execute(new MyStringCallback(promise, "", currentActivity));
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+
+
+    }
+
+    @ReactMethod
+    public void delete(String jsObject, final Promise promise) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            OtherRequestBuilder delete = OkHttpUtils.delete();
+            JSONObject jsonObject = new JSONObject(jsObject);
+            String baseUrl = getBaseUrl(jsonObject);
+
+            delete.url(BASE_URL_HEAD + baseUrl + UrlSignature());
+            RequestBody requestBody = RequestBody.create(MediaType.parse("application/json; charset=utf-8"),
+                    jsonObject.getJSONObject("body").toString());
+
+            delete.requestBody(requestBody);
+            delete.headers(UrlHeaders(currentActivity));
+            delete.build().
+                    execute(new MyStringCallback(promise, "", currentActivity));
+        } catch (Exception e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+}

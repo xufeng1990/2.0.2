@@ -1,0 +1,206 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  NativeModules
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+import AlbumDetails from './AlbumDetails/AlbumDetails.js';
+import AlbumCell from '../../component/AlbumCell/AlbumCell.js';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import  Util from '../../common/util.js';
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import Service from '../../configs/Service.js';
+
+const CACHE_KEY = "__CACHE_HOME_2_ALBUMS";
+// 类
+export default class Album extends Component {
+
+  _dataSource = new ListView.DataSource({rowHasChanged:(row1,row2)=>row1 !== row2})
+  _alldata =[];
+
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      dataSource:this._dataSource.cloneWithRows(this._alldata),
+      is_finished:[],
+    };
+  }
+
+  componentWillMount(){
+      let that = this;
+      Service.storage.getItem(CACHE_KEY).then(function(data){
+        that._alldata = JSON.parse(data);
+        that.setState({
+          dataSource: that._dataSource.cloneWithRows(that._alldata)
+        });
+      });
+  }
+
+  // 加载完成
+  componentDidMount(){
+    Service.service.getAlbumList({'page':1,'is_free':'false'})
+    .then((data)=> {
+  //  console.log('数据+++++++++++++++++'+data)
+      var resultData = JSON.parse(data);
+      this._alldata = [];
+    for (let i = 0;i<resultData.length;i++){
+      this._alldata.push(resultData[i]);
+
+     }
+      this.setState({
+          dataSource : this._dataSource.cloneWithRows(this._alldata.filter((item,i)=>item.id !== 6)),
+          is_finished : this._alldata.filter((item,i)=>item.id !== 6).map((item,i)=>{return item.is_finished})
+      });
+      Service.storage.setItem(CACHE_KEY, JSON.stringify(this._alldata));
+     }).catch((err)=> { console.warn('数据err', err);});
+   // RnNativeModules.hideTabBar('hide');
+  }
+
+  // view卸载
+  componentWillUnmount(){
+    //
+  }
+    _goToAlbumDetails(rowData,sectionID,rowID){
+         //console.log('传详情页数据是什么 ======' +rowData.is_finished)
+        var albumID = rowData.id;
+        var albumName = rowData.name;
+          RnNativeModules.hideTabBar('hide')
+        this.props.navigator.push({
+          component:AlbumDetails,
+          params:{
+             rowID:rowID,
+            rowData:rowData,
+            albumName: albumName,
+            album:albumID,
+            course_count:rowData.course_count,
+            is_finished:rowData.is_finished,
+          }
+        })
+    }
+  _renderRow(rowData,sectionID,rowID){
+
+      return(
+        <AlbumCell
+          titleName = {rowData.name}
+          number = {this.state.is_finished[rowID] ? '共' + rowData.course_count + '集' : '更新至' + rowData.course_count + '集'}
+          cellBackgrondColor = '#ffffff'
+          imageSource = {{uri:ImgUrl.baseImgUrl + 'album/' + rowData.id +'/avatar'}}
+          actionFnc = {() => {this._goToAlbumDetails(rowData,sectionID,rowID)}}
+          />
+
+
+      );
+
+  }
+
+  // render
+  render(){
+    if (!this.state.dataSource) {
+      return(<View></View>)
+    }
+    console.log('专辑个数' + this._alldata.length)
+    return (
+      <View style={styles.container} >
+        <View style = {styles.titleView}>
+          <Text style = {styles.titleText}>课程专辑</Text>
+        </View>
+        <ListView
+          ref = 'listView'
+          dataSource={this.state.dataSource}
+          scrollEnabled = {false}
+          enableEmptySections={true}
+          renderRow={this._renderRow.bind(this)}
+          contentContainerStyle={styles.contentViewStyle}
+          />
+      </View>
+    );
+
+  }
+
+  // 自定义方法区域
+  // your method
+
+}
+
+var styles = StyleSheet.create({
+  container:{
+    marginTop:10 * g_AppValue.precent,
+    marginBottom:35 * g_AppValue.precent,
+    flex:1,
+    backgroundColor:'#ffffff',
+    width:g_AppValue.screenWidth,
+
+
+  },
+  titleView:{
+    marginTop:19 * g_AppValue.precent,
+    justifyContent:'center',
+    alignItems:'center',
+    marginBottom:15 * g_AppValue.precent,
+  },
+  titleText:{
+    fontSize:18,
+    fontWeight:'bold',
+
+  },
+  contentViewStyle:{
+    // 主轴方向
+     flexDirection:'row',
+     // 换行
+     flexWrap:'wrap'
+  },
+  itemStyle: {
+          // 对齐方式
+      // alignItems:'center',
+      // justifyContent:'center',
+            // 尺寸
+      width:170 * g_AppValue.precent,
+      height:215 * g_AppValue.precent,
+            // 左边距
+      marginLeft:12 * g_AppValue.precent,
+      marginBottom:15 * g_AppValue.precent,
+      backgroundColor:'red',
+      borderColor:'rgba(0,0,0,0.20)',
+      borderWidth:1 * g_AppValue.precent,
+      },
+  cellView:{
+    width:150 * g_AppValue.precent,
+    height:195 * g_AppValue.precent,
+    //backgroundColor:'yellow',
+    marginLeft:10 * g_AppValue.precent,
+    marginTop:10 * g_AppValue.precent,
+  },
+  ImageView:{
+    width:150 * g_AppValue.precent,
+    height:150 * g_AppValue.precent,
+    //backgroundColor:'red',
+
+  },
+  nameTitle:{
+    marginTop:10 * g_AppValue.precent,
+    fontSize:14 * g_AppValue.precent,
+    color:'#5a5a5a',
+  },
+  numberText:{
+    marginTop:6 * g_AppValue.precent,
+    fontSize:11 * g_AppValue.precent,
+    color:'#9a9b9c',
+  }
+});

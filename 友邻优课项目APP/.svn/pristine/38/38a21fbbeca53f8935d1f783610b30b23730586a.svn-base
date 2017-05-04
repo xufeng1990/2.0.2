@@ -1,0 +1,341 @@
+/**
+ * Created by 艺术家 on 2017/3/9.
+ * page: 个人资料
+ */
+
+
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    StyleSheet,
+    Alert,
+    Dimensions,
+    NativeModules,
+    Platform,
+    TouchableOpacity,
+    ScrollView,
+    DeviceEventEmitter
+} from 'react-native';
+import ActionSheet from '@yfuks/react-native-action-sheet';
+import DateTimePicker from 'react-native-modal-datetime-picker';
+import CachedImage from 'react-native-cached-image';
+
+
+
+import styles from "../../common/styles.js";
+import Util from "../../common/util.js";
+import Enums from "../../common/enums.js";
+import Icon from "../../common/Icon.js";
+import Cell from "../../component/Cells/Cell.js";
+import Intro from "./Intro.js";
+import Job from "./Job.js";
+import College from "./College.js";
+import Nickname from "./Nickname.js";
+import CityMain from "./CityMain.js";
+import MeWechat from "./MeWechat.js";
+import Header from "../../component/HeaderBar/HeaderBar.js";
+import *as RnNativeModules from '../../configs/RnNativeModules.js';
+
+var IntentModule = NativeModules.IntentModule;
+var Service = NativeModules.NativeNetwork;
+
+//基地址常量
+const BASE_URL = "https://api.youlinyouke.com/v1/";
+
+//性别选择常量
+const SEXS = [
+    '男',
+    '女',
+];
+
+
+export default class MeEdit extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {
+            avatar: "",
+            sex: "",
+            id: this.props.userId,
+            birthday: "",
+            intro: "",
+            job: "",
+            college: "",
+            nickname: "",
+            city: "",
+            wechat: "",
+            isDateTimePickerVisible: false,
+        }
+    }
+
+
+    //更新个人信息 --- 没有保存，不统一保存，修改就保存
+    updateUserInfo(info, value) {
+        let newInfo = {};
+        newInfo[info] = value;
+        Service.updateUser(this.state.id.toString(), newInfo);
+    }
+
+    componentDidMount() {
+        Service.getUserById(this.state.id + '').then((user) => {
+            let userInfo = JSON.parse(user);
+            this.setState({
+                sex: userInfo.info.sex,
+                id: userInfo.id,
+                birthday: userInfo.info.birthday,
+                intro: userInfo.info.intro,
+                job: userInfo.info.job,
+                college: userInfo.info.college,
+                nickname: userInfo.info.nickname,
+                city: userInfo.info.city,
+                avatar: BASE_URL + "user/" + userInfo.id + "/avatar",
+            })
+        })
+
+    }
+    componentWillUnmount() {
+        DeviceEventEmitter.emit('showProfileTabBar', '1');
+    }
+
+    //返回
+    _backFun = () => {
+        RnNativeModules.hideTabBar('show');
+        this.props.navigator.pop();
+        DeviceEventEmitter.emit('refreshData', '1');
+    };
+
+    render() {
+        let cellsData = this.state;
+        return (
+            <View>
+                <Header backFun={this._backFun} title={"个人资料"} />
+                <ScrollView style={[styles.bgGrey, { height: Dimensions.get('window').height - 44 }]}>
+                    <View style={[pageStyles.topContainer, styles.bgWhite, styles.alignCenter,]}>
+                        <CachedImage source={{ uri: this.state.avatar }}
+                            style={[styles.avatarNormal, styles.avatarRound]} />
+                        {/*<View style={[styles.row, styles.alignCenter, { marginTop: 11 }]}>
+                            <Text style={[styles.textGrey, styles.text14]}
+
+                            >{this.state.nickname} &nbsp;</Text>
+                            <Text style={[styles.icon, styles.textGrey, styles.text14]}></Text>
+
+                        </View>*/}
+                    </View>
+
+                    <View style={[styles.bgWhite, styles.section]}>
+                        <Cell tag={"ID"} content={this.state.id} cellPull={false} />
+                        <Cell tag={"昵称"} content={this.state.nickname} cellPull={true}
+                            cellFun={() => { this._inputNickname() }} />
+                        <Cell tag={"性别"} content={this.state.sex}
+                            cellPull={true} cellFun={this.showActionSheet} />
+                        <Cell tag={"生日"} content={this.state.birthday} cellPull={true}
+                            cellFun={this._showDateTimePicker} />
+                        <Cell tag={"一句话介绍"} content={this.state.intro} cellPull={true} cellLast={true}
+                            cellFun={() => { this._inputIntro() }} />
+                    </View>
+
+                    <View style={[styles.bgWhite, styles.section, { marginBottom: 20 }]}>
+                        <Cell tag={"行业"} content={this.state.job}
+                            cellPull={true} cellFun={() => { this._inputJob() }} />
+                        <Cell tag={"毕业学校"} content={this.state.college} cellPull={true}
+                            cellFun={() => { this._inputCollege() }} />
+
+                        <Cell tag={"城市"} content={this.state.city} cellPull={true} cellLast={true}
+                            cellFun={() => { this._selectCity() }} />
+                    </View>
+                </ScrollView>
+                <DateTimePicker
+                    date={new Date("1990-01-01")}
+                    isVisible={this.state.isDateTimePickerVisible}
+                    onConfirm={this._handleDatePicked}
+                    onCancel={this._hideDateTimePicker}
+                />
+            </View>
+        )
+    }
+
+    //日期选择器的显示/隐藏
+    _showDateTimePicker = () => this.setState({ isDateTimePickerVisible: true });
+    _hideDateTimePicker = () => this.setState({ isDateTimePickerVisible: false });
+
+    //选择了日期
+    _handleDatePicked = (date) => {
+        let birthday = date.getFullYear() + "-" +
+            ("0" + (date.getMonth() + 1)).slice(-2) + "-" +
+            ("0" + date.getDate()).slice(-2);
+
+
+
+        this.setState({
+            birthday: birthday
+        });
+        this._hideDateTimePicker();
+        //更新个人信息
+        this.updateUserInfo("birthday", birthday);
+    };
+
+
+    //性别选择
+    showActionSheet = () => {
+        ActionSheet.showActionSheetWithOptions({
+            options: SEXS,
+            cancelButtonIndex: 4,
+            destructiveButtonIndex: 3,
+            tintColor: 'blue'
+        },
+            (buttonIndex) => {
+                if (buttonIndex != undefined) {
+                    this.setState({
+                        sex: SEXS[buttonIndex]
+                    });
+                }
+                //更新个人信息
+                this.updateUserInfo("sex", SEXS[buttonIndex]);
+
+            });
+    };
+
+
+    //修改一句话介绍
+    _inputIntro() {
+        let _this = this;
+        this.props.navigator.push({
+            component: Intro,
+            params: {
+                intro: _this.state.intro,
+                //在填写一句话介绍的页面调用此方法
+                setIntro: function (text) {
+                    _this.setState({
+                        intro: text,
+                    });
+                    //此处更新个人信息
+                    _this.updateUserInfo("intro", text);
+                }
+            }
+        });
+    }
+
+    //修改职业
+    _inputJob() {
+        let _this = this;
+        this.props.navigator.push({
+            component: Job,
+            params: {
+                job: _this.state.job,
+                //在选择行业页面调用此方法
+                setJob: function (text) {
+                    _this.setState({
+                        job: text,
+                    });
+                    //此处更新个人信息
+                    _this.updateUserInfo("job", text);
+                }
+            }
+        });
+    }
+
+    //修改毕业学校
+    _inputCollege() {
+        let _this = this;
+        this.props.navigator.push({
+            component: College,
+            params: {
+                college: _this.state.college,
+                //在填写学校页面调用此方法
+                setCollege: function (text) {
+                    _this.setState({
+                        college: text,
+                    });
+                    //此处更新个人信息
+                    _this.updateUserInfo("college", text);
+                }
+            }
+        });
+    }
+
+    //修改昵称
+    _inputNickname() {
+        let _this = this;
+        this.props.navigator.push({
+            component: Nickname,
+            params: {
+                nickname: _this.state.nickname,
+                //在修改昵称页面调用此方法
+                setNickname: function (text) {
+                    _this.setState({
+                        nickname: text,
+                    });
+                    //此处更新个人信息
+                    _this.updateUserInfo("nickname", text);
+                }
+            }
+        });
+    }
+
+
+    //修改城市
+    _selectCity() {
+        let _this = this;
+        this.props.navigator.push({
+            name: "CityMain",
+            component: CityMain,
+            params: {
+                id: this.state.id,
+                setCity: function (text) {
+                    _this.setState({
+                        city: text,
+                    });
+                    //此处更新个人信息
+                    _this.updateUserInfo("city", text);
+
+                }
+            }
+        });
+    }
+
+
+
+    //修改微信
+    _inputWechat() {
+        let _this = this;
+        this.props.navigator.push({
+            component: MeWechat,
+            params: {
+                wechat: _this.state.wechat,
+                //在修改昵称页面调用此方法
+                setWechat: function (wechat, isPublic) {
+                    _this.setState({
+                        wechat: wechat,
+                    });
+                    //此处更新个人信息
+                    _this._updateWechat(wechat, isPublic);
+                }
+            }
+        });
+    }
+
+    //更新微信
+    _updateWechat(wechat, isPublic) {
+        let newInfo = {};
+        newInfo.wechat = wechat;
+        newInfo.is_public = isPublic;
+        Service.updateUser(this.state.id.toString(), newInfo);
+    }
+
+
+
+}
+
+
+var pageStyles = StyleSheet.create({
+    topContainer: {
+        height: 163,
+        paddingTop: 10
+
+    },
+    courseName: {
+        marginTop: 8,
+    }
+});

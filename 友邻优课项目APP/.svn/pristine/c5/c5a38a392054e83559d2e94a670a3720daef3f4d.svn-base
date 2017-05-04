@@ -1,0 +1,359 @@
+//  同学资料
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2017
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component, } from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  NativeModules,
+  DeviceEventEmitter,
+  Platform,
+  Clipboard,
+  NativeEventEmitter,
+  InteractionManager,
+} from 'react-native';
+//下拉刷新
+import UltimateListView from "react-native-ultimate-listview";
+import NavigationView from '../../component/Navigator/NavigationView.js';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import *as RnNativeModules from '../../configs/RnNativeModules.js';
+import Util from '../../common/util.js';
+import NoteCell from '../../component/AlbumCell/noteCell.js';
+import Icon from '../../common/Icon.js';
+import Loading from '../../component/Loading/Loading.js';
+import Service from '../../configs/Service.js';
+import StudentDetailHeader from '../../component/AlbumCell/studentDetailsHeader.js';
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import Pay from '../Pay/pay.js';
+const getFansById = NativeModules.NativeNetwork;
+var AlertModule = NativeModules.AlertModule;
+var Bridges = NativeModules.BridgeEvents;
+const myEvent = new NativeEventEmitter(Bridges);
+var subscription;
+export default class BusinessDetails extends Component {
+  // 构造函数
+  _page = 2;
+  _dataSource = new ListView.DataSource({ rowHasChanged: (row1, row2) => row1 !== row2 })
+  _alldata = []//加载数组
+  constructor(props) {
+    super(props);
+    this.state = {
+      is_followee: this.props.nextfollowee,
+      focusData: '',
+      noteList: '',
+      dataSource: this._dataSource.cloneWithRows(this._alldata),
+      isShowLoadMore: false,
+      thumbNumber: '',
+      isLoading: true,
+      isPlayingOrPause: 0,
+      isExistPlayedTrace: 1,
+    };
+  }
+
+  // 加载完成
+  componentDidMount() {
+
+    getFansById.getUserById(this.props.fansId + '')
+      .then((data) => {
+
+        //console.log('data' + data)
+        this.setState({
+          focusData: JSON.parse(data)
+        })
+
+      }).catch((err) => {
+        //  console.log("数据错误...." + err)
+      })
+    this._onListRefersh();
+
+    this.subscription = myEvent.addListener('playOrPauseToRN', (reminder) => {
+      // console.log( '播放状态'+ reminder.isPlayingOrPause);
+      this.setState({ isPlayingOrPause: reminder.isPlayingOrPause, isExistPlayedTrace: 1 })
+    }
+
+    );
+    Service.loginServer.isPlayingOrPause()
+      .then((data) => {
+
+        this.setState({ isPlayingOrPause: data.isPlayingOrPause })
+      }).catch((err) => {
+        console.log('错误' + err)
+      })
+
+  }
+
+  _goToPlayerView() {
+    RnNativeModules.goToPlayerView('0', false, '[]');
+  }
+
+  _goBack() {
+    RnNativeModules.hideTabBar('show')
+    this.props.navigator.pop()
+  }
+
+
+  componentWillUnmount() {
+    this.subscription && this.subscription.remove();
+    if (this.props.from == 0) {
+      return;
+    }
+    DeviceEventEmitter.emit('showNoteTabBar', '1');
+    this.showNoteTabBar && this.showNoteTabBar.remove();
+  }
+
+  componentWillMount() {
+    RnNativeModules.isExistPlayedTrace()
+      .then((data) => {
+        this.setState({ isExistPlayedTrace: data })
+      })
+    this.showNoteTabBar = DeviceEventEmitter.addListener('showNoteTabBar', (res) => {
+      if (res[1] == 2) {
+        RnNativeModules.hideTabBar('hide');
+      }
+    });
+  }
+
+
+  _focusStateAction() {
+    console.log('关注点击')
+    var rowID = this.props.rowID;
+    //console.log('得到的rowID' + rowID)
+    if (this.state.is_followee == true) {
+      Service.service.deleteFollowee({ 'user_id': this.props.fansId + '' })
+        .then((data) => {
+          // console.log('取消' + data)
+          //  console.log('取消改变前状态' + this.state.is_followee)
+          DeviceEventEmitter.emit('noteID', rowID);
+          this.setState({
+            is_followee: !this.state.is_followee,
+          })
+          //console.log('取消改变后状态' + this.state.is_followee)
+        }).catch((err) => {
+          //console.log("取消错误" + err)
+        })
+    } else {
+      Service.service.createFollowee({ 'user_id': this.props.fansId + '' })
+        .then((data) => {
+          //console.log("关注成功" + data)
+          DeviceEventEmitter.emit('noteID', rowID);
+          //console.log('关注改变前状态' + this.state.is_followee)
+          this.setState({
+            is_followee: !this.state.is_followee,
+          })
+          //console.log('关注改变后状态' + this.state.is_followee)
+        }).catch((err) => {
+          //console.log("关注错误" + err)
+        })
+    }
+  }
+  _noteGotoPlay(palyId, is, is2) {
+    console.log('bofang')
+    RnNativeModules.goToPlayerView(palyId + '', is, is2);
+  }
+  _copyWechat(wechat) {
+    console.log('添加微信点击')
+    if (!wechat) {
+      Util.AppToast('该同学尚未填写微信号');
+    } else {
+
+      if (AlertModule) {
+        Clipboard.setString(wechat);
+        AlertModule.showDialog("微信号" + wechat + "已复制到粘贴板，请到微信添加朋友页面粘贴并搜索");
+      } else {
+        Util.alert({
+          msg: "微信号" + wechat + "已复制到粘贴板，请到微信添加朋友页面粘贴并搜索",
+          okBtn: "打开微信",
+          cancelBtn: "取消",
+          okFun: () => {
+            Util.openWx(wechat);
+          }
+        })
+      }
+
+
+
+    }
+
+
+  }
+
+  _noDataView() {
+    return (
+      <View style={{ justifyContent: 'center', alignItems: 'center', marginTop: 20 * g_AppValue.precent }}>
+        <Text style={{ color: '#c8c8c8' }}>Ta还没有发布心得</Text>
+      </View>
+    );
+  }
+  renderHeader() {
+    if (!this.state.focusData) {
+      return (<View></View>);
+    }
+
+    var focusData = this.state.focusData;
+    var wechat = this.state.focusData.info.wechat;
+    var birthday = this.state.focusData.info.birthday.split('-')[0];
+    var newYear = new Date().getFullYear();
+    var age = newYear - birthday;
+    // var palyId = focusData.course.id;
+    return (
+      <StudentDetailHeader
+        age={age}
+        adressText={focusData.info.city}
+        bullyText={focusData.vip.title}
+        headerImage={!this.props.fansId ? require('../../imgs/11.png') : { uri: ImgUrl.baseImgUrl + 'user/' + this.props.fansId + '/avatar' }}
+        nameText={focusData.info.nickname}
+        contentText={focusData.info.intro}
+        learningTime={parseInt(focusData.stat.listened_time / 60)}
+        learningTimeText='学习时长/分钟'
+        fansNumber={focusData.stat.fans_count}
+        fansText='粉丝'
+        focusNumber={focusData.stat.followee_count}
+        focusText='关注'
+        focusBuddyfunc={() => { this._focusStateAction() }}
+        focusAdd={this.state.is_followee ? '' : Icon.plus}
+        focusAddText={this.state.is_followee ? '已关注' : '关注'}
+
+
+        add={Icon.wechat}
+        addText='加好友'
+        AddBuddyfunc={() => { this._copyWechat(wechat) }}
+      />
+    );
+  }
+
+  _rowRow(rowData, sectionID, rowID) {
+
+    var payId = rowData.course.id;
+    var str = rowData.content;
+    var noteID = rowData.id;
+    var is_liked = rowData.is_liked;
+    var st = str.replace(/<br>/g, '\n')
+
+    return (
+      <NoteCell
+        navigator={this.props.navigator}
+        headPortraitImage={!this.state.focusData.id ? require('../../imgs/11.png') : { uri: ImgUrl.baseImgUrl + 'user/' + this.state.focusData.id + '/avatar' }}
+        name={this.state.focusData.info.nickname}
+        time={Util.getDiffTime(new Date(rowData.in_time * 1000))}
+        content={st}
+        playImage={!this.state.focusData.id ? require('../../imgs/43.png') : { uri: ImgUrl.baseImgUrl + 'course/' + rowData.course.id + '/cover' }}
+        playTitle={rowData.course.name}
+        palyAction={() => this._noteGotoPlay(payId, false, '[]')}
+        thumbNumber={rowData.like_count}
+        noteId={noteID}
+        is_liked={is_liked}
+        imagesData={rowData.images}
+        noteTouchInage={() => { this._noteTouchImages() }}
+
+      />
+    );
+
+  }
+
+
+
+  // render
+  render() {
+
+
+    if (!this.state.focusData && !this.state.noteList) {
+
+      return (<View></View>)
+    }
+
+    var user_id = this.state.focusData.id;
+    // <Loading visible = {this.state.isLoading} />
+
+    return (
+      <View style={{ flex: 1, backgroundColor: '#f2f5f6' }}>
+        <Loading visible={this.state.isLoading} />
+        {this.props.hideHeader == 1 ? Platform.OS == 'ios' ? null : <NavigationView
+          navigator={this.props.navigator}
+          leftItemTitle={Icon.back}
+          leftItemFunc={this._goBack.bind(this)}
+          rightItemFunc={() => this._goToPlayerView()}
+          rightImageSource={this.state.isExistPlayedTrace == 1 ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png') : require('../../imgs/play.gif') : null}
+        /> : <NavigationView
+            navigator={this.props.navigator}
+            leftItemTitle={Icon.back}
+            leftItemFunc={this._goBack.bind(this)}
+            rightItemFunc={() => this._goToPlayerView()}
+            rightImageSource={this.state.isExistPlayedTrace == 1 ? this.state.isPlayingOrPause == 0 ? require('../../imgs/play1.png') : require('../../imgs/play.gif') : null}
+          />}
+
+        <View>
+          {!g_AppValue.isConnected
+            ? <BlankPages ImageUrl={require('../../imgs/none.png')} contentText='无法连接到服务器,请检查你的网络设置' />
+            : <UltimateListView
+              ref='listView'
+              onFetch={this._onListRefersh.bind(this)}
+              enableEmptySections
+              //----Normal Mode----
+              separator={false}
+              headerView={this.renderHeader.bind(this)}
+              rowView={this._rowRow.bind(this)}
+              refreshableTitleWillRefresh="下拉刷新..."
+              refreshableTitleInRefreshing="下拉刷新..."
+              refreshableTitleDidRefresh="Finished"
+              refreshableTitleDidRefreshDuration={10000}
+              emptyView={this._noDataView.bind(this)}
+              allLoadedText=''
+              waitingSpinnerText=''
+            />
+          }
+        </View>
+
+      </View>
+    );
+  }
+
+
+
+
+  _getCourseList(page, callback, options) {
+    const pageLimit = 10;
+    InteractionManager.runAfterInteractions(() => {
+      getFansById.getNoteList({ 'page': page, 'limit': pageLimit, 'user_id': this.props.fansId + '' })
+        .then((data) => {
+          //  console.log("111111111111111111111111111" + data)
+          var resultData = JSON.parse(data);
+          if (page <= 1) {
+            this._alldata == [];
+          }
+          for (let i = 0; i < resultData.length; i++) {
+            this._alldata.push(resultData[i])
+          }
+          this.setState({
+            dataSource: this._dataSource.cloneWithRows(this._alldata),
+            isShowLoadMore: true,
+            thumbNumber: this._alldata.map((countN) => { return countN.like_count }),
+            isLoading: false,
+          })
+
+          options.pageLimit = pageLimit;
+          callback(resultData, options);
+        }).catch((err) => {
+          this.setState({ isLoading: false, })
+          //  this.setState({ isConnected:false,})
+          console.log("数据错误...." + err)
+        })
+    })
+  }
+
+  _onListRefersh(page = 1, callback, options) {
+    this._getCourseList(page, callback, options);
+  }
+}

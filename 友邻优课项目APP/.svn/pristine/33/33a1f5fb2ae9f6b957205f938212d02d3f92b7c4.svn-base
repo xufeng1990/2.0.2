@@ -1,0 +1,58 @@
+package zlc.season.rxdownload2.function;
+
+import zlc.season.rxdownload2.entity.DownloadBean;
+import zlc.season.rxdownload2.entity.DownloadEvent;
+import zlc.season.rxdownload2.entity.DownloadStatus;
+
+import static zlc.season.rxdownload2.entity.DownloadFlag.COMPLETED;
+import static zlc.season.rxdownload2.entity.DownloadFlag.FAILED;
+import static zlc.season.rxdownload2.entity.DownloadFlag.NORMAL;
+import static zlc.season.rxdownload2.entity.DownloadFlag.PAUSED;
+import static zlc.season.rxdownload2.entity.DownloadFlag.STARTED;
+import static zlc.season.rxdownload2.entity.DownloadFlag.WAITING;
+
+/**
+ * Author: Season(ssseasonnn@gmail.com)
+ * Date: 2016/11/23
+ * Time: 14:18
+ * FIXME
+ */
+public class DownloadEventFactory {
+    public static DownloadEvent normal(DownloadStatus status, DownloadBean downloadBean) {
+        return createEvent(NORMAL, status,downloadBean);
+    }
+
+    public static DownloadEvent waiting(DownloadStatus status, DownloadBean downloadBean) {
+        return createEvent(WAITING, status,downloadBean);
+    }
+
+    public static DownloadEvent started(DownloadStatus status, DownloadBean downloadBean) {
+        return createEvent(STARTED, status,downloadBean);
+    }
+
+    public static DownloadEvent paused(DownloadStatus status, DownloadBean downloadBean) {
+        return createEvent(PAUSED, status,downloadBean);
+    }
+
+    public static DownloadEvent completed(DownloadStatus status, DownloadBean downloadBean) {
+        return createEvent(COMPLETED, status,downloadBean);
+    }
+
+    public static DownloadEvent failed(DownloadStatus status, Throwable throwable, DownloadBean downloadBean) {
+        return createEvent(FAILED, status, throwable,downloadBean);
+    }
+
+    private static DownloadEvent createEvent(int flag, DownloadStatus status, Throwable throwable, DownloadBean downloadBean) {
+        DownloadEvent event = createEvent(flag, status,downloadBean);
+        event.setError(throwable);
+        return event;
+    }
+
+    public static DownloadEvent createEvent(int flag, DownloadStatus status, DownloadBean downloadBean) {
+        DownloadEvent event = new DownloadEvent();
+        event.setDownloadStatus(status == null ? new DownloadStatus() : status);
+        event.setFlag(flag);
+        event.setDownloadBean(downloadBean);
+        return event;
+    }
+}

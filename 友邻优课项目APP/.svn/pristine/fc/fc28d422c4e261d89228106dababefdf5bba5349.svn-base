@@ -1,0 +1,154 @@
+/**
+ * Created by 艺术家 on 2017/2/28.
+ */
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    ScrollView,
+    StyleSheet,
+    TouchableOpacity,
+    Alert,
+    Dimensions,
+    NativeModules,
+    DeviceEventEmitter,
+    Platform
+} from 'react-native';
+
+import BottomCheckbox from "../../component/BottomCheckbox/BottomCheckbox.js";
+import Filter from "./Filter.js";
+import styles from "../../common/styles.js";
+import * as RnNativeModules from "../../configs/RnNativeModules.js"
+import Header from "../../component/HeaderBar/HeaderBar.js";
+import Toast, { DURATION } from 'react-native-easy-toast';
+
+export default class DownloadFilter extends Component {
+    constructor(props) {
+        super(props);
+        this.selectList = [];
+        // 初始状态
+        this.state = {
+            data: [],
+            isCheckedAll: false
+        };
+    }
+
+    checkedAll() {
+        //全选
+        this.selectList.forEach((item) => {
+            item.isChecked = !this.state.isCheckedAll
+        });
+
+        //切换全选状态
+        this.setState({
+            isCheckedAll: !this.state.isCheckedAll
+        });
+
+        //Filter组件刷新
+        this.setState({ data: this.selectList, });
+    }
+
+    //单选
+    checkOne(index) {
+        this.selectList[index].isChecked = !this.selectList[index].isChecked;
+        this.setState({ data: this.selectList, });
+        if (!this.selectList[index].isChecked && this.state.isCheckedAll) {
+            this.setState({
+                isCheckedAll: false
+            })
+        }
+    }
+
+    //返回
+    _backFun = () => {
+        this.props.navigator.pop();
+    };
+
+    // 下载
+    download() {
+        var downloadList = [];
+        this.selectList.forEach((item) => {
+            if (item.isChecked) {
+                let newList = downloadList.concat(item.courseList);
+                downloadList = newList;
+                item.isDownloaded = true;
+            }
+        });
+        RnNativeModules.startDownload(downloadList).then((info) => {
+            // alert(info)
+        });
+    }
+
+    componentWillMount() {
+        let rowData = this.props.sourceDatea.reverse();
+        //筛选数据
+        let dataLen = rowData.length;
+        let itemLen = Math.floor(dataLen / 20);
+        let lastItemCount = dataLen % 20;
+        let sourceDatea = [];
+
+        //筛选每日新闻
+        if (dataLen > 0 && rowData[0].album.id == 6) {
+            rowData.reverse().forEach(item => {
+                let inTime = new Date(item.inTime),
+                    year = inTime.getFullYear(),
+                    month = inTime.getMonth() + 1,
+                    lable = year + "年" + month + "月",
+                    dataLen = sourceDatea.length;
+                if (dataLen == 0) {
+                    sourceDatea.push({
+                        data: lable,
+                        isChecked: false,
+                        courseList: [item]
+                    })
+                }
+                for (let i = 0; i < dataLen; i++) {
+                    if (sourceDatea[i].data == lable) {
+                        sourceDatea[i].courseList.push(item);
+                    } else if (i == dataLen - 1) {
+                        sourceDatea.push({
+                            data: lable,
+                            isChecked: false,
+                            courseList: [item]
+                        });
+                    }
+                }
+            })
+        } else {
+            for (let i = 0; i <= itemLen; i++) {
+                if (i < itemLen) {
+                    sourceDatea.push({
+                        data: i * 20 + 1 + "-" + (i + 1) * 20 + "集",
+                        isChecked: false,
+                        courseList: rowData.slice(i * 20, (i + 1) * 20 - 1)
+                    })
+                } else if (i == itemLen) {
+                    sourceDatea.push({
+                        data: (i * 20 + 1) + "-" + (i * 20 + lastItemCount) + "集",
+                        isChecked: false,
+                        courseList: rowData.slice(i * 20, i * 20 + lastItemCount)
+                    })
+                }
+            }
+        }
+        this.selectList = sourceDatea;
+        this.setState({ data: this.selectList });
+    }
+
+    render() {
+        return (
+            <View style={[styles.primary, styles.bgGrey, { paddingBottom: 55 }]}>
+                <Header backFun={this._backFun} title={"筛选"} />
+                <Filter data={this.state.data} checked={this.state.isCheckedAll}
+                    checkedCallBack={(index) => { this.checkOne(index) }} />
+                <Toast position={Platform.OS === 'ios' ? "center" : "center"} ref="toast" />
+                <BottomCheckbox checkedCallBack={() => { this.checkedAll() }}
+                    onPressBtnCallBack={() => { this.download() }}
+                    btnText={"下载"}
+                    isShowCheckBox={true}
+                    checkState={this.state.isCheckedAll} />
+            </View>
+        )
+    }
+}

@@ -1,0 +1,30 @@
+//
+//  RCTToastViewManager.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/26.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "RCTToastViewManager.h"
+#import "MBProgressHUD.h"
+
+@implementation RCTToastViewManager
+
+RCT_EXPORT_MODULE();
+
+- (UIView *)view
+{
+    MBProgressHUD *hud = [MBProgressHUD showHUDAddedTo:[UIApplication sharedApplication].keyWindow animated:YES];
+    hud.mode = MBProgressHUDModeText;
+    hud.labelText = @"";
+    hud.yOffset = -64.0f;
+    hud.removeFromSuperViewOnHide = YES;
+    [hud hide:YES afterDelay:1.5];
+    return hud;
+}
+
+RCT_EXPORT_VIEW_PROPERTY(labelText, NSString)
+
+
+@end

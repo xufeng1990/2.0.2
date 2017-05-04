@@ -1,0 +1,93 @@
+//  AlbumDetailsTab
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component,} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    Platform,
+    DeviceEventEmitter
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+var RCTDeviceEventEmitter = require('RCTDeviceEventEmitter');
+// 类
+var height0 = g_AppValue.screenHeight;
+var height1 = g_AppValue.screenHeight;
+var height2 = g_AppValue.screenHeight;
+export default class AlbumDetailsTab extends Component {
+    constructor(props) {
+        super(props);
+        this.state = {}
+    }
+    static   propTypes = {
+        goToPage: React.PropTypes.func,//跳转对应的tab方法
+        activeTab: React.PropTypes.number,//当前被选中的下标
+        tabs: React.PropTypes.array,//所有tabs集合
+        tabNames: React.PropTypes.array,//保存tab名称
+        tabIconNames: React.PropTypes.array,//tab图标
+    }
+    加载完成
+
+    componentDidMount() {
+    }
+    componentWillMount() {
+    }
+//  <View style={{backgroundColor:viewColor,width:85 * g_AppValue.precent,height:1 * g_AppValue.precent,marginTop:12 * g_AppValue.precent}} />
+    renderTabOption(tab, i) {
+        let color = this.props.activeTab == i ? "#B41930" : "#5a5a5a";
+        let viewColor = this.props.activeTab == i ? "#B41930" : "#ffffff";// 判断i是否是当前选中的tab，设置不同的颜色
+        return (
+            <TouchableOpacity activeOpacity={1} onPress={()=>{this.props.goToPage(i)}} style={styles.tab}>
+                <View style={[styles.tabItem,{borderBottomColor:viewColor}]}>
+                    <Text style={{color: color,fontSize:18 * g_AppValue.precent}}>
+                        {this.props.tabNames[i]}
+                    </Text>
+                </View>
+            </TouchableOpacity>
+        );
+    }
+    // <Icon
+    // 	name={this.props.tabIconNames[i]} // 图标
+    // 	size={30}
+    // 	color={color}/>
+    // render
+    render() {
+        return (
+            <View style={styles.tabs}>
+                {this.props.tabs.map((tab, i) => this.renderTabOption(tab, i))}
+            </View>
+        );
+    }
+}
+var styles = StyleSheet.create({
+    tabs: {
+        flexDirection: 'row',
+        height: Platform.OS === 'ios' ? 42 * g_AppValue.precent : 47 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        justifyContent: 'space-around',
+    },
+    tab: {
+        //backgroundColor:'yellow',
+        width: 105 * g_AppValue.precent,
+    },
+    tabItem: {
+        //backgroundColor:'green',
+        width: 105 * g_AppValue.precent,
+        height: Platform.OS === 'ios' ? 42 * g_AppValue.precent : 47 * g_AppValue.precent,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderBottomWidth: 1 * g_AppValue.precent,
+    },
+})

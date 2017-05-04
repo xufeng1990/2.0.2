@@ -1,0 +1,344 @@
+//
+//  Stroage.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/2/17.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "Storage.h"
+#import "NativeNetwork.h"
+#import "UIImageView+WebCache.h"
+#import "WXApi.h"
+#import "NSStringTools.h"
+#import "CBLProgressHUD.h"
+
+@interface Storage()
+
+@property (nonatomic, strong) NSMutableArray * array;
+
+@property (nonatomic, assign) NSString *saveSuccess;
+
+@end
+
+@implementation Storage
+
+@synthesize bridge= _bridge;
+
+//导出模块
+RCT_EXPORT_MODULE();
+
+- (NSMutableArray *)array {
+    if (!_array) {
+        _array = [[NSMutableArray alloc] init];
+    }
+    return _array;
+}
+
++ (instancetype)sharedInstance
+{
+    static Storage * storage = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        storage = [Storage new];
+    });
+    return storage;
+    
+}
+
+- (NSObject *)getItemByKey:(NSString *)key {
+    return  [[NSUserDefaults standardUserDefaults] objectForKey:key];
+}
+
+RCT_EXPORT_METHOD(getItem:(NSString *)key resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+    NSString *string = [[NSUserDefaults standardUserDefaults] objectForKey:key];
+    
+    if (string) {
+        resolve(string);
+    } else {
+        NSError *error=[NSError errorWithDomain:@"我是Promise回调错误信息..." code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    }
+}
+
+
+RCT_EXPORT_METHOD(getItemByKey:(NSString *)key resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+    key = [NSStringTools getMD5String:key];
+    NSArray *arr = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+    NSString *cachePath = [arr lastObject];
+    NSString *filePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.txt",key]];
+    NSString *str = [NSString stringWithContentsOfFile:filePath encoding:NSUTF8StringEncoding error:nil];
+    NSLog(@"%@",str);
+    
+    if (str) {
+        resolve(str);
+    } else {
+        NSError *error=[NSError errorWithDomain:@"我是Promise回调错误信息..." code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    }
+}
+
+
+RCT_EXPORT_METHOD(setItem:(NSString *)key :(NSString *)value  resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    [[NSUserDefaults standardUserDefaults] setObject:value forKey:key];
+    [self.array addObject:key];
+    
+    NSArray *events = [NSArray arrayWithObjects: self.array,@"error", nil];
+    if (events) {
+        resolve(@"success");
+    } else {
+        NSError *error=[NSError errorWithDomain:@"false" code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    }
+}
+
+- (void)setItemByKey:(NSString *)key :(NSDictionary *)value {
+    [[NSUserDefaults standardUserDefaults] setObject:value forKey:key];
+    [self.array addObject:key];
+}
+
+// 只能移除RN调用该类生成的key
+RCT_EXPORT_METHOD(removeItem:(NSString *)key  resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    
+    
+    if ([self.array containsObject:key]) {
+        [self.array removeObject:key];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
+        resolve(@"success");
+    } else {
+        // 不存在
+        NSError *error=[NSError errorWithDomain:@"false" code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    }
+}
+
+- (void)removeItemByKey:(NSString *)key {
+    
+    if ([self.array containsObject:key]) {
+        [self.array removeObject:key];
+        [[NSUserDefaults standardUserDefaults] removeObjectForKey:key];
+    } else {
+        // 不存在
+    }
+}
+// 只能移除RN调用该类生成的key
+RCT_REMAP_METHOD(removeAllItems, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    if (self.array.count>0) {
+        for (int i = 0; i<self.array.count; i++) {
+            [userDefaults removeObjectForKey:self.array[i]];
+        }
+        [userDefaults synchronize];
+    }
+    [self.array removeAllObjects];
+    if (self.array.count>0) {
+        NSError *error=[NSError errorWithDomain:@"false" code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    } else {
+        resolve(@"removeallsuccess");
+    }
+}
+
+- (void)removeAllItems {
+    
+    NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
+    if (self.array.count>0) {
+        for (int i = 0; i<self.array.count; i++) {
+            [userDefaults removeObjectForKey:self.array[i]];
+        }
+        [userDefaults synchronize];
+    }
+    [self.array removeAllObjects];
+}
+
+// 只能获得RN调用该类生成的keys
+RCT_REMAP_METHOD(getAllKeys, resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject) {
+    if (self.array.count>0) {
+        resolve(self.array);
+    }else {
+        NSError *error=[NSError errorWithDomain:@"false" code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    }
+}
+
+- (NSArray *)getAllKeys {
+    return self.array;
+}
+
+RCT_REMAP_METHOD(clearAllKeys, resolveBlock:(RCTPromiseResolveBlock)resolve rejecterBlock:(RCTPromiseRejectBlock)reject){
+    NSUserDefaults *defatluts = [NSUserDefaults standardUserDefaults];
+    NSDictionary *dictionary = [defatluts dictionaryRepresentation];
+    for(NSString *key in [dictionary allKeys]){
+        [defatluts removeObjectForKey:key];
+        [defatluts synchronize];
+    }
+    if (!defatluts) {
+        NSError *error=[NSError errorWithDomain:@"false" code:101 userInfo:nil];
+        reject(@"no_events", @"There were no events", error);
+    } else {
+        resolve(@"removeallsuccess");
+    }
+}
+
+
+RCT_EXPORT_METHOD(saveImage:(NSString *)imageURLString  resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)rejec)
+{
+    NSURL *URL = [NSURL URLWithString:imageURLString];
+    SDWebImageManager *manager = [SDWebImageManager sharedManager];
+    __block UIImage *img;
+    [manager diskImageExistsForURL:URL completion:^(BOOL isInCache) {
+        if (isInCache) {
+            img =  [[manager imageCache] imageFromDiskCacheForKey:URL.absoluteString];
+        } else {
+            NSData *data = [NSData dataWithContentsOfURL:URL];
+            img = [UIImage imageWithData:data];
+        }
+        // 保存图片到相册中
+        UIImageWriteToSavedPhotosAlbum(img,self, @selector(image:didFinishSavingWithError:contextInfo:),NULL);
+        
+        if (img) {
+            resolve(@"success");
+//            [CBLProgressHUD showTextHUDInWindowWithText:@"保存成功"];
+            
+        } else {
+            resolve(@"error");
+        }
+        
+    }];
+}
+
+- (void)image:(UIImage *)image didFinishSavingWithError:(NSError *)error contextInfo:(void *)contextInfo
+{
+    NSLog(@"image = %@, error = %@, contextInfo = %@", image, error, contextInfo);
+    if (error) {
+        [CBLProgressHUD showTextHUDInWindowWithText:@"保存失败"];
+        
+    }   else {
+        [CBLProgressHUD showTextHUDInWindowWithText:@"保存成功"];
+    }
+}
+
+RCT_EXPORT_METHOD(getCacheCourseList:(NSDictionary *)parameters resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject)
+{
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString *key = [NSString stringWithFormat:@"%@course?%@",BASEURLSTRING,string];
+    [self getItemByKey:key resolver:^(id result) {
+        resolve(result);
+    } rejecter:^(NSString *code, NSString *message, NSError *error) {
+        reject(code,message,error);
+    }];
+}
+
+
+RCT_EXPORT_METHOD(getCacheAlbumList:(NSDictionary *)parameters resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject)
+{
+    NSString * string = [self getParametersWithDictionary:parameters];
+    NSString *key = [NSString stringWithFormat:@"%@album?%@",BASEURLSTRING,string];
+    [self getItemByKey:key resolver:^(id result) {
+        resolve(result);
+    } rejecter:^(NSString *code, NSString *message, NSError *error) {
+        reject(code,message,error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getCacheAlbumById:(NSString *)albumId resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject)
+{
+    NSString *key = [NSString stringWithFormat:@"%@album/%@",BASEURLSTRING,albumId];
+    
+    [self getItemByKey:key resolver:^(id result) {
+        resolve(result);
+    } rejecter:^(NSString *code, NSString *message, NSError *error) {
+        reject(code,message,error);
+    }];
+}
+
+RCT_EXPORT_METHOD(getCacheNoteList:(NSDictionary *)parameters resolve:(RCTPromiseResolveBlock)resolve rejecte:(RCTPromiseRejectBlock)reject)
+{
+    NSString *string = [self getParametersWithDictionary:parameters];
+    NSString *key = [NSString stringWithFormat:@"%@note?%@",BASEURLSTRING,string];
+    [self getItemByKey:key resolver:^(id result) {
+        resolve(result);
+    } rejecter:^(NSString *code, NSString *message, NSError *error) {
+        reject(code,message,error);
+    }];
+}
+
+RCT_EXPORT_METHOD(imageCache:(NSString *)URLString resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSURL *URL = [NSURL URLWithString:URLString];
+    SDWebImageManager *manager = [SDWebImageManager sharedManager];
+    __block UIImage *img;
+    [manager diskImageExistsForURL:URL completion:^(BOOL isInCache) {
+        if (isInCache) {
+            img =  [[manager imageCache] imageFromDiskCacheForKey:URL.absoluteString];
+            
+            NSString*cacheImageKey = [[SDWebImageManager sharedManager] cacheKeyForURL:URL];
+            
+            if(cacheImageKey.length) {
+                
+                NSString*cacheImagePath = [[SDImageCache sharedImageCache] defaultCachePathForKey:cacheImageKey];
+                resolve(cacheImagePath);
+            }
+        } else {
+            NSData *data = [NSData dataWithContentsOfURL:URL];
+            img = [UIImage imageWithData:data];
+        }
+    }];
+}
+
+//-(UIImage*)imageFromSdcache:(NSURL *)URL{
+//    
+//    __block NSData*imageData =nil;
+//    
+//    [[SDWebImageManager sharedManager] diskImageExistsForURL:URL completion:^(BOOL isInCache) {
+//        if (isInCache) {
+//            
+//            NSString*cacheImageKey = [[SDWebImageManager sharedManager] cacheKeyForURL:[NSURL URLWithString:nil]];
+//            
+//            if(cacheImageKey.length) {
+//                
+//                NSString*cacheImagePath = [[SDImageCache sharedImageCache] defaultCachePathForKey:cacheImageKey];
+//                
+//                if(cacheImagePath.length) {
+//                    
+//                    imageData = [NSData dataWithContentsOfFile:cacheImagePath];
+//                    
+//                }
+//            }
+//        }
+//    }];
+//    
+//    if(!imageData) {
+//        imageData = [NSData dataWithContentsOfURL:URL];
+//    }
+//    UIImage*image = [UIImage imageWithData:imageData];
+//    return image;
+//}
+
+- (NSString *)getParametersWithDictionary:(NSDictionary *)dict
+{
+    NSArray* arr = [dict allKeys];
+    arr = [arr sortedArrayUsingComparator:^NSComparisonResult(id obj1, id obj2){
+        NSComparisonResult result = [obj1 compare:obj2];
+        return result==NSOrderedDescending;
+    }];
+    
+    NSString * parastr;
+    NSString * string = nil;
+    for (int i=0; i<arr.count; i++) {
+        NSString * value = [dict valueForKey:arr[i]];
+        parastr = [NSString stringWithFormat:@"%@=%@",arr[i],value];
+        if (string != nil) {
+            string = [NSString stringWithFormat:@"%@&%@",string,parastr];
+        } else {
+            string = [NSString stringWithFormat:@"%@",parastr];
+        }
+    }
+    return string;
+}
+
+@end

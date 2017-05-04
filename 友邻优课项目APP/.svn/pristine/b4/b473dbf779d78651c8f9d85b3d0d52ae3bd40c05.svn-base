@@ -1,0 +1,293 @@
+package com.reactmodules.controller;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.TextUtils;
+
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.JSApplicationIllegalArgumentException;
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.google.gson.Gson;
+import com.reactmodules.download.CourseBean;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.activity.YLNoteActivity;
+import com.zhuomogroup.ylyk.activity.YLLoginActivity;
+import com.zhuomogroup.ylyk.activity.YLMainActivity;
+import com.zhuomogroup.ylyk.bean.AudioDataBean;
+import com.zhuomogroup.ylyk.bean.DataListBean;
+
+import org.greenrobot.eventbus.EventBus;
+
+import java.util.ArrayList;
+
+import static com.reactmodules.consts.ModuleName.INTENT_MODULE;
+
+
+/**
+ * Created by xyb on 2017/2/24 at 友邻优课 2017
+ */
+
+public class YLIntentModule extends ReactContextBaseJavaModule {
+
+    private static final String OBJECT_JS = "AudioDataBean";
+    private static final String NOT_REGISTERED = "微信需要注册APP_ID";
+    private static final String YL_AUDIO_ACTIVITY = "com.zhuomogroup.ylyk.activity.YLAudioActivity";
+    private static final String CODE_500 = "500";
+
+    public static Promise promise;
+
+
+    public YLIntentModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return INTENT_MODULE;
+    }
+
+    /**
+     * 从JS页面跳转到原生activity   同时也可以从JS传递相关数据到原生
+     *
+     * @param name   需要打开的Activity的class
+     * @param params
+     */
+    @ReactMethod
+    public void startActivityFromJS(String name, String params) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            if (null != currentActivity) {
+                Class toActivity = Class.forName(name);
+                Intent intent = new Intent(currentActivity, toActivity);
+                Gson gson = new Gson();
+                AudioDataBean objectJS = gson.fromJson(params, AudioDataBean.class);
+                Bundle bundle = new Bundle();
+                bundle.putParcelable(OBJECT_JS, objectJS);
+                intent.putExtra(OBJECT_JS, bundle);
+                currentActivity.startActivity(intent);
+            }
+        } catch (Exception e) {
+            throw new JSApplicationIllegalArgumentException(
+                    "不能打开Activity : " + e.getMessage());
+        }
+    }
+
+    /**
+     * Activtiy跳转到JS页面，传输数据 在js 页面使用
+     *
+     * @param successBack
+     * @param errorBack
+     */
+    @ReactMethod
+    public void dataToJS(Callback successBack, Callback errorBack) {
+        try {
+            Activity currentActivity = getCurrentActivity();
+            if (currentActivity != null) {
+                String result = currentActivity.getIntent().getStringExtra("data");
+                if (TextUtils.isEmpty(result)) {
+                    result = "没有数据";
+                }
+                successBack.invoke(result);
+            } else {
+                errorBack.invoke("context is null");
+            }
+
+        } catch (Exception e) {
+            errorBack.invoke(e.getMessage());
+        }
+    }
+
+    /**
+     * 显示或者隐藏 tabHost
+     *
+     * @param isShow true or false
+     */
+    @ReactMethod
+    public void showOrHideTabbar(String isShow) {
+        EventBus.getDefault().post(isShow);
+    }
+
+    @ReactMethod
+    public void androidIsHaveBar(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity instanceof YLMainActivity) {
+            boolean showBar = ((YLMainActivity) currentActivity).isShowBar();
+            promise.resolve(showBar);
+        }
+
+    }
+
+    /**
+     * 打开播放页
+     *
+     * @param courseId    需要播放的课程id
+     * @param isDownload  是否来自自定义列表
+     * @param readableMap 列表数据
+     */
+    @ReactMethod
+    public void startAudioPlay(String courseId, Boolean isDownload, String readableMap) {
+
+        try {
+            Activity currentActivity = getCurrentActivity();
+            if (null != currentActivity) {
+                Class toActivity = Class.forName(YL_AUDIO_ACTIVITY);
+                Intent intent = new Intent(currentActivity, toActivity);
+
+                AudioDataBean objectJS = new AudioDataBean();
+                objectJS.setCourseId(Integer.parseInt(courseId));
+                if (isDownload) {
+                    org.json.JSONArray jsonArray = new org.json.JSONArray(readableMap);
+                    ArrayList<DataListBean> dataLists = new ArrayList<>();
+
+                    for (int i = 0; i < jsonArray.length(); i++) {
+
+                        org.json.JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                        Object teachers1 = jsonObject.get("teachers");
+                        if (teachers1 instanceof org.json.JSONArray) {
+                            int duration = jsonObject.getInt("duration");
+                            int id = jsonObject.getInt("id");
+                            String name = jsonObject.getString("name");
+                            String teachers = jsonObject.getJSONArray("teachers").toString();
+                            long in_time = jsonObject.getLong("in_time");
+                            DataListBean dataList = new DataListBean();
+                            dataList.setCourseId(id);
+                            dataList.setName(name);
+                            dataList.setIn_time(in_time);
+                            dataList.setDuration(duration);
+                            dataList.setTeacherName(teachers);
+                            dataLists.add(dataList);
+
+                        } else if (teachers1 instanceof String) {
+                            Gson gson = new Gson();
+                            CourseBean downLoadBean = gson.fromJson(jsonObject.toString(), CourseBean.class);
+                            String duration = downLoadBean.getDuration();
+                            int id = downLoadBean.getId();
+                            String name = downLoadBean.getName();
+                            String teachers = downLoadBean.getTeachers();
+
+                            DataListBean dataList = new DataListBean();
+                            dataList.setCourseId(id);
+                            dataList.setName(name);
+                            dataList.setDuration(Integer.parseInt(duration));
+                            dataList.setTeacherName(teachers);
+                            dataLists.add(dataList);
+                        }
+
+
+                    }
+                    objectJS.setDataLists(dataLists);
+                }
+                objectJS.setDownload(isDownload);
+                Bundle bundle = new Bundle();
+                bundle.putParcelable(OBJECT_JS, objectJS);
+                intent.putExtra(OBJECT_JS, bundle);
+                currentActivity.startActivity(intent);
+            } else {
+                IntentActivity intentActivity = new IntentActivity();
+                intentActivity.setCourseId(courseId);
+                intentActivity.setDownload(isDownload);
+                intentActivity.setReadableMap(readableMap);
+                EventBus.getDefault().post(intentActivity);
+
+            }
+        } catch (Exception e) {
+            throw new JSApplicationIllegalArgumentException(
+                    "不能打开Activity : " + e.getMessage());
+        }
+    }
+
+
+    /**
+     * 打开微信
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void openWXApp(Promise promise) {
+        if (getCurrentActivity() != null) {
+            MainApplication application = (MainApplication) getCurrentActivity().getApplication();
+            IWXAPI iwxapi = application.getIwxapi();
+            if (iwxapi != null) {
+                promise.resolve(iwxapi.openWXApp());
+            } else {
+                promise.reject(CODE_500, NOT_REGISTERED);
+            }
+        }
+
+    }
+
+    /**
+     * 打开登录页面
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void openPlayerController(Promise promise) {
+        Activity currentActivity = getCurrentActivity();
+        if (currentActivity != null) {
+            Intent intent = new Intent(currentActivity, YLLoginActivity.class);
+            currentActivity.startActivity(intent);
+        }
+        YLIntentModule.promise = promise;
+
+    }
+
+    public static Promise getPromise() {
+        return promise;
+    }
+
+    public static void setPromise(Promise promise) {
+        YLIntentModule.promise = promise;
+
+    }
+
+    /**
+     * 关闭当前页面
+     */
+    @ReactMethod
+    public void closeMine() {
+        if (YLNoteActivity.ylExpActivity != null) {
+            YLNoteActivity.ylExpActivity.finish();
+            YLNoteActivity.ylExpActivity = null;
+        }
+    }
+
+    public class IntentActivity {
+        String courseId;
+        boolean isDownload;
+        String readableMap;
+
+
+        public String getCourseId() {
+            return courseId;
+        }
+
+        public void setCourseId(String courseId) {
+            this.courseId = courseId;
+        }
+
+        public boolean isDownload() {
+            return isDownload;
+        }
+
+        public void setDownload(boolean download) {
+            isDownload = download;
+        }
+
+        public String getReadableMap() {
+            return readableMap;
+        }
+
+        public void setReadableMap(String readableMap) {
+            this.readableMap = readableMap;
+        }
+    }
+
+
+}

@@ -1,0 +1,3 @@
+//图片地址
+
+export const baseImgUrl = 'https://dev-api.youlinyouke.com/v1/';

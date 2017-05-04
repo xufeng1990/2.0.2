@@ -1,0 +1,577 @@
+package com.reactmodules.storage;
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.MediaStore;
+import android.support.annotation.NonNull;
+import android.widget.Toast;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableNativeMap;
+import com.zhuomogroup.ylyk.utils.EncryptionUtil;
+import com.tbruyelle.rxpermissions2.RxPermissions;
+import com.zhuomogroup.ylyk.utils.SharedPreferencesUtil;
+import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.callback.BitmapCallback;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
+
+import io.reactivex.functions.Consumer;
+import okhttp3.Call;
+
+import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+import static com.reactmodules.consts.ModuleName.STORAGE;
+import static com.zhuomogroup.ylyk.consts.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USERID_AUTHORIZATION;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USER_INFO;
+
+/**
+ * Created by xyb on 2017/2/20.
+ */
+
+public class YLStorageModule extends ReactContextBaseJavaModule {
+    private final Context context;
+
+    public YLStorageModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+        context = reactContext.getApplicationContext();
+    }
+
+    @Override
+    public String getName() {
+        return STORAGE;
+    }
+
+    /**
+     * 获得key值相应的值
+     *
+     * @param key
+     * @param promise
+     */
+    @ReactMethod
+    public void getItem(String key, Promise promise) {
+        try {
+            if (context != null) {
+                String result = (String) SharedPreferencesUtil.get(context, key, "");
+                if ("".equals(result)) {
+                    if (key.equals(USER_INFO)) {
+                        promise.resolve("0");
+                        return;
+                    }
+                    promise.reject("999", "getItem data is null ");
+                } else {
+                    promise.resolve(result);
+                }
+
+            }
+        } catch (Exception e) {
+            promise.reject(e);
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * 设置key 内容
+     *
+     * @param key
+     * @param value
+     * @param promise
+     */
+    @ReactMethod
+    public void setItem(String key, String value, Promise promise) {
+        if (context != null) {
+            SharedPreferencesUtil.put(context, key, value);
+        }
+    }
+
+    /**
+     * 删除item内容
+     *
+     * @param key
+     * @param promise
+     */
+    @ReactMethod
+    public void remove(String key, Promise promise) {
+        if (context != null) {
+            SharedPreferencesUtil.remove(context, key);
+
+        }
+    }
+
+    /**
+     * 清除所有key值
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void clear(Promise promise) {
+        if (context != null) {
+            SharedPreferencesUtil.clear(context);
+        }
+    }
+
+    /**
+     * 获得所有key值
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getAllKeys(Promise promise) {
+        if (context != null) {
+            Map<String, ?> all = SharedPreferencesUtil.getAll(context);
+            ArrayList arrayList = new ArrayList();
+            for (Map.Entry<String, ?> stringEntry : all.entrySet()) {
+                String key = stringEntry.getKey();
+                arrayList.add(key);
+            }
+            String[] keys = new String[arrayList.size()];
+            promise.resolve(Arrays.toString(keys));
+        }
+
+    }
+
+    /**
+     * 获得 签名验证内容
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getAuthorization(Promise promise) {
+        getItem(USERID_AUTHORIZATION, promise);
+    }
+
+    /**
+     * 获得课程列表的缓存
+     *
+     * @param queryJson
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheCourseList(ReadableMap queryJson, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) queryJson);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("course");
+
+
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            TreeMap<String, String> params = getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+            String baseUrl = getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+                // FIXME: 2017/4/19 与rn沟通
+            }
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * 获得专辑列表缓存
+     *
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheAlbumList(ReadableMap parameters, Promise promise) {
+
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) parameters);
+
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject(nativeString);// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+
+
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+            TreeMap<String, String> params = getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+
+
+            String baseUrl = getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+                // FIXME: 2017/4/19 与rn沟通
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获得日历的列表缓存
+     *
+     * @param parameters
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheNoteList(ReadableMap parameters, Promise promise) {
+        try {
+            String nativeString = getNativeString((ReadableNativeMap) parameters);
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject(nativeString);
+            JSONArray url = new JSONArray();//url 数组
+            url.put("note");
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            TreeMap<String, String> params = getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+            String baseUrl = getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+                // FIXME: 2017/4/19 与RN沟通
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获得banner list 缓存
+     *
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheBannerList(Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+            JSONObject query = new JSONObject();
+            JSONArray url = new JSONArray();//url 数组
+            url.put("banner");
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+            TreeMap<String, String> params = getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+            String baseUrl = getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 获得专辑信息缓存
+     *
+     * @param album_id
+     * @param promise
+     */
+    @ReactMethod
+    public void getCacheAlbumById(String album_id, Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();// 主体json
+            JSONObject body = new JSONObject();// 主体json
+
+            JSONObject query = new JSONObject();// 参数
+
+            JSONArray url = new JSONArray();//url 数组
+
+            url.put("album");
+            url.put(album_id);
+
+
+            jsonObject.put("type", "get");
+            jsonObject.put("url", url);
+            jsonObject.put("query", query);
+            jsonObject.put("body", body);
+
+
+            TreeMap<String, String> params = getParams(jsonObject);
+            String urlData = "";
+            if (params.size() > 0) {
+                for (Map.Entry<String, String> stringStringEntry : params.entrySet()) {
+                    urlData += "&" + stringStringEntry.getKey() + "=" + stringStringEntry.getValue();
+                }
+                urlData = urlData.substring(1);
+                urlData = "?" + urlData;
+            }
+
+            String baseUrl = getBaseUrl(jsonObject);
+            String key = BASE_URL_HEAD + baseUrl + urlData;
+            String cache = (String) SharedPreferencesUtil.get(context, EncryptionUtil.MD5(key), "");
+            if (!"".equals(cache)) {
+                promise.resolve(cache);
+            } else {
+                promise.reject("999", "cache null");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
+    private String getNativeString(ReadableNativeMap updateUserJson) throws JSONException {
+        String string = updateUserJson.toString();
+        JSONObject object = new JSONObject(string);
+        JSONObject nativeMap1 = object.getJSONObject("NativeMap");
+
+        return nativeMap1.toString();
+    }
+
+
+    /**
+     * 获得 参数地址
+     *
+     * @param jsonObject
+     * @return
+     * @throws JSONException
+     */
+    @NonNull
+    private String getBaseUrl(JSONObject jsonObject) throws JSONException {
+        JSONArray url = jsonObject.getJSONArray("url");
+
+        String baseUrl = "";
+        for (int i = 0; i < url.length(); i++) {
+            baseUrl = baseUrl + url.getString(i) + "/";
+        }
+        if (baseUrl.length() > 0) {
+            baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
+        }
+        return baseUrl;
+    }
+
+
+    /**
+     * 获得排序map
+     *
+     * @param jsonObject1
+     * @return
+     * @throws JSONException
+     */
+    @NonNull
+    private TreeMap<String, String> getParams(JSONObject jsonObject1) throws JSONException {
+        JSONObject jsonObject = new JSONObject(jsonObject1.getString("query"));
+        Iterator<String> keys = jsonObject.keys();
+        TreeMap<String, String> params = new TreeMap<>();
+        while (keys.hasNext()) {
+            String key = (String) keys.next();
+            params.put(key, jsonObject.getString(key));
+        }
+        return params;
+    }
+
+    /**
+     * 保存图片方法
+     *
+     * @param url     图片地址
+     * @param promise
+     */
+    @ReactMethod
+    public void saveImage(String url, Promise promise) {
+        url = url.replaceFirst("https", "http");
+        final String finalUrl = url;
+        RxPermissions.getInstance(context)
+                .request(WRITE_EXTERNAL_STORAGE).subscribe(new Consumer<Boolean>() {
+            @Override
+            public void accept(Boolean agreePermission) throws Exception {
+                if (agreePermission) {
+                    OkHttpUtils.get()
+                            .url(finalUrl)
+                            .build()
+                            .execute(new BitmapCallback() {
+                                @Override
+                                public void onError(Call call, Exception e, int id) {
+                                    e.printStackTrace();
+                                }
+
+                                @Override
+                                public void onResponse(Bitmap response, int id) {
+                                    if (context != null) {
+                                        saveImageToGallery(context, response);
+                                    }
+
+                                }
+                            });
+
+                }
+            }
+        });
+
+
+    }
+
+    /**
+     * 保存到本地方法
+     *
+     * @param context 上下文
+     * @param bmp     图片信息
+     */
+    public static void saveImageToGallery(Context context, Bitmap bmp) {
+        if (bmp == null) {
+            Toast.makeText(context, "保存出错了...", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String sdCardRoot = Environment.getExternalStorageDirectory().getAbsolutePath();
+        // 首先保存图片
+        File appDir = new File(sdCardRoot, "ylyk");
+        if (!appDir.exists()) {
+            appDir.mkdir();
+        }
+        String fileName = System.currentTimeMillis() + ".jpg";
+        File file = new File(appDir, fileName);
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            bmp.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            fos.flush();
+            fos.close();
+        } catch (FileNotFoundException e) {
+
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 最后通知图库更新
+        try {
+            MediaStore.Images.Media.insertImage(context.getContentResolver(), file.getAbsolutePath(), fileName, null);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        Uri uri = Uri.fromFile(file);
+        intent.setData(uri);
+        context.sendBroadcast(intent);
+        Toast.makeText(context, "保存成功", Toast.LENGTH_SHORT).show();
+    }
+
+
+//    @ReactMethod
+//    public void imageCache(final String url, final Promise promise) {
+//
+//        getCurrentActivity().runOnUiThread(new Runnable() {
+//            @Override
+//            public void run() {
+//                Glide.with(context)
+//                        .load(url)
+//                        .downloadOnly(new SimpleTarget<File>() {
+//                            @Override
+//                            public void onResourceReady(File resource, GlideAnimation<? super File> glideAnimation) {
+//
+//                                String path = resource.getAbsolutePath();
+//                                JSONObject object = new JSONObject();
+//                                try {
+//                                    object.put("type", 0);
+//                                    object.put("url", path);
+//                                    promise.resolve(object.toString());
+//                                } catch (JSONException e) {
+//                                    e.printStackTrace();
+//                                }
+//
+//                            }
+//
+//                            @Override
+//                            public void onLoadFailed(Exception e, Drawable errorDrawable) {
+//                                JSONObject object = new JSONObject();
+//                                try {
+//                                    object.put("type", 1);
+//                                    object.put("url", url);
+//                                    promise.resolve(object.toString());
+//                                } catch (JSONException e1) {
+//                                    e1.printStackTrace();
+//                                }
+//                            }
+//                        });
+//            }
+//        });
+//
+//
+//    }
+}

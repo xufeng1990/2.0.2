@@ -1,0 +1,65 @@
+//
+//  NoteListViewController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/3.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "NoteListViewController.h"
+#import "YLYKPlayerViewController.h"
+#import "CourseViewController.h"
+#import <React/RCTRootView.h>
+#import <React/RCTBundleURLProvider.h>
+
+@interface NoteListViewController ()
+
+
+@end
+
+@implementation NoteListViewController
+
+
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.view.backgroundColor = [UIColor whiteColor];
+//         NSURL* jsCodeLocation = [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
+//    NSURL *jsCodeLocation = [NSURL URLWithString:RNURL];
+    NSURL* jsCodeLocation = JS_CODE_LOCATION;
+    NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:@"NoteListView",@"tab_type", self.courseInfo,@"courseInfo", nil];
+    RCTRootView* rootView = [[RCTRootView alloc] initWithBundleURL:jsCodeLocation moduleName:@"ylyk_rn" initialProperties:dict launchOptions:nil];
+    rootView.backgroundColor = [UIColor whiteColor];
+    self.view = rootView;
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+    // Dispose of any resources that can be recreated.
+}
+
+- (void)viewWillAppear:(BOOL)animated
+{
+    [[UINavigationBar appearance] setBackgroundImage:[[UIImage alloc] init]
+                                      forBarPosition:UIBarPositionAny
+                                          barMetrics:UIBarMetricsDefault];
+    
+    [[UINavigationBar appearance] setShadowImage:[[UIImage alloc] init]];
+    [self.navigationController.navigationBar setBackgroundColor:[UIColor whiteColor]];
+    self.navigationItem.title = @"心得列表";
+    UIImage *image = [UIImage imageNamed:@"nav_back"];
+    image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+}
+
+- (void)back
+{
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+//    NSLog(@"%@",touches.class);
+}
+
+@end

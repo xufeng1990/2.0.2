@@ -1,0 +1,67 @@
+package com.reactutils.download;
+
+import java.io.Serializable;
+
+/**
+ * Created by xyb on 2017/3/3 at 友邻优课 2017
+ */
+
+public class DownLoadBean implements Serializable {
+
+    int id;
+    String name;
+    String teachers;
+    Album album;
+    String duration;
+    String url;
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getTeachers() {
+        return teachers;
+    }
+
+    public void setTeachers(String teachers) {
+        this.teachers = teachers;
+    }
+
+    public Album getAlbum() {
+        return album;
+    }
+
+    public void setAlbum(Album album) {
+        this.album = album;
+    }
+
+    public String getDuration() {
+        return duration;
+    }
+
+    public void setDuration(String duration) {
+        this.duration = duration;
+    }
+
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+
+}

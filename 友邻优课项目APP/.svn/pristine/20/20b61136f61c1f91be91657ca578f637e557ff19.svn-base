@@ -1,0 +1,61 @@
+//
+//  BridgeEvents.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/29.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "BridgeEvents.h"
+
+
+@implementation BridgeEvents 
+RCT_EXPORT_MODULE();
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[@"playOrPauseToRN"];
+}
+
+
+- (void)startObserving {
+    for (NSString *event in [self supportedEvents]) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handleNotification:)
+                                                     name:event
+                                                   object:nil];
+    }
+}
+
++ (BOOL)application:(UIApplication *)application withPlaying:(NSDictionary *)playing {
+    [self postNotificationName:@"playOrPauseToRN" withPlayload:playing];
+    return YES;
+}
+
++ (void)postNotificationName:(NSString *)name withPlayload:(NSDictionary *)object {
+    
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 9.0) {
+    
+    [[NSNotificationCenter defaultCenter] postNotificationName:name
+                                                        object:self
+                                                      userInfo:object];
+    } else {
+        [[NSNotificationCenter defaultCenter] postNotificationName:name object:object];
+    }
+}
+
+- (void)handleNotification:(NSNotification *)notification {
+    
+    if ([[[UIDevice currentDevice] systemVersion] floatValue] >= 9.0) {
+        [self sendEventWithName:@"playOrPauseToRN" body:notification.userInfo];
+//        [[NSNotificationCenter defaultCenter] postNotificationName:name
+//                                                            object:self
+//                                                          userInfo:object];
+    } else {
+//        [[NSNotificationCenter defaultCenter] postNotificationName:name object:object];
+        [self sendEventWithName:@"playOrPauseToRN" body:notification.object];
+    }
+
+//    [self sendEventWithName:@"playOrPauseToRN" body:notification.userInfo];
+}
+
+@end

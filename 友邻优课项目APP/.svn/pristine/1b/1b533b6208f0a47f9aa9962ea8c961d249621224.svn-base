@@ -1,0 +1,290 @@
+//
+//  PushNative.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/2/22.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "PushNative.h"
+#import <React/RCTBridgeModule.h>
+#import "YLYKPlayerViewController.h"
+#import "CourseViewController.h"
+#import "AppDelegate.h"
+#import "LoginViewController.h"
+#import "ProfileViewController.h"
+#import "PhoneLoginViewController.h"
+#include <sys/param.h>
+#include <sys/mount.h>
+
+typedef void (^RCTPromiseResolveBlock)(id result);
+typedef void (^RCTPromiseRejectBlock)(NSString *code, NSString *message, NSError *error);
+@interface PushNative ()
+
+@property (nonatomic, copy) NSString *fileCachePath;
+
+@end
+
+@implementation PushNative{
+    RCTPromiseResolveBlock _resolveBlock;
+    RCTPromiseRejectBlock _rejectBlock;
+}
+
+
+@synthesize bridge = _bridge;
+
+RCT_EXPORT_MODULE();
+
+RCT_EXPORT_METHOD(RNOpenOneVC:(NSString *)msg){
+    
+    NSLog(@"RN传入原生界面的数据为:%@",msg);
+    //主要这里必须使用主线程发送,不然有可能失效
+    //    dispatch_async(dispatch_get_main_queue(), ^{
+    YLYKPlayerViewController *one = [[YLYKPlayerViewController alloc]init];
+    one.title = msg;
+    CourseViewController * course = [[CourseViewController alloc] init];
+    
+    
+    [course presentViewController:one animated:YES completion:nil];
+    
+}
+
+RCT_EXPORT_METHOD(openLoginViewController){
+    
+    //主要这里必须使用主线程发送,不然有可能失效
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        LoginViewController *login = [[LoginViewController alloc]init];
+        [nav presentViewController:login animated:YES completion:nil];
+});
+}
+
+RCT_EXPORT_METHOD(getDownloadCacheSize:(NSString *)download resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0"]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    NSString *downloadSize = [NSString stringWithFormat:@"%.2fM",fileTotalSize/1000.0/1000];
+    resolve(downloadSize);
+}
+
+RCT_EXPORT_METHOD(getCacheSize:(NSString *)cache resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject )
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    
+    
+    NSString * downloadPath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0"]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subDownloadPath = [fileManger subpathsAtPath:downloadPath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger downloadTotalSize = 0;
+    
+    for (NSString * fileName in subDownloadPath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [downloadPath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        downloadTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    NSString *downloadSize = [NSString stringWithFormat:@"%.2fM",(fileTotalSize - downloadTotalSize)/1000.0/1000];
+    
+    resolve(downloadSize);
+}
+
+
+
+RCT_EXPORT_METHOD(getTotalCacheSize:(NSString *)cache resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    //拼接缓存文件文件夹路径
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    
+    //将缓存文件夹路径赋值给成员属性(后面删除缓存文件时需要用到)
+//    self.fileCachePath = fileCachePath;
+    
+    //获取到该缓存目录下的所有子文件（只是文件名并不是路径，后面要拼接）
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    
+    //先定义一个缓存目录总大小的变量
+    NSInteger fileTotalSize = 0;
+    
+    for (NSString * fileName in subFilePath)
+    {
+        //拼接文件全路径（注意：是文件）
+        NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+        
+        //获取文件属性
+        NSDictionary * fileAttributes = [fileManger attributesOfItemAtPath:filePath error:nil];
+        
+        //根据文件属性判断是否是文件夹（如果是文件夹就跳过文件夹，不将文件夹大小累加到文件总大小）
+        if ([fileAttributes[NSFileType] isEqualToString:NSFileTypeDirectory]) continue;
+        
+        //获取单个文件大小,并累加到总大小
+        fileTotalSize += [fileAttributes[NSFileSize] integerValue];
+    }
+    NSString *cacheSize = [NSString stringWithFormat:@"%.2fM",fileTotalSize/1000.0/1000];
+    //将字节大小转为MB，然后传出去
+//        return fileTotalSize/1000.0/1000;
+    resolve(cacheSize);
+}
+
+RCT_EXPORT_METHOD(showOrHideTabbar:(NSString *)showOrHide)
+{
+    UITabBarController * obj = [UIApplication sharedApplication].keyWindow.rootViewController.childViewControllers[0];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        
+        if ([showOrHide isEqualToString:@"show"]) {
+            obj.tabBar.hidden = NO;
+        } else if ([showOrHide isEqualToString:@"hide"]){
+            obj.tabBar.hidden = YES;
+        }
+    });
+}
+
+RCT_EXPORT_METHOD(changePhoneNumber:(NSString *)showOrHide)
+{
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+        UINavigationController * nav = (UINavigationController *)keyWindow.rootViewController;
+        PhoneLoginViewController * phone = [[PhoneLoginViewController alloc] init];
+        phone.title = @"绑定手机号";
+        [nav pushViewController:phone animated:YES];
+    });
+    
+}
+
+RCT_EXPORT_METHOD(clearCache:(NSString *) resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    //获取文件管理器对象
+    NSFileManager * fileManger = [NSFileManager defaultManager];
+    
+    //获取缓存沙盒路径
+    NSString * cachePath =  [NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES) lastObject];
+    
+    NSString * fileCachePath = [cachePath stringByAppendingPathComponent:[NSString stringWithFormat:@""]];
+    NSArray * subFilePath = [fileManger subpathsAtPath:fileCachePath];
+    for (NSString * fileName in subFilePath)
+    {
+        if (![fileName containsString:@"Pandora"]) {
+            //拼接文件全路径（注意：是文件）
+            NSString * filePath = [fileCachePath stringByAppendingPathComponent:fileName];
+            [fileManger removeItemAtPath:filePath error:nil];
+        }
+    }
+
+}
+
+RCT_EXPORT_METHOD(logout:(NSString *) resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    // 注销则需要清除所有与用户相关的信息
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"user_id"];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"xdy_id"];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"userInfo"];
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"authorization"];
+
+    [self getCacheSize:nil resolver:nil rejecter:nil];
+}
+
+RCT_EXPORT_METHOD(freeDiskSpaceInBytes:(NSString *)bytes resolve:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    struct statfs buf;
+    long long freespace = -1;
+    if(statfs("/var", &buf) >= 0){
+        freespace = (long long)(buf.f_bsize * buf.f_bfree);
+    }
+    NSString *disk = [NSString stringWithFormat:@"手机剩余存储空间为：%qi MB" ,freespace/1024/1024];
+    resolve(disk);
+}
+
+RCT_EXPORT_METHOD(getVersion:(NSString *)version resolve:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    resolve([[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"]);
+}
+
+
+RCT_EXPORT_METHOD(getBuild:(NSString *)build resolve:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    resolve([[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"]);
+}
+
+
+
+@end

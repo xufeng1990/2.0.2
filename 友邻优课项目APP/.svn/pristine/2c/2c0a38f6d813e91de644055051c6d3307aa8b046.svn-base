@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#fff"
+    android:orientation="vertical">
+
+    <include
+        android:id="@+id/include"
+        layout="@layout/include_title" />
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/play_lay"
+        android:layout_below="@+id/include"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical">
+
+        <android.support.v4.view.ViewPager
+            android:id="@+id/viewPager"
+            android:layout_width="match_parent"
+            android:layout_height="180px"
+            android:layout_marginTop="14px"
+            android:clipToPadding="false"
+            android:paddingLeft="28px"
+            android:paddingRight="28px"
+            android:visibility="gone">
+
+        </android.support.v4.view.ViewPager>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:animateLayoutChanges="true"
+            android:background="#f8fafa">
+
+
+            <com.zhuomogroup.ylyk.views.OnScrollWebView
+                android:id="@+id/webview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:layerType="software"
+                android:paddingLeft="10px"
+                android:paddingRight="10px" />
+
+            <RelativeLayout
+                android:id="@+id/img_change_re"
+                android:layout_width="match_parent"
+                android:layout_height="35px"
+                android:background="#fff">
+
+                <ImageView
+                    android:id="@+id/img_change"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:layout_marginTop="5px"
+                    android:scaleType="center"
+                    android:src="@mipmap/viewpager_visible" />
+
+            </RelativeLayout>
+
+
+        </RelativeLayout>
+
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/write_tips"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/play_lay"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="122px"
+        android:layout_marginRight="20px"
+        android:src="@mipmap/write_tips" />
+
+    <View
+        android:id="@+id/view_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#995a5a5a"
+        android:visibility="gone" />
+
+    <com.zhy.autolayout.AutoFrameLayout
+        android:id="@+id/play_lay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="#fff">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+
+            <RelativeLayout
+                android:id="@+id/play_rela"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <RelativeLayout
+                    android:id="@+id/rel_seek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20px">
+
+                    <TextView
+                        android:id="@+id/all_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignRight="@+id/play_seek"
+                        android:layout_below="@+id/play_seek"
+                        android:layout_centerVertical="true"
+                        android:layout_marginTop="4px"
+                        android:text="00:00"
+                        android:textColor="@color/textColor"
+                        android:textSize="11px" />
+
+                    <TextView
+                        android:id="@+id/now_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignLeft="@+id/play_seek"
+                        android:layout_below="@+id/play_seek"
+                        android:layout_marginTop="4px"
+                        android:text="00:00"
+
+                        android:textColor="@color/textColor"
+                        android:textSize="11px" />
+
+                    <SeekBar
+                        android:id="@+id/play_seek"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="25px"
+                        android:layout_marginRight="25px"
+                        android:maxHeight="3dp"
+                        android:minHeight="3dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:progressDrawable="@drawable/po_seekbar"
+                        android:thumb="@drawable/seekbar_thumb"
+                        android:thumbOffset="0dp" />
+                </RelativeLayout>
+
+
+                <RelativeLayout
+                    android:id="@+id/play_conchar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/rel_seek"
+                    android:layout_marginBottom="20px"
+                    android:layout_marginTop="5px">
+
+
+                    <ImageView
+                        android:id="@+id/play_list"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_centerVertical="true"
+                        android:layout_marginLeft="23px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_playlist" />
+
+                    <ImageView
+                        android:id="@+id/play_back_15"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_centerVertical="true"
+                        android:layout_marginLeft="91px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_button_back" />
+
+                    <ImageView
+                        android:id="@+id/play_type"
+                        android:layout_width="49px"
+                        android:layout_height="49px"
+                        android:layout_centerInParent="true"
+                        android:src="@mipmap/play_icon_play" />
+
+                    <ImageView
+                        android:id="@+id/play_forward_15"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_alignParentRight="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginRight="91px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_button_forward" />
+
+                    <ImageView
+                        android:id="@+id/play_more"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_alignParentRight="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginRight="23px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_icon_more" />
+                </RelativeLayout>
+
+            </RelativeLayout>
+
+            <include
+                android:id="@+id/push_tips_card"
+                layout="@layout/include_pushtips"
+                android:visibility="gone" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="@drawable/cardview_bg" />
+
+        </RelativeLayout>
+    </com.zhy.autolayout.AutoFrameLayout>
+
+    <RelativeLayout
+        android:id="@+id/loading_re"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <com.reactutils.loadingview.LoadingFrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true">
+
+        </com.reactutils.loadingview.LoadingFrameLayout>
+
+
+    </RelativeLayout>
+
+
+</RelativeLayout>

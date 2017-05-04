@@ -1,0 +1,68 @@
+/*
+全局存放
+*/
+'use strict'
+import React, { Component, } from 'react';
+import {
+  NativeModules,
+  Platform,
+} from 'react-native'
+var Dimensions = require('Dimensions');
+
+// var NativeCommonTools = NativeModules.CommonTools;
+
+// 重写myconsole 方法，打印日志根据 DEBUG 来控制
+// const oldLog = myconsole.bind(console);
+// myconsole = function log(msg) {
+//   if (NativeCommonTools.DEBUG) oldLog(msg);
+// }
+
+var g_AppValue = {
+  //DEBUG: NativeCommonTools.DEBUG,
+  //变量
+  'userToken': '',       // 登陆后获取到的 userToken
+  'latitude': '',       // 纬度
+  'longitude': '',      // 经度
+  'appVersion': '',     // 版本号
+  'isSubProj': false,    // 是否子项目，默认不是
+
+  //----------- CommonService 模块使用的共享数据 -------
+  'appName': '',//应用名
+  'userInfo': {},//用户登陆成功后的数据
+
+
+  //屏幕尺寸
+  precent: 0,  //跟苹果6比的缩放比例
+  screenWidth: 0,     //获取屏幕宽度
+  screenHeight: 0,   //获取屏幕高度
+  screenScale: 0,    //获取屏幕密度  6p,6sp为3，其余为2,
+
+  //方法
+  initGlobalData: initGlobalData,
+  isUserTokenExist: isUserTokenExist,//判断 userToken是否存在
+
+
+};
+
+//初始化全局变量数据 有部分数据是要从 app 获取
+g_AppValue.initGlobalData();
+
+function initGlobalData() {
+
+
+  var { width, height, scale } = Dimensions.get('window');
+  g_AppValue.screenWidth = width;
+  g_AppValue.screenHeight = (Platform.OS === 'ios') ? height : height - 20;
+  g_AppValue.screenScale = scale;
+  g_AppValue.precent = width / 375;
+
+}
+
+function isUserTokenExist() {
+  return g_AppValue.length() > 6;
+}
+
+
+
+export default g_AppValue;
+//export  var AppGlobal = g_AppValue;

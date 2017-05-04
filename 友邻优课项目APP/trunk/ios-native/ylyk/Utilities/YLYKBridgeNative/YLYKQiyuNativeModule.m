@@ -1,0 +1,113 @@
+//
+//  QYSDKBridge.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/19.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKQiyuNativeModule.h"
+#import "QYSDK.h"
+
+@implementation YLYKQiyuNativeModule
+
+RCT_EXPORT_MODULE();
+
+RCT_EXPORT_METHOD(goToQiyu) {
+    if (USER_INFO) {
+        [self sentUserInfoToQY];
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [CBLProgressHUD showTextHUDInWindowWithText:@"未登录"];
+        });
+    }
+}
+
+- (void)sentUserInfoToQY {
+    XXZQLog(@"%@",USER_INFO);
+    QYUserInfo *userInfo = [[QYUserInfo alloc] init];
+    userInfo.userId = USERID;
+    NSMutableArray *array = [NSMutableArray new];
+    NSMutableDictionary *dictRealName = [NSMutableDictionary new];
+    [dictRealName setObject:@"real_name" forKey:@"key"];
+    NSString *realName = [[USER_INFO objectForKey:@"info"] objectForKey:@"realname"];
+    [dictRealName setObject:realName forKey:@"value"];
+    [array addObject:dictRealName];
+    NSMutableDictionary *dictMobilePhone = [NSMutableDictionary new];
+    [dictMobilePhone setObject:@"mobile_phone" forKey:@"key"];
+    NSString *mobilephone = [USER_INFO objectForKey:@"mobilephone"];
+    [dictMobilePhone setObject:mobilephone forKey:@"value"];
+    [dictMobilePhone setObject:@(NO) forKey:@"hidden"];
+    [array addObject:dictMobilePhone];
+    NSMutableDictionary *dictEmail = [NSMutableDictionary new];
+    [dictEmail setObject:@"email" forKey:@"key"];
+    [dictEmail setObject:@"true" forKey:@"hidden"];
+    [dictEmail setObject:@"" forKey:@"value"];
+    [array addObject:dictEmail];
+    
+    NSMutableDictionary *dictUserId = [NSMutableDictionary new];
+    [dictUserId setObject:@"account" forKey:@"key"];
+    [dictUserId setObject:USERID forKey:@"value"];
+    [dictUserId setObject:@"0" forKey:@"index"];
+    [dictUserId setObject:@"用户ID" forKey:@"label"];
+    [array addObject:dictUserId];
+    
+    NSMutableDictionary *dictAvatar = [NSMutableDictionary new];
+    [dictAvatar setObject:@"avatar" forKey:@"key"];
+    NSString *avatarURL = [NSString stringWithFormat:@"%@user/%@/avatar",BASEURL_STRING,USERID];
+    [dictAvatar setObject:avatarURL forKey:@"value"];
+    [array addObject:dictAvatar];
+    
+    NSData *data = [NSJSONSerialization dataWithJSONObject:array
+                                                   options:0
+                                                     error:nil];
+    if (data) {
+        userInfo.data = [[NSString alloc] initWithData:data
+                                              encoding:NSUTF8StringEncoding];
+    }
+    [[QYSDK sharedSDK] setUserInfo:userInfo];
+    [self openQYServies];
+}
+
+- (void)openQYServies {
+    //由于React 改变了系统时区 这里重新设置一下默认时区
+    [NSTimeZone setDefaultTimeZone:[NSTimeZone timeZoneWithName:@"Asia/Shanghai"]];
+    
+    [[QYSDK sharedSDK] customUIConfig].customerHeadImageUrl = [NSString stringWithFormat:@"%@user/%@/avatar",BASEURL_STRING,USERID];
+    [[QYSDK sharedSDK] customUIConfig].serviceHeadImageUrl = [NSString stringWithFormat:@"%@xdy/%@/avatar",BASEURL_STRING,XDY_ID];
+    QYSource *source = [[QYSource alloc] init];
+    
+    source.title =  @"友邻优课";
+    QYSessionViewController *sessionViewController = [[QYSDK sharedSDK] sessionViewController];
+    sessionViewController.sessionTitle = @"阿树老师";
+    sessionViewController.source = source;
+    sessionViewController.staffId = [self getStaffIdWithUserId];
+    //    sessionViewController.navigationItem.rightBarButtonItem = nil;
+    UIImage *img = [UIImage imageNamed:@"nav_back"];
+    img = [img imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    sessionViewController.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:img style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+    UINavigationController *nav =
+    [[UINavigationController alloc] initWithRootViewController:sessionViewController];
+    UIWindow *window = [UIApplication sharedApplication].delegate.window;
+    UINavigationController *nav1 = (UINavigationController *)window.rootViewController;
+    [nav1 presentViewController:nav animated:YES completion:nil];
+}
+
+- (void)back {
+    UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
+    UINavigationController *nav = (UINavigationController *)keyWindow.rootViewController;
+    [nav dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (int64_t)getStaffIdWithUserId {
+    if ([USERID integerValue] % 2 == 0) {
+        return 100578;
+    } else {
+        return 99738;
+    }
+}
+
+- (dispatch_queue_t)methodQueue {
+    return dispatch_get_main_queue();
+}
+@end

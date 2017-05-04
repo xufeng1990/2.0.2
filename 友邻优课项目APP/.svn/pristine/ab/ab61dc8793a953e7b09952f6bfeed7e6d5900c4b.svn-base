@@ -1,0 +1,19 @@
+//
+//  ImagePickerController.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/11.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+
+typedef void(^imageArrayBlock)(NSMutableArray * imageArrayBlock);
+
+@interface ImagePickerController : UIViewController
+
+@property (nonatomic,strong) NSMutableArray * imageArray;
+
+@property (nonatomic,copy) imageArrayBlock imageArrayBlock;
+
+@end

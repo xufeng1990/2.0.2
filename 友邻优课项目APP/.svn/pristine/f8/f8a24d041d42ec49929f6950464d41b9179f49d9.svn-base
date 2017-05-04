@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="90px"
+    android:layout_height="90px"
+    android:gravity="center"
+    android:textColor="#c8c8c8"
+    android:background="#f2f5f6"
+    android:textSize="28dp">
+
+
+</ImageView>
+

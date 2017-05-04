@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="bottom">
+
+    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/push_tips">
+
+
+        <EditText
+            android:id="@+id/tips_editText"
+            android:layout_width="match_parent"
+            android:layout_height="170dp"
+            android:layout_margin="15dp"
+            android:background="@null"
+            android:gravity="top"
+            android:hint="随时记录你的心得吧"
+            android:imeOptions="actionNone"
+            android:textColorHint="#888888"
+            android:textSize="14sp" />
+
+        <android.support.v7.widget.RecyclerView
+            android:id="@+id/recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/tips_editText"
+            android:layout_margin="15dp"
+            android:overScrollMode="never"
+            android:scrollbars="none" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/recycler_view"
+            android:background="#EAEAEA">
+
+            <TextView
+                android:id="@+id/close"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:padding="15dp"
+                android:text="保存并关闭" />
+
+            <TextView
+                android:id="@+id/map_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toRightOf="@+id/close"
+                android:padding="15dp"
+                android:text="正在定位中..."
+                android:textColor="#CDC5BF" />
+
+
+            <TextView
+                android:id="@+id/push"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentRight="true"
+                android:layout_centerVertical="true"
+                android:padding="15dp"
+                android:text="立即发布"
+                android:textColor="#66ccff" />
+
+        </RelativeLayout>
+
+    </RelativeLayout>
+
+</RelativeLayout>

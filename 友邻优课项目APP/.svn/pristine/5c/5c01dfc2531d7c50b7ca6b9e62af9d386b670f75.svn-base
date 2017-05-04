@@ -1,0 +1,71 @@
+
+
+#import "CBLYesOrNoShapeLayer.h"
+
+@interface CBLYesOrNoShapeLayer ()<CAAnimationDelegate>
+
+@property (nonatomic, assign) BOOL type;
+
+@end
+
+@implementation CBLYesOrNoShapeLayer
+
+- (instancetype)init
+{
+    if (self = [super init])
+    {
+        self.strokeColor = [UIColor whiteColor].CGColor;//线条颜色
+        self.fillColor = [UIColor clearColor].CGColor;//填充颜色
+        self.lineWidth = 6;
+        self.lineCap = kCALineCapRound; //线条端点
+        self.lineJoin = kCALineJoinRound; //终点拐角
+    }
+    return self;
+}
+
+- (void)startAnimationWithType:(BOOL)type
+{
+//    self.strokeEnd = 0.0;
+    _type = type;
+    
+    //圆圈路径
+    UIBezierPath *circlePath = [UIBezierPath bezierPathWithArcCenter:CGPointMake(self.bounds.size.width/2, self.bounds.size.height/2) radius:self.bounds.size.width/2-self.lineWidth/2 startAngle:-M_PI_2 endAngle:M_PI*1.5 clockwise:YES];
+    
+    UIBezierPath *linePath = [UIBezierPath bezierPath];
+    if (type) {
+        [linePath moveToPoint:CGPointMake(self.bounds.size.width * 38.0/125.0, self.bounds.size.height * 60.0/125.0)];
+        [linePath addLineToPoint:CGPointMake(self.bounds.size.width * 56.0/125.0, self.bounds.size.height * 80.0/125.0)];
+        [linePath addLineToPoint:CGPointMake(self.bounds.size.width * 88.0/125.0, self.bounds.size.height * 45.0/125.0)];
+    }else{
+        [linePath moveToPoint:CGPointMake(self.bounds.size.width * 40.0/125.0, self.bounds.size.height * 40.0/125.0)];
+        [linePath addLineToPoint:CGPointMake(self.bounds.size.width * 85.0/125.0, self.bounds.size.height * 85.0/125.0)];
+        
+        [linePath moveToPoint:CGPointMake(self.bounds.size.width * 85.0/125.0, self.bounds.size.height * 40.0/125.0)];
+        [linePath addLineToPoint:CGPointMake(self.bounds.size.width * 40.0/125.0, self.bounds.size.height * 85.0/125.0)];
+    }
+    
+    //路径合成
+    [circlePath appendPath:linePath];
+    //layer上添加路径
+    self.path = circlePath.CGPath;
+    
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"strokeEnd"];
+
+    [animation setFromValue:@0.0];
+    [animation setToValue:@1.0];
+
+    [animation setDuration:1];
+    animation.removedOnCompletion = NO;
+    animation.delegate = self;
+    [self addAnimation:animation forKey:@"fsjkdhfjksdjfk"];
+}
+
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag
+{
+    if ([_animationDelegate respondsToSelector:@selector(yesOrNoShapeLayer:animationDidCompleteWithType:)]) {
+        [_animationDelegate yesOrNoShapeLayer:self animationDidCompleteWithType:_type];
+    }
+}
+
+
+@end

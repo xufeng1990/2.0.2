@@ -1,0 +1,417 @@
+//
+//  YLYKPlayerManager.m
+//  YLYK-App
+//
+//  Created by 友邻优课 on 2017/1/20.
+//  Copyright © 2017年 Beijing Zhuomo Culture Media Co., Ltd. All rights reserved.
+//
+
+#import "YLYKPlayerManager.h"
+#import <AVFoundation/AVFoundation.h>
+#import <MediaPlayer/MediaPlayer.h>
+#import "NSStringTools.h"
+#import "JXResourceLoader.h"
+#import "JXFileHandle.h"
+#import "BridgeEvents.h"
+
+NSString *kLastListenedAlbumList = @"lastListenedAlbumList";
+typedef NS_ENUM(NSInteger, JXCurrentPlayState) {
+    JXCurrentPlayStateNet,
+    JXCurrentPlayStateLocal,
+    JXCurrentPlayStateCache
+};
+
+@interface YLYKPlayerManager() {
+    
+    NSString* _lastMusicUrl;
+    
+}
+
+@property (nonatomic, strong) AVPlayer* player;
+@property (nonatomic, strong) JXResourceLoader * resourceLoader;
+@property (nonatomic, strong) YLYKCourseModel * currentCourse;
+@property (nonatomic, strong) UIImage * image;
+@property (nonatomic, assign) float playRate;
+@property(nonatomic,strong) id timeObserver;//当前课程进度监听者
+
+@end
+
+static JXCurrentPlayState playState;
+
+@implementation YLYKPlayerManager
+
+#pragma mark - 单例 初始化方法
+
++ (instancetype)sharedPlayer {
+    static YLYKPlayerManager* player;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        player = [[self alloc] init];
+    });
+    return player;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _player = [[AVPlayer alloc]init];
+    }
+    return self;
+}
+
+- (AVPlayer *)player {
+    if (!_player) {
+        _player = [[AVPlayer alloc] init];
+    }
+    return _player;
+}
+
+- (NSMutableDictionary *)listenedAlbumList {
+    NSDictionary *listenedAlbumList = [[NSUserDefaults standardUserDefaults] objectForKey:kLastListenedAlbumList];
+    if (!listenedAlbumList) {
+        return [NSMutableDictionary dictionary];
+    }
+    return [listenedAlbumList mutableCopy];
+}
+
+#pragma mark - 音频 播放 暂停
+
+- (void)play {
+    [self.player setRate:self.playRate];
+    //NSNotification * noti11 = [NSNotification notificationWithName:@"isPlayingOrPause" object:@{@"isPlayingOrPause":@true} userInfo:nil];
+    //[[NSNotificationCenter defaultCenter] postNotification:noti11];
+    BridgeEvents *events = [[BridgeEvents alloc] init];
+    [BridgeEvents application:[UIApplication sharedApplication] withPlaying:@{@"isPlayingOrPause":@true}];
+    [events startObserving];
+}
+
+- (void)pause {
+    [self.player pause];
+    //NSNotification * noti11 = [NSNotification notificationWithName:@"isPlayingOrPause" object:@{@"isPlayingOrPause":@false} userInfo:nil];
+    //[[NSNotificationCenter defaultCenter] postNotification:noti11];
+    BridgeEvents *events = [[BridgeEvents alloc] init];
+    [BridgeEvents application:[UIApplication sharedApplication] withPlaying:@{@"isPlayingOrPause":@false}];
+    [events startObserving];
+}
+
+#pragma mark - 创建播放器
+- (void)createPlayer:(YLYKCourseModel *)courseModel withUserID:(NSInteger)userId {
+    self.is_drag = NO;
+    [[NSUserDefaults standardUserDefaults] setObject:[NSString stringWithFormat:@"%ld",(long)courseModel.courseId] forKey:@"lastPlayCourseId"];
+    @try {
+        [self removePlayStatus];
+        [self removePlayLoadTime];
+        [self removeTimeObserver];
+    } @catch (NSException *exception) {
+        
+    } @finally {
+        
+    }
+    self.currentCourse = courseModel;
+    if ([[UIDevice currentDevice] systemVersion].intValue >= 10) {
+        self.player.automaticallyWaitsToMinimizeStalling = NO;
+    }
+    
+    NSMutableDictionary *albumList = [self listenedAlbumList];
+    XXZQLog(@"%@",albumList);
+    NSString *nowTime = [NSString stringWithFormat:@"%f", [[NSDate date] timeIntervalSince1970]];
+    NSDictionary *dict = @{@"albumId": [self.currentCourse.album objectForKey:@"id"], @"lastListenedTime": nowTime};
+    NSString *albumId = [NSString stringWithFormat:@"albumId%@", [self.currentCourse.album objectForKey:@"id"]];
+    [albumList setValue:dict forKey:albumId];
+    [[NSUserDefaults standardUserDefaults] setObject:albumList forKey:kLastListenedAlbumList];
+    
+    if ([self isDownloadCoursePathWithCourseId:courseModel.courseId andUserId: userId]) {
+        [self playCourseAudioWithUrl:[self getDownloadCoursePathWithCourseId:courseModel.courseId andUserId:userId]];
+    } else {
+         [self playCourseAudioWithUrl:courseModel.media_url];
+    }
+}
+
+#pragma mark - 获取下载课程
+- (NSString *)getDownloadCoursePathWithCourseId: (NSInteger )courseID andUserId: (NSInteger)userID {
+    NSString * fileName = [NSStringTools getMD5String:[NSString stringWithFormat:@"%lu.%ld",(unsigned long)userID,(long)courseID]];
+    //NSLog(@"path%@",fileName);
+    NSArray *paths      = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+    NSString *path      = [paths objectAtIndex:0];
+    NSString *filePath  = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0/%@.mp3",fileName]];
+    return filePath;
+}
+
+#pragma mark - 判断某课程是否已经下载
+- (BOOL )isDownloadCoursePathWithCourseId: (NSInteger )courseID andUserId: (NSInteger)userID {
+    NSString * fileName = [NSStringTools getMD5String:[NSString stringWithFormat:@"%lu.%ld",(unsigned long)userID,(long)courseID]];
+    //NSLog(@"path%@",fileName);
+    NSArray *paths      = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+    NSString *path      = [paths objectAtIndex:0];
+    NSString *filePath  = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0/%@.mp3",fileName]];
+    NSFileManager *fileManager = [NSFileManager defaultManager];
+    BOOL result = [fileManager fileExistsAtPath:filePath];
+    //NSLog(@"这个文件已经存在：%@",result?@"是的":@"不存在");
+    return result;
+}
+
+#pragma mark - 播放音频
+- (void)playCourseAudioWithUrl: (NSString *)urlString {
+    if (self.resourceLoader) {
+        [self.resourceLoader stopLoading];
+    }
+    self.playRate = 1.0;
+    AVPlayerItem* item;
+    if (urlString && ![urlString isEqualToString:@""]
+                  && ![urlString containsString:@"http://"]
+                  && ![urlString containsString:@"https://"]) {
+        // 播放本地音乐
+        NSURL* url = [NSURL fileURLWithPath:urlString];
+        item = [AVPlayerItem playerItemWithURL:url];
+        playState = JXCurrentPlayStateLocal;
+        //NSLog(@"[JXPlayer] 播放本地文件 %@", url);
+    } else if (urlString) {
+        NSString* cacheFilePath = [JXFileHandle cacheFileExistsWithURL:[NSURL URLWithString:urlString]];
+        if (cacheFilePath) {
+            // 有缓存播放缓存文件
+            NSURL* url = [NSURL fileURLWithPath:cacheFilePath];
+            item = [AVPlayerItem playerItemWithURL:url];
+            playState = JXCurrentPlayStateCache;
+        //NSLog(@"[JXPlayer] 播放缓存 %@", url);
+        } else {
+            // 没有缓存播放网络文件
+            self.resourceLoader = [[JXResourceLoader alloc]init];
+            //self.resourceLoader.delegate = self;
+            NSURL* url = [NSURL URLWithString:urlString];
+            AVURLAsset *asset = [AVURLAsset URLAssetWithURL:[url customSchemeURL] options:nil];
+            [asset.resourceLoader setDelegate:self.resourceLoader queue:dispatch_get_main_queue()];
+            item = [AVPlayerItem playerItemWithAsset:asset];
+            playState = JXCurrentPlayStateNet;
+            //NSLog(@"[JXPlayer] 播放网络文件 %@", url);
+        }
+    }
+    _lastMusicUrl = urlString;
+    if (self.player) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self.player replaceCurrentItemWithPlayerItem:item];
+            [self addNSNotificationForPlayMusicFinish];
+            [self addPlayLoadTime];
+            [self addMusicProgressWithItem:item];
+            [self addPlayStatus];
+        });
+    } else {
+        self.player = [AVPlayer playerWithPlayerItem:item];
+        [self addNSNotificationForPlayMusicFinish];
+        [self addPlayLoadTime];
+        [self addMusicProgressWithItem:item];
+        [self addPlayStatus];
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self setLockScreenNowPlayingInfo];
+    });
+}
+
+#pragma mark - 设置锁屏音频播放信息
+- (void)setLockScreenNowPlayingInfo {
+    // 1.获取锁屏中心
+    MPNowPlayingInfoCenter *playingInfoCenter = [MPNowPlayingInfoCenter defaultCenter];
+    NSMutableDictionary *dict = [[NSMutableDictionary alloc] init];
+    NSString * albumName      = [self.currentCourse.album objectForKey:@"name"];
+    NSString * artist         = [self.currentCourse.teachers[0] objectForKey:@"name"];
+    NSNumber * number         = [NSNumber numberWithInteger:self.currentCourse.duration];
+    [dict setObject:albumName forKey:MPMediaItemPropertyAlbumTitle];
+    [dict setObject:self.currentCourse.name forKey:MPMediaItemPropertyTitle];
+    [dict setObject:artist forKey:MPMediaItemPropertyArtist];
+    [dict setObject:[NSNumber numberWithInteger:[self getCurrentTime]] forKey:MPNowPlayingInfoPropertyElapsedPlaybackTime];
+    [dict setObject:number forKey:MPMediaItemPropertyPlaybackDuration];
+    playingInfoCenter.nowPlayingInfo = dict;
+    
+    dispatch_queue_t asynQueue = dispatch_queue_create("imageDownloadQueue", NULL);
+    //创建异步线程
+    dispatch_async(asynQueue, ^{
+        NSString *imgUrl = [NSString stringWithFormat:@"%@album/%@/avatar",BASEURL_STRING,[self.currentCourse.album objectForKey:@"id"]];
+        //网络下载图片  NSData格式
+        NSData *imageData = [NSData dataWithContentsOfURL:[NSURL URLWithString:imgUrl]];
+        //回到主线程更新UI
+        dispatch_async(dispatch_get_main_queue(), ^{
+            // artwork的image不能为空，否则会闪退
+            if (imageData) {
+                self.image = [UIImage imageWithData:imageData];
+            } else {
+                self.image = [UIImage imageNamed:@"Group"];
+            }
+            [self reSizeImage:self.image toSize:CGSizeMake(120, 120)];
+            MPMediaItemArtwork* artWork;
+            if (self.image == nil) {
+                artWork = [[MPMediaItemArtwork alloc] initWithImage:[UIImage imageNamed:@"Group"]];
+            } else {
+                artWork = [[MPMediaItemArtwork alloc] initWithImage:self.image];
+            }
+            [artWork imageWithSize:CGSizeMake(120, 120)];
+            [dict setObject:artWork forKey:MPMediaItemPropertyArtwork];
+            playingInfoCenter.nowPlayingInfo = dict;
+        });
+    });
+}
+
+#pragma mark - 裁剪图片
+- (UIImage *)reSizeImage:(UIImage *)image toSize:(CGSize)reSize {
+    UIGraphicsBeginImageContext(CGSizeMake(reSize.width, reSize.height));
+    [image drawInRect:CGRectMake(0, 0, reSize.width, reSize.height)];
+    UIImage *reSizeImage = UIGraphicsGetImageFromCurrentImageContext();
+    UIGraphicsEndImageContext();
+    return reSizeImage;
+}
+
+#pragma mark - NSNotification
+- (void)addNSNotificationForPlayMusicFinish {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    //给AVPlayerItem添加播放完成通知
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playFinished:) name:AVPlayerItemDidPlayToEndTimeNotification object:_player.currentItem];
+}
+
+- (void)playFinished:(NSNotification*)notification {
+    //播放下一首
+    [self.delegate DoSomethingWhenFinished];
+}
+
+#pragma mark - 监听音乐各种状态
+//通过KVO监听播放器状态
+- (void)addPlayStatus {
+    [self.player.currentItem addObserver:self forKeyPath:@"status" options:NSKeyValueObservingOptionNew context:nil];
+}
+//移除监听播放器状态
+- (void)removePlayStatus {
+    if (self.currentCourse == nil) {
+        return;
+    }
+    //if (self.player.currentItem) {
+    [self.player.currentItem removeObserver:self forKeyPath:@"status"];
+    //}
+}
+
+//KVO监听音乐缓冲状态
+- (void)addPlayLoadTime {
+    [self.player.currentItem addObserver:self forKeyPath:@"loadedTimeRanges" options:NSKeyValueObservingOptionNew context:nil];
+}
+//移除监听音乐缓冲状态
+- (void)removePlayLoadTime {
+    if (self.currentCourse == nil) {
+        return;
+    }
+    [self.player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges"];
+}
+#pragma mark - 监听音乐播放进度
+//监听音乐播放的进度
+- (void)addMusicProgressWithItem:(AVPlayerItem *)item {
+    //移除监听音乐播放进度
+    [self removeTimeObserver];
+    __weak typeof(self) weakSelf = self;
+    self.timeObserver =  [self.player addPeriodicTimeObserverForInterval:CMTimeMake(1.0, 1.0) queue:dispatch_get_main_queue() usingBlock:^(CMTime time) {
+        NSArray * timeRanges = weakSelf.player.currentItem.loadedTimeRanges;
+        //本次缓冲的时间范围
+        CMTimeRange timeRange = [timeRanges.firstObject CMTimeRangeValue];
+        //缓冲总长度
+        NSTimeInterval totalLoadTime = CMTimeGetSeconds(timeRange.start) + CMTimeGetSeconds(timeRange.duration);
+        //当前播放的时间
+        int current = CMTimeGetSeconds(time);
+        //总时间
+        float total = CMTimeGetSeconds(item.duration);
+        if (current) {
+            weakSelf.block(current,total-current,totalLoadTime);
+        }
+    }];
+}
+
+#pragma mark - 移除观察者
+//移除监听音乐播放进度
+- (void)removeTimeObserver {
+    if (self.timeObserver) {
+        [self.player removeTimeObserver:self.timeObserver];
+        self.timeObserver = nil;
+    }
+}
+
+//观察者回调
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary<NSKeyValueChangeKey,id> *)change context:(void *)context {
+    if ([keyPath isEqualToString:@"status"]) {
+        switch (self.player.status) {
+            case AVPlayerStatusUnknown:
+            {
+                NSLog(@"未知转态");
+            }
+                break;
+            case AVPlayerStatusReadyToPlay:
+            {
+                NSLog(@"准备播放");
+                //[self play];
+                //self.readyPlayBlock(true);
+            }
+                break;
+            case AVPlayerStatusFailed:
+            {
+                NSLog(@"加载失败");
+            }
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+#pragma mark - 设置播放进度
+- (void)seekTo:(float)position {
+    float time = position * CMTimeGetSeconds(self.player.currentItem.duration);
+    if (self.player.status == AVPlayerItemStatusReadyToPlay) {
+        [self.player seekToTime:CMTimeMake(time, 1) completionHandler:^(BOOL finished) {
+            self.is_drag = NO;
+            NSLog(@"isplay%d",self.isplay);
+            if (self.isplay) {
+                [self play];
+                self.isplay = NO;
+            }
+            if (finished) {
+                if ([self isPlaying]) {
+                    [self.player setRate:self.playRate];
+                    [self setLockScreenNowPlayingInfo];
+                }
+            }
+        }];
+    }
+}
+
+- (BOOL)isPlaying {
+    if ([[UIDevice currentDevice] systemVersion].intValue >= 10) {
+        if (self.player.timeControlStatus == AVPlayerTimeControlStatusPlaying) {
+            return YES;
+        } else {
+            return NO;
+        }
+    } else {
+        return (self.player) ? self.player.rate : NO;
+    }
+}
+
+#pragma mark - 设置播放速度
+- (void)setPlayingWithRate:(float)rate {
+    self.playRate = rate;
+    if ([self isPlaying]) {
+        [self.player setRate:self.playRate];
+    } else {
+        self.playRate = rate;
+    }
+}
+
+- (NSInteger)getCurrentTime {
+    AVPlayerItem* playerItem = self.player.currentItem;
+    return playerItem ? CMTimeGetSeconds(playerItem.currentTime) : 0;
+}
+
+- (void)loader:(JXResourceLoader *)loader failLoadingWithError:(NSError *)error {
+    NSLog(@"重新下载");
+    [self pause];
+    [self playCourseAudioWithUrl:self.currentCourse.media_url];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self.player.currentItem removeObserver:self forKeyPath:@"status"];
+    [self.player.currentItem removeObserver:self forKeyPath:@"loadedTimeRanges"];
+}
+
+@end

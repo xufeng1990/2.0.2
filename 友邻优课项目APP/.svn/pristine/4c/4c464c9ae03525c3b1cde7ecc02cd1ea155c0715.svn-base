@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="textColor">#5a5a5a</color>
+    <color name="login_text_press">#c8c8c8</color>
+    <color name="login_text_unpress">#202020</color>
+
+    <!--<color name="is_play_name">#0fabfa</color>-->
+    <color name="learn_line_color">#90929598</color>
+    <color name="home_text_press">#5a5a5a</color>
+    <color name="home_text_unpress">#e4e4e4</color>
+
+    <color name="code_text_press">#ffffff</color>
+    <color name="code_text_unpress">#c8c8c8</color>
+
+    <color name="item_text_color_red">#b53430</color>
+    <color name="item_text_color_green">#c26872</color>
+
+    // 正常模式
+    <color name="text_color">#9a9b9c</color>
+    <color name="play_list_bottom_bg">#f8fafb</color>
+    <color name="title_bg">#ffffff</color>
+    <color name="webView_bg">#f8fafa</color>
+    <color name="play_controller_bg">#ffffff</color>
+    <color name="is_play_name">#b53430</color>
+    <color name="is_play_bottom">#c26872</color>
+    <color name="no_play_name">#5a5a5a</color>
+    <color name="no_play_bottom">#9a9b9c</color>
+    // 夜间模式
+    <color name="play_controller_bg_night">#171717</color>
+    <color name="webView_bg_night">#171717</color>
+    <color name="title_bg_night">#171717</color>
+    <color name="play_list_bg_night">#171717</color>
+    <color name="play_list_bottom_bg_night">#2e2e2e</color>
+    <color name="text_color_night">#666666</color>
+    <color name="textColor_night">#666666</color>
+    <color name="is_play_name_night">#666666</color>
+    <color name="is_play_bottom_night">#666666</color>
+
+
+    // 黄色模式
+    <color name="play_controller_bg_yellow">#f9f2e2</color>
+    <color name="webView_bg_yellow">#f9f2e2</color>
+    <color name="title_bg_yellow">#f9f2e2</color>
+    <color name="play_list_bg_yellow">#f9f2e2</color>
+    <color name="play_list_bottom_bg_yellow">#ddd8c7</color>
+    <color name="text_color_yellow">#ae7a33</color>
+    <color name="textColor_yellow">#ae7a33</color>
+    <color name="is_play_name_yellow">#ae7a33</color>
+    <color name="is_play_bottom_yellow">#d9ba8e</color>
+
+    // 绿色模式
+    <color name="play_controller_bg_green">#bce0c2</color>
+    <color name="webView_bg_green">#bce0c2</color>
+    <color name="title_bg_green">#bce0c2</color>
+    <color name="play_list_bg_green">#bce0c2</color>
+    <color name="play_list_bottom_bg_green">#9dcbac</color>
+    <color name="text_color_green">#3f8a42</color>
+    <color name="textColor_green">#3f8a42</color>
+    <color name="is_play_name_green">#3f8a42</color>
+    <color name="is_play_bottom_green">#67be86</color>
+
+</resources>

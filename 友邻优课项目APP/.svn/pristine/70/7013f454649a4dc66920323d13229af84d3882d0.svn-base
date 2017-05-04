@@ -1,0 +1,28 @@
+//
+//  YLYKTabbarNativeModule.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/20.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKTabbarNativeModule.h"
+
+@implementation YLYKTabbarNativeModule
+
+
+RCT_EXPORT_MODULE();
+
+#pragma mark -隐藏底部的tabbar
+RCT_EXPORT_METHOD(showOrHideTabbar:(NSString *)showOrHide) {
+    UITabBarController * obj = [UIApplication sharedApplication].keyWindow.rootViewController.childViewControllers[0];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if ([showOrHide isEqualToString:@"show"]) {
+            obj.tabBar.hidden = NO;
+        } else if ([showOrHide isEqualToString:@"hide"]){
+            obj.tabBar.hidden = YES;
+        }
+    });
+}
+
+@end

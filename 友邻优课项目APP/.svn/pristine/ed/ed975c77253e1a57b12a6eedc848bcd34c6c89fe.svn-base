@@ -1,0 +1,59 @@
+//
+//  HTTP.js
+//  TCPayUser
+//  网络请求类，提供get方法跟post方法
+//  Created by 刘云强 on 2016-05-17.
+//  Copyright © 2016 Defa. All rights reserved.
+//
+
+import queryString from 'query-string';
+import g_AppValue from './AppGlobal.js';
+
+//超时实现
+
+const oldFetch = fetch;
+
+fetch = function (input, opts) {
+  return new Promise((resolve, reject) => {
+    let _timer = setTimeout(() => {
+      reject('网络连接超时');
+    }, 10000);
+    oldFetch(input, opts)
+      .then((oldResults) => {
+        clearTimeout(_timer);
+        return resolve(oldResults);
+      }, resolve)
+  });
+}
+
+export default {
+  get(url, params) {
+    if (params) {
+      url += '?' + queryString.stringify(params)
+      //console.log("完整请求数据" + url)
+    }
+    return fetch(url)
+      .then(res => {
+        return res.json();
+      });
+  },
+
+  post(url, params) {
+
+    return fetch(url)
+      .then(res => {
+        try {
+
+          return res.json()
+        } catch (e) {
+          return parseError;
+        }
+      },
+
+      (res) => {
+        myconsole(`request rejected ${res}`);
+        throw res;
+      })
+  },
+
+}

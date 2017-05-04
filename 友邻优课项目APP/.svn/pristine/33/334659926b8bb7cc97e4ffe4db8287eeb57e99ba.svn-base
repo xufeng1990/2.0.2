@@ -1,0 +1,373 @@
+//
+//  PhoneLoginViewController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/6.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKPhoneLoginViewController.h"
+#import "NativeNetwork.h"
+#import "TimerHelper.h"
+#import "YLYKLoginViewController.h"
+#import "YLYKHomepageViewController.h"
+#import "CBLProgressHUD.h"
+#import "NSStringTools.h"
+#import "JPUSHService.h"
+#import <React/RCTEventDispatcher.h>
+#import "LoginEvent.h"
+
+
+@interface YLYKPhoneLoginViewController () <UITextFieldDelegate>
+
+/*
+ *手机号码输入 TextField
+ */
+@property (weak, nonatomic) IBOutlet UITextField *phoneNumberField;
+
+/*
+ *第三方登陆按钮
+ */
+@property (weak, nonatomic) IBOutlet UIButton *outlandUser;
+
+/*
+ *密码输入区域
+ */
+@property (weak, nonatomic) IBOutlet UITextField *captchaField;
+
+/*
+ *登陆按钮
+ */
+@property (weak, nonatomic) IBOutlet UIButton *loginBtn;
+
+@property (assign, nonatomic) NSInteger leftTime;
+@property (nonatomic,strong) UILabel * retry;
+@property (nonatomic , strong) UIView * leftTimeView;
+@property (weak, nonatomic) IBOutlet UIButton *shutBtn;
+@property (weak, nonatomic) IBOutlet UIImageView *logoImg;
+@property (weak, nonatomic) IBOutlet UILabel *captchaBtn;
+
+/*
+ *约束条件
+ */
+@property (weak, nonatomic) IBOutlet NSLayoutConstraint *distanceToTop;
+
+@end
+
+@implementation YLYKPhoneLoginViewController
+
+@synthesize bridge = _bridge;
+
+#pragma mark - Lifecyle
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    self.leftTime = 120;
+    [self.captchaBtn.layer setMasksToBounds:YES];
+    [self.captchaBtn.layer setCornerRadius:12.5]; //设置矩形四个圆角半径
+    [self.captchaBtn.layer setBorderWidth:1.0]; //边框宽度
+    CGColorSpaceRef colorSpace1 = CGColorSpaceCreateDeviceRGB();
+    CGColorRef colorref1 = CGColorCreate(colorSpace1,(CGFloat[]){ 0.78, 0.78, 0.78, 1 });
+    [self.captchaBtn.layer setBorderColor:colorref1];
+    self.captchaBtn.userInteractionEnabled = YES;
+    [self.loginBtn.layer setMasksToBounds:YES];
+    [self.loginBtn.layer setCornerRadius:22.0]; //设置矩形四个圆角半径
+    [self.loginBtn.layer setBorderWidth:1.0]; //边框宽度
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0, 0, 0, 1 });
+    [self.loginBtn.layer setBorderColor:colorref];
+    [self.loginBtn setTitleColor:[UIColor colorWithRed:154/255.0 green:154/255.0 blue:154/255.0 alpha:1.0] forState:UIControlStateHighlighted];
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(sendCodeTouched:)];
+    [self.captchaBtn addGestureRecognizer:tap];
+    //self.captchaBtn.userInteractionEnabled = NO;
+    self.phoneNumberField.delegate = self;
+    [self.phoneNumberField addTarget:self action:@selector(textFieldDidChange:) forControlEvents:UIControlEventEditingChanged];
+    self.captchaField.delegate = self;
+    [self.loginBtn addTarget:self action:@selector(cancel:) forControlEvents:UIControlEventAllEvents];
+    if (self.title) {
+        self.navigationController.title = self.title;
+    }
+}
+
+- (void)viewWillAppear:(BOOL)animated {
+    [super viewWillAppear:animated];
+    if (self.title) {
+        UINavigationBar *navBar = self.navigationController.navigationBar;
+        [navBar setBackgroundImage:[[UIImage alloc] init]
+                    forBarPosition:UIBarPositionAny
+                        barMetrics:UIBarMetricsDefault];
+        [navBar setShadowImage:[[UIImage alloc] init]];
+        [self.logoImg removeFromSuperview];
+        [self.shutBtn removeFromSuperview];
+        self.highLayout.constant = 150;
+        [self.loginBtn setTitle:@"确定" forState:UIControlStateNormal];
+        self.label.text = @"仅支持中国大陆（＋86）手机号";
+        [self.navigationController setNavigationBarHidden:NO animated:animated];
+        if ([self.title isEqualToString:@" 绑定手机号"]) {
+            self.distanceToTop.constant = 200.0;
+            //self.distanceToTop
+            [self.view layoutIfNeeded];
+            UIImage * image = [UIImage imageNamed:@"nav_back"];
+            image = [image imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+            self.navigationItem.leftBarButtonItem = [[UIBarButtonItem alloc] initWithImage:image style:UIBarButtonItemStyleDone target:self action:@selector(back)];
+            [self.outlandUser removeFromSuperview];
+        } else if([self.title isEqualToString:@"绑定手机号"]) {
+            [self.navigationItem setHidesBackButton:YES animated:animated];
+        }
+    }
+    //自动启动timer
+    [TimerHelper timerCountDownWithKey:kTimerKeyRegister tipLabel:self.captchaBtn forceStart:NO];
+}
+
+- (void)viewDidAppear:(BOOL)animated {
+    [super viewDidAppear:animated];
+}
+
+- (void)viewDidDisappear:(BOOL)animated {
+    [super viewDidDisappear:animated];
+    //取消timer
+    [TimerHelper cancelTimerByKey:kTimerKeyRegister];
+}
+
+#pragma mark - UITextField delegate
+- (void)textFieldDidChange:(UITextField *)textField {
+    NSString * MOBILE = @"^1(3[0-9]|4[0-9]|5[0-9]|7[0-9]|8[0-9])\\d{8}$";
+    NSPredicate *regextestmobile = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", MOBILE];
+    BOOL res1 = [regextestmobile evaluateWithObject:self.phoneNumberField.text];
+    if (res1) {
+        self.captchaBtn.userInteractionEnabled = YES;
+        self.captchaBtn.textColor = [UIColor whiteColor];
+        [self.captchaBtn setBackgroundColor:[UIColor colorWithRed:178/255.0 green:29/255.0 blue:51/255.0 alpha:1.0]];
+        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 178/255.0, 29/255.0, 51/255.0, 1.0 });
+        [self.captchaBtn.layer setBorderColor:colorref];
+    } else {
+        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0.78, 0.78, 0.78, 1 });
+        [self.captchaBtn.layer setBorderColor:colorref];
+        self.captchaBtn.textColor = [UIColor lightGrayColor];
+        [self.captchaBtn setBackgroundColor:[UIColor whiteColor]];
+    }
+}
+
+#pragma mark - 发送验证码
+- (IBAction)sendCodeTouched:(id)sender {
+    NSString * MOBILE = @"^1(3[0-9]|4[0-9]|5[0-9]|7[0-9]|8[0-9])\\d{8}$";
+    NSPredicate *regextestmobile = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", MOBILE];
+    BOOL res1 = [regextestmobile evaluateWithObject:self.phoneNumberField.text];
+    if (res1) {
+        [TimerHelper startTimerWithKey:kTimerKeyRegister tipLabel:self.captchaBtn];
+        if ([self.loginBtn.titleLabel.text isEqualToString:@"确定"]) {
+            [[NativeNetwork sharedInstance] updateUserMobilephone:USERID :@{@"mobilephone":self.phoneNumberField.text} success:^(id responseObject) {
+                NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:responseObject];
+                NSString *result = [dict objectForKey:@"result"];
+                if ([result integerValue] != 1) {
+                    [CBLProgressHUD showTextHUDInWindowWithText:@"该手机号已绑定过其他友邻优课账号"];
+                    [TimerHelper cancelTimerByKey:kTimerKeyRegister];
+                }
+            } failure:^(NSError *error) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"发送失败"];
+            }];
+        } else {
+            [[NativeNetwork sharedInstance] getTokenByMobilephone:self.phoneNumberField.text success:^(id responseObject) {
+               NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:responseObject];
+                BOOL result = [[dict objectForKey:@"result"] boolValue];
+                if (!result) {
+                    UIAlertController *alertController = [UIAlertController alertControllerWithTitle: @"获取失败" message:@"该手机号尚未绑定友邻优课账号。请使用微信登录后到“我”-“设置”页面绑定手机后重试。" preferredStyle:UIAlertControllerStyleAlert];
+                    UIAlertAction *okAction = [UIAlertAction actionWithTitle:@"好的" style:UIAlertActionStyleDefault handler:^(UIAlertAction *_Nonnull action) {
+                       [TimerHelper cancelTimerByKey:kTimerKeyRegister];
+                        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+                        CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0.78, 0.78, 0.78, 1 });
+                        [self.captchaBtn.layer setBorderColor:colorref];
+                        self.captchaBtn.textColor = [UIColor lightGrayColor];
+                        [self.captchaBtn setBackgroundColor:[UIColor whiteColor]];
+                        [self.captchaBtn setText:@"获取验证码"];
+                    }];
+                    [alertController addAction:okAction];
+                    [self presentViewController:alertController animated:YES completion:^{
+                    }];
+                }
+            } failure:^(NSError * error) {
+                [CBLProgressHUD showTextHUDInWindowWithText:@"发送验证码失败"];
+            }];
+        }
+    } else {
+        [CBLProgressHUD showTextHUDInWindowWithText:@"请输入正确的手机号码"];
+         //NSLog(@"请输入正确的手机号码");
+    }
+}
+
+-(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    [self.captchaField resignFirstResponder];
+    [self.phoneNumberField resignFirstResponder];
+}
+
+#pragma mark - 登陆
+- (IBAction)login:(UIButton *)sender {
+    [CBLProgressHUD showLoadingHUDInView:self.view];
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+    CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0, 0, 0, 1 });
+    [self.loginBtn.layer setBorderColor:colorref];
+    if ([self phoneNumberIsRight] && [self captchaIsright]) {
+        if ([self.loginBtn.titleLabel.text isEqualToString:@"确定"]) {
+            [[NativeNetwork sharedInstance] updateUserMobilephoneWithCaptcha:USERID :@{@"mobilephone":self.phoneNumberField.text,@"captcha":self.captchaField.text} success:^(id responseObject) {
+                [CBLProgressHUD hideLoadingHUDInView:self.view];
+                NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:responseObject];
+                NSString *result = [dict objectForKey:@"result"];
+                if ([result integerValue] == 1) {
+                    [CBLProgressHUD showTextHUDWithText:@"绑定成功" inView:self.view];
+                    LoginEvent *events = [[LoginEvent alloc] init];
+                    [LoginEvent application:[UIApplication sharedApplication] withLogin:@{@"LoginSuccess":self.phoneNumberField.text}];
+                    [events startObserving];
+                    // 发送登录成功的通知
+                    [self getUserInfo];
+                    [[NSNotificationCenter defaultCenter] postNotificationName:@"isLoginSuccess" object:@"success" userInfo:nil];
+                    //[self.navigationController popViewControllerAnimated:YES];
+                    [self dismissViewControllerAnimated:YES completion:nil];
+                    [JPUSHService registrationIDCompletionHandler:^(int resCode, NSString *registrationID) {
+                        [self putDeviceInfomationToJPushWithRegistrationID:registrationID];
+                    }];
+                    if (USERID) {
+                        NSSet * set = [[NSSet alloc] initWithObjects:USERID, nil];
+                        //[JPUSHService setTags:set alias:USERID callbackSelector:nil object:nil];
+                        [JPUSHService setTags:set alias:USERID fetchCompletionHandle:^(int iResCode, NSSet *iTags, NSString *iAlias) {
+                            XXZQLog(@"%@",iAlias);
+                        }];
+                    }
+                } else{
+                    [CBLProgressHUD showTextHUDWithText:@"验证码不正确或已过期" inView:self.view];
+                }
+            } failure:^(NSError *error) {
+                [CBLProgressHUD hideLoadingHUDInView:self.view];
+                [CBLProgressHUD showTextHUDWithText:@"绑定失败" inView:self.view];
+            }];
+        } else {
+            [[NativeNetwork sharedInstance] getTokenByMobilephoneWithCaptcha:self.phoneNumberField.text captcha:self.captchaField.text success:^(id success) {
+                //NSLog(@"success");
+                [CBLProgressHUD hideLoadingHUDInView:self.view];
+                //登录成功以后应当去获取一下userinfo
+                NSDictionary *dict = [NSStringTools getDictionaryWithJsonstring:success];
+                //NSLog(@"%@",dict);
+                NSString * userId = [dict objectForKey:@"user_id"];
+                [[NSUserDefaults standardUserDefaults] setObject:userId forKey:@"user_id"];
+                [self getUserInfo];
+                // TODO
+            } failure:^(NSError * error) {
+                //NSLog(@"%@",error);
+                [CBLProgressHUD hideLoadingHUDInView:self.view];
+                [CBLProgressHUD showTextHUDWithText:@"登录失败，验证码不正确或已过期" inView:self.view];
+            }];
+        }
+    }  else if ([self phoneNumberIsRight]) {
+        if (![self captchaIsright]) {
+            //NSLog(@"请输入正确的验证码");
+            [CBLProgressHUD showTextHUDInWindowWithText:@"请输入正确的验证码"];
+            [CBLProgressHUD hideLoadingHUDInView:self.view];
+        }
+    } else if (![self phoneNumberIsRight]){
+        //NSLog(@"请输入正确的手机号");
+        [CBLProgressHUD showTextHUDInWindowWithText:@"请输入正确的手机号"];
+        [CBLProgressHUD hideLoadingHUDInView:self.view];
+    }
+}
+
+#pragma mark - 获取用户信息
+- (void)getUserInfo {
+    [[NativeNetwork sharedInstance] getUserById:USERID success:^(id responseObject) {
+        NSData *aJSONData = [responseObject dataUsingEncoding:NSUTF8StringEncoding];
+        NSDictionary * dict = [NSJSONSerialization JSONObjectWithData:aJSONData
+                                                              options:NSJSONReadingAllowFragments
+                                                                error:nil];
+        [[NSUserDefaults standardUserDefaults] setObject:dict forKey:@"userInfo"];
+        NSString * xdyId = [NSString stringWithFormat:@"%@",[dict objectForKey:@"xdy_id"]];
+        if ([dict objectForKey:@"vip"]) {
+            [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"isVip"];
+        }
+        [[NSUserDefaults standardUserDefaults] setObject:xdyId forKey:@"xdy_id"];
+        YLYKHomepageViewController * vc = self.presentingViewController.presentingViewController;
+        [vc dismissViewControllerAnimated:YES completion:nil];
+        LoginEvent *events = [[LoginEvent alloc] init];
+        [LoginEvent application:[UIApplication sharedApplication] withLogin:@{@"LoginSuccess":@true}];
+        [events startObserving];
+        // 发送登录成功的通知
+        [[NSNotificationCenter defaultCenter] postNotificationName:@"isLoginSuccess" object:@"success" userInfo:nil];
+        [self.navigationController popViewControllerAnimated:YES];
+    } failure:^(NSError *error) {
+        [CBLProgressHUD hideLoadingHUDInView:self.view];
+        [CBLProgressHUD showTextHUDWithText:@"获取信息失败，请重新登录" inView:self.view];
+    }];
+}
+
+- (void)putDeviceInfomationToJPushWithRegistrationID:(NSString *)registrationID {
+    NSDictionary *parameters = [NSDictionary dictionaryWithObjectsAndKeys:registrationID,@"client_id",@"",@"token",@"ios",@"device" ,nil];
+    NSArray *array = @[@"push"];
+    NSDictionary *dict = [NSDictionary dictionaryWithObjectsAndKeys:array,@"url",parameters,@"body", nil];
+    NSData *data = [NSJSONSerialization dataWithJSONObject:dict options:NSJSONWritingPrettyPrinted error:nil];
+    NSString *str = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    [[NativeNetwork sharedInstance] put:str success:^(id responseObject) {
+    //NSLog(@"%@",responseObject);
+    } failure:^(NSError *error) {
+    //NSLog(@"%@",error);
+    }];
+}
+
+- (void)cancel:(UIButton *)sender{
+    //NSLog(@"%d",sender.isTracking);
+    if (sender.isTracking == 1) {
+        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0.78, 0.78, 0.78, 1 });
+        [self.loginBtn.layer setBorderColor:colorref];
+    } else {
+        CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+        CGColorRef colorref = CGColorCreate(colorSpace,(CGFloat[]){ 0, 0, 0, 1 });
+        [self.loginBtn.layer setBorderColor:colorref];
+    }
+}
+
+- (BOOL)captchaIsright {
+    NSString * captcha = @"^[a-zA-Z0-9]{6,10}$";
+    NSPredicate * regextestcaptcha = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", captcha];
+    BOOL res1 = [regextestcaptcha evaluateWithObject:self.captchaField.text];
+    return res1;
+}
+
+- (BOOL)phoneNumberIsRight {
+    NSString * MOBILE = @"^1(3[0-9]|4[0-9]|5[0-9]|7[0-9]|8[0-9])\\d{8}$";
+    NSPredicate *regextestmobile = [NSPredicate predicateWithFormat:@"SELF MATCHES %@", MOBILE];
+    BOOL res1 = [regextestmobile evaluateWithObject:self.phoneNumberField.text];
+    return res1;
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField {
+    if ([self.phoneNumberField isFirstResponder]) {
+        [self.phoneNumberField resignFirstResponder];
+    } else if([self.captchaField isFirstResponder]) {
+        [self.captchaField resignFirstResponder];
+    }
+    return YES;
+}
+
+- (IBAction)outlandUserButtton:(id)sender {
+    LoginEvent *events = [[LoginEvent alloc] init];
+    [LoginEvent application:[UIApplication sharedApplication] withLogin:@{@"LoginSuccess":@true}];
+    [events startObserving];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"isLoginSuccess" object:@"success" userInfo:nil];
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"isOutlandUser"];
+    YLYKHomepageViewController * vc = self.presentingViewController.presentingViewController;
+    [vc dismissViewControllerAnimated:YES completion:nil];
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+#pragma mark - 返回
+- (IBAction)dissmissViewController:(id)sender {
+    [self dismissViewControllerAnimated:YES completion:nil];
+}
+
+- (void)back {
+    [self.navigationController popViewControllerAnimated:YES];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+}
+
+@end

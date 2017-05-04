@@ -1,0 +1,375 @@
+/**
+ * Created by 艺术家 on 2017/3/1.
+ */
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    Alert,
+    Dimensions,
+    NativeModules,
+    eviceEventEmitter,
+    ProgressBarAndroid,
+    DeviceEventEmitter,
+    NativeEventEmitter,
+} from 'react-native';
+//common
+import Enums from "../../common/enums.js";
+import Util from "../../common/util.js";
+import Icon from "../../common/Icon.js";
+import Styles from '../../common/styles.js';
+//configs
+import * as RnNativeModules from "../../configs/RnNativeModules.js";
+//component
+import BlankPages from "../../component/AlbumCell/BlankPages.js";
+//pages
+import DownAlbum from "../DownloadManager/DownloadAlbum.js";
+import DownloadCourse from "../DownloadManager/DownloadCourse.js"
+//组件
+import ProgressBar from 'react-native-progress/Bar';
+
+
+
+
+
+
+
+const DOWNLOAD_NONE = Enums.downloads.DOWNLOAD_DONE;            //文件不存在
+const DOWNLOAD_WATING = Enums.downloads.DOWNLOAD_WATING;       //等待下载
+const DOWNLOAD_DOWNLOADING = Enums.downloads.DOWNLOAD_DOWNLOADING;     //正在下载
+const DOWNLOAD_PAUSE = Enums.downloads.DOWNLOAD_PAUSE;           // 下载暂停
+const DOWNLOAD_DONE = Enums.downloads.DOWNLOAD_DONE;         //下载完成
+const DOWNLOAD_FAILED = Enums.downloads.DOWNLOAD_FAILED;       //下载失败
+
+var DownloadEvent = NativeModules.DownloadEvent;
+const myDownloadEvent = new NativeEventEmitter(DownloadEvent);
+var downloadSubscription;
+class HeaderToolBar extends Component {
+    render() {
+        return (
+            <View style={[{ height: 40 }, Styles.row, Styles.alignCenter, Styles.bgWhite]}>
+                {/*<TouchableOpacity  activeOpacity ={1}  onPress={() => { this.props.pauseAllFun() }} style={[Styles.primary]} >
+                    <Text style={[Styles.textGrey, Styles.text16, Styles.textCenter]}>
+                        {this.props.isPauseAll ? "全部下载" : "全部暂停"}
+                    </Text>
+                </TouchableOpacity>*/}
+                <TouchableOpacity activeOpacity={1} style={[Styles.primary]}
+                    onPress={() => { this.props.clearAllFun() }}>
+                    <Text style={[Styles.textGrey, Styles.text16, Styles.textCenter]}>
+                        全部清空
+                    </Text>
+                </TouchableOpacity>
+            </View>
+        )
+    }
+}
+
+export default class DownloadManager extends Component {
+    constructor(props) {
+        super(props);
+        const ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
+        this.state = {
+            dataSource: ds.cloneWithRows([]),
+            isPauseAll: true
+        };
+    }
+
+    //更新state
+    updateState(rowId, key, value) {
+        let newData = JSON.stringify(this.state.dataSource._dataBlob.s1);
+        let newDataSource = JSON.parse(newData);
+        let isPauseAll = this.state.isPauseAll;
+        newDataSource[rowId][key] = value;
+        if (key == "progress") {
+            if (newDataSource[rowId].state == DOWNLOAD_WATING) {
+                newDataSource[rowId].state = DOWNLOAD_DOWNLOADING;
+            }
+        } else if (key == "isShow" || key == "state") {
+            isPauseAll = newDataSource.every(item => item.state == DOWNLOAD_PAUSE || item.isShow == false);
+        }
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+            isPauseAll: isPauseAll,
+        });
+    }
+
+    //更新下载进度
+    updataProgress(rowId, newProgress) {
+        newProgress = Math.round(newProgress * 100) / 100;
+        this.updateState(rowId, "progress", +newProgress);
+    }
+
+    //下载完成后移除
+    hideItem() {
+        if (this.downloadingFlag.index !== -1) {
+            this.updateState(this.downloadingFlag.index, "isShow", false);
+            this.downloadingFlag.id = -1;
+            this.downloadingFlag.index = -1;
+        }
+    }
+
+    //删除下载
+    deleteItem(rowId) {
+        let delStr = [this.state.dataSource._dataBlob.s1[rowId].id];
+        RnNativeModules.deleteDownload(delStr, true);
+        this.updateState(rowId, "isShow", false);
+    }
+
+    //全部删除
+    clear() {
+        //清除下载队列
+        let stateDataSource = this.state.dataSource._dataBlob.s1;
+        let downloadingList = stateDataSource.filter(item => item.isShow == true);
+        let delIdList = downloadingList.map(item => item.id);
+        Util.alert({
+            msg: "确定要清空所有下载任务？",
+            okFun: () => {
+                RnNativeModules.deleteDownload(delIdList, true);
+                //刷新列表
+                let newDataSource = JSON.parse(JSON.stringify(stateDataSource));
+                const len = stateDataSource.length;
+                for (let i = 0; i < len; i++) {
+                    newDataSource[i].isShow = false;
+                }
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+                });
+            }
+        })
+    }
+
+    //暂停下载全部/开始下载全部
+    downloadAll() {
+        let newData = JSON.stringify(this.state.dataSource._dataBlob.s1);
+        let newDataSource = JSON.parse(newData);
+        const len = newDataSource.length;
+        let courseIdList = [];
+        // if (this.state.isPauseAll) {
+        //     for (let i = 0; i < len; i++) {
+        //         newDataSource[i].state = DOWNLOAD_WATING;
+        //     }
+        //     RnNativeModules.startDownload(newDataSource);
+        // } else {
+        //     for (let i = 0; i < len; i++) {
+        //         newDataSource[i].state = DOWNLOAD_PAUSE;
+        //         courseIdList.push(newDataSource[i].id);
+        //     }
+        //     RnNativeModules.pauseDownload(courseIdList);
+        // }
+        for (let i = 0; i < len; i++) {
+            newDataSource[i].state = DOWNLOAD_WATING;
+            courseIdList.push(newDataSource[i].id);
+        }
+        RnNativeModules.startDownload(newDataSource);
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+            isPauseAll: !this.state.isPauseAll
+        });
+    }
+
+    //暂停下载/继续下载
+    pauseDownloadItem(rowId) {
+        let item = this.state.dataSource._dataBlob.s1[rowId];
+        const pauseId = [item.id];
+        let state = this.state.dataSource._dataBlob.s1[rowId].state;
+        if (state == DOWNLOAD_PAUSE || state == DOWNLOAD_FAILED) {
+            RnNativeModules.startDownload(JSON.stringify([item]));
+            this.updateState(rowId, "state", DOWNLOAD_WATING);
+        } else {
+            RnNativeModules.pauseDownload(JSON.stringify(pauseId)).then((messge) => {
+                this.updateState(rowId, "state", DOWNLOAD_PAUSE);
+            });
+        }
+    }
+
+    //挂载
+    componentDidMount() {
+        this.downloadingFlag = {
+            id: -1,
+            index: -1
+        };
+
+        RnNativeModules.getDownloadList().then((downloadList) => {
+            //获取下载中的列表
+            let downloadingList = JSON.parse(downloadList).filter((item) =>
+                +item.flag !== DOWNLOAD_DONE
+            );
+            if (downloadingList && downloadingList.length > 0) {
+                //将下载中的列表加到state中
+                let sourceData = [];
+                downloadingList.forEach((item) => {
+                    sourceData.push({
+                        id: item.extra.id || 0,
+                        name: item.extra.name || "友邻优课",
+                        teachers: item.extra.teachers || "",
+                        album: {
+                            id: item.extra.album.id || 0,
+                            name: item.extra.album.name || "",
+                        },
+                        duration: item.extra.duration,
+                        durationFormat: Util.timeFormat(item.extra.duration),
+                        isShow: true,
+                        state: +item.flag,
+                        progress: 0.001
+                    })
+                });
+                let isPauseAll = !sourceData.some((item) => {
+                    return item.state == DOWNLOAD_DOWNLOADING
+                });
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(sourceData),
+                    isPauseAll: isPauseAll,
+                });
+
+                //判断是否有正在下载的课程
+                let downloading = JSON.parse(downloadList).some((item) =>
+                    +item.flag === DOWNLOAD_DOWNLOADING
+                );
+
+                if (!downloading) {
+                    this.downloadAll();
+                }
+            }
+
+            DeviceEventEmitter.addListener("backTofront", () => {
+                this.componentDidMount();
+            })
+
+            //设置监听
+            DeviceEventEmitter.addListener("downloadEvent", (message) => {
+                let messages = JSON.parse(message.downloadEvent);
+                let stateData = this.state.dataSource._dataBlob.s1;
+                let progress = messages.downloadSize;
+                if (this.downloadingFlag.id !== messages.extra.id) {
+                    this.downloadingFlag.id = messages.extra.id;
+                    this.downloadingFlag.index = getIndex();
+                }
+                if (messages.flag == DOWNLOAD_DOWNLOADING) {
+                    this.updataProgress(this.downloadingFlag.index, progress);
+                }
+
+                if (progress == 1) {
+                    //隐藏已经下载完的
+                    this.hideItem();
+                }
+
+                function getIndex() {
+                    for (let i = 0; i < stateData.length; i++) {
+                        if (messages.extra.id == stateData[i].id) {
+                            return i;
+                        }
+                    }
+                }
+            })
+
+            downloadSubscription = myDownloadEvent.addListener('DownloadCourse', (message) => {
+                let messages = message;
+                let stateData = this.state.dataSource._dataBlob.s1;
+                let progress = messages.downloadSize;
+                if (this.downloadingFlag.id !== messages.extra.id) {
+                    this.downloadingFlag.id = messages.extra.id;
+                    this.downloadingFlag.index = getIndex();
+                }
+                if (messages.flag == DOWNLOAD_DOWNLOADING) {
+                    this.updataProgress(this.downloadingFlag.index, progress);
+                }
+                if (progress == 1) {
+                    //隐藏已经下载完的
+                    this.hideItem();
+                }
+                function getIndex() {
+                    for (let i = 0; i < stateData.length; i++) {
+                        if (messages.extra.id == stateData[i].id) {
+                            return i;
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // view卸载
+    componentWillUnmount() {
+        DeviceEventEmitter.removeAllListeners("downloadEvent");
+        downloadSubscription && downloadSubscription.remove();
+    }
+
+    render() {
+        return (
+            <View style={[Styles.primary, Styles.bgGrey]}>
+
+                {this.state.dataSource._dataBlob.s1.length == 0 ?
+                    <BlankPages contentText={"你还没有下载中的课程"} ImageUrl={require("../../imgs/dowload.png")} /> :
+                    <View style={{ flex: 1 }}>
+                        <HeaderToolBar navigator={this.props.navigator} isPauseAll={this.state.isPauseAll}
+                            clearAllFun={() => { this.clear() }} />
+                        <ListView
+                            dataSource={this.state.dataSource}
+                            enableEmptySections={true}
+                            renderRow={(rowData, sectionId, rowId) =>
+                                rowData.isShow ?
+                                    <View style={[pageStyles.itemContainer, Styles.bgWhite, Styles.section, Styles.align]}>
+                                        <TouchableOpacity activeOpacity={1} onPress={() => {
+                                        }} style={Styles.primary}>
+                                            <View style={[pageStyles.borderRight, pageStyles.itemContent,]}>
+                                                <Text style={[Styles.text13, Styles.textBlack]}>
+                                                    {rowData.name}
+                                                </Text>
+                                                {
+                                                    rowData.state == DOWNLOAD_DOWNLOADING ?
+                                                        <View style={[Styles.row, { alignItems: 'center', paddingTop: 8 }]}>
+                                                            <ProgressBar style={pageStyles.progressBar} color={"#B41930"}
+                                                                unfilledColor={"#c8c8c8"} height={2}
+                                                                borderWidth={0}
+                                                                progress={rowData.progress}
+                                                                width={Dimensions.get('window').width - 125} />
+                                                            <Text
+                                                                style={Styles.text11}>{"\v\v" + parseInt(rowData.progress * 100) + "% "}</Text>
+                                                        </View>
+                                                        :
+                                                        <View style={[Styles.row, { alignItems: 'center', paddingTop: 8 }]}>
+                                                            <Text style={[Styles.text11, Styles.textGrey]}>
+                                                                {rowData.state == DOWNLOAD_PAUSE ? "下载已暂停" :
+                                                                    (rowData.state == DOWNLOAD_FAILED ? "下载失败，点击重试" : "等待下载")}
+                                                            </Text>
+                                                        </View>
+                                                }
+                                            </View>
+                                        </TouchableOpacity>
+                                        <View style={[pageStyles.deleteIcon, Styles.alignCenter]}>
+                                            <TouchableOpacity activeOpacity={1} onPress={() => { this.deleteItem(rowId); }}>
+                                                <Text style={[Styles.icon, Styles.textGrey, Styles.text20]}>{Icon.delete}</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View> : null
+                            }
+                        />
+                    </View>
+                }
+            </View>
+        )
+    }
+}
+
+var pageStyles = StyleSheet.create({
+    itemContainer: {
+        paddingVertical: 5,
+        paddingLeft: 16,
+        flexDirection: 'row'
+    },
+    itemContent: {
+        paddingTop: 10,
+        paddingBottom: 7,
+        flex: 1,
+    },
+    borderRight: {
+        borderRightColor: "#f2f5f6",
+        borderRightWidth: 1,
+    },
+    deleteIcon: {
+        width: 50,
+    },
+});

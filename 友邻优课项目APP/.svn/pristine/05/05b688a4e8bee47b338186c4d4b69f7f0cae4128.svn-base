@@ -1,0 +1,66 @@
+/**
+ * Created by 艺术家 on 2017/2/27.
+ */
+
+import React, { Component } from 'react';
+import { Text, View, TouchableOpacity, } from 'react-native';
+import Icon from "../../common/Icon.js";
+
+import styles from "./BottomCheckboxStyle.js"
+export default class BottomCheckbox extends Component {
+    // 构造
+    constructor(props) {
+        super(props);
+        this.state = {
+            isChecked: this.props.checkState,
+        };
+    }
+
+    //改变复选状态
+    _checkChange(state) {
+        this.setState({
+            isChecked: state
+        })
+    }
+
+    render() {
+        var state = this.props.checkState && this.state.isChecked
+        return (
+            <View style={styles.footer}>
+                <View style={styles.checkBox}>
+                    <Text>
+                        {this.props.textContent}
+                    </Text>
+                    {
+                        this.props.isShowCheckBox ?
+                            <TouchableOpacity activeOpacity ={1} style={{ padding: 5, flexDirection: "row", justifyContent: "center", alignItems: "center" }}
+                                onPress={() => {
+                                    this._checkChange(true);
+                                    this.props.checkedCallBack()
+                                }}
+                            >
+                                <Text style={[state ? styles.textGreen : styles.textGrey, styles.icon, { fontSize: 17 }]}>
+                                    {state ? Icon.checked : Icon.checkBox}
+                                </Text>
+                                <Text style={{ fontSize: 14 }}>&nbsp;&nbsp;全选</Text>
+                            </TouchableOpacity>
+                            : null
+                    }
+                </View>
+                <TouchableOpacity activeOpacity ={1} style={styles.downloadBtn}
+                    underlayColor="#0fabfa"
+                    activeOpacity={0.7}
+                    onPress={() => {
+                        this._checkChange(false);
+                        this.props.onPressBtnCallBack()
+                    }} >
+                    <View style={[styles.downloadBtn]}>
+                        <Text style={styles.btnText}>
+                            {this.props.btnText}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+            </View>
+        )
+    }
+}

@@ -1,0 +1,85 @@
+//
+//  YLYKPlayerSetSkinView.h
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/26.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import "YLYKSlider.h"
+
+/*
+ *选择背景颜色事件
+ */
+typedef NS_ENUM(NSInteger, YLYKPlayerSkinType) {
+    YLYKPlayerSkinType1      = 170450,
+    YLYKPlayerSkinType2      = 170451,
+    YLYKPlayerSkinType3      = 170452,
+    YLYKPlayerSkinType4      = 170453,
+};
+
+/*
+ *slider 滑动回调事件
+ */
+typedef NS_ENUM(NSInteger, YLYKSliderEvent) {
+    YLYKSliderEventValueChanged      = 170460,
+    YLYKSliderEventTouchCancel       = 170461,
+    YLYKSliderEventTouchUp           = 170462,
+};
+
+
+
+typedef void(^YLYKPlayerSkinTypeBlock)(YLYKPlayerSkinType skinType);
+typedef void(^YLYKPlayerSliderEventBlock)(YLYKSliderEvent sliderEnventType,UISlider *sender);
+
+@interface YLYKPlayerSetSkinView : UIView
+
+/*
+ *需要暂时内容背景视图
+ */
+@property(nonatomic,strong)UIView *contentBgView;
+
+/*
+ *slider事件代码块
+ */
+@property(nonatomic,copy)YLYKPlayerSliderEventBlock sliderEventBlock;
+
+
+/*
+ *选择背景颜色事件
+ */
+@property(nonatomic,copy)YLYKPlayerSkinTypeBlock skinType;
+
+/*
+ *亮度调整
+ */
+@property(nonatomic,strong)YLYKSlider *brightnessControlSlider;
+
+
+/*
+ *背景颜色
+ *bgColorBtn1 #f8fafa
+ *bgColorBtn2 #bce0c2
+ *bgColorBtn3 #f9f2e2
+ *bgColorBtn4 #171717
+ */
+@property(nonatomic,strong)UIButton *bgColorBtn1;
+@property(nonatomic,strong)UIButton *bgColorBtn2;
+@property(nonatomic,strong)UIButton *bgColorBtn3;
+@property(nonatomic,strong)UIButton *bgColorBtn4;
+
+
+
+#pragma mark - Public Method 
+
+/*
+ *通过代码块获取回调方法
+ */
+
+- (void)getPlayerSkinCallBack:(YLYKPlayerSkinTypeBlock)skinTypeBlock;
+
+- (void)getSliderEventCallBack:(YLYKPlayerSliderEventBlock)sliderEventBlock;
+
+
+@end

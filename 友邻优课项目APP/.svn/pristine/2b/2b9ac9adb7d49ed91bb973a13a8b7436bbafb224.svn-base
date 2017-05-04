@@ -1,0 +1,14 @@
+//
+//  LoginEvent.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/31.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <React/RCTEventEmitter.h>
+#import <React/RCTBridgeModule.h>
+
+@interface LoginEvent : RCTEventEmitter <RCTBridgeModule>
++ (BOOL)application:(UIApplication *)application withLogin:(NSDictionary *)playing;
+@end

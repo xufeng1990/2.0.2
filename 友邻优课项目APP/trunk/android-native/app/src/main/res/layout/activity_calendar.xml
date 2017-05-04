@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#fff"
+        android:orientation="vertical">
+
+        <include layout="@layout/include_title" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="130px">
+
+            <TextView
+                android:id="@+id/mouth_day"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:text="Fed,2017"
+                android:textSize="18px" />
+
+            <ImageView
+                android:id="@+id/calender_right"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginLeft="10px"
+                android:layout_toRightOf="@+id/mouth_day"
+                android:padding="20px"
+                android:src="@mipmap/calender_right" />
+
+            <ImageView
+                android:id="@+id/calender_left"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerVertical="true"
+                android:layout_marginRight="10px"
+                android:layout_toLeftOf="@+id/mouth_day"
+                android:padding="20px"
+                android:scaleType="center"
+                android:src="@mipmap/calender_left" />
+        </RelativeLayout>
+
+        <sun.bob.mcalendarview.views.WeekColumnView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="12px"
+            android:layout_marginLeft="28px"
+            android:layout_marginRight="28px"
+            android:layout_marginTop="12px" />
+
+
+        <sun.bob.mcalendarview.views.ExpCalendarView
+            android:id="@+id/calendar_exp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="28px"
+            android:layout_marginRight="28px" />
+
+
+    </LinearLayout>
+
+
+    <ImageView
+        android:id="@+id/first_calendar"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        android:src="@drawable/first_calendar" />
+
+</RelativeLayout>

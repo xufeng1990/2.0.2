@@ -1,0 +1,227 @@
+//  "courseTabbar"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2017
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  NativeEventEmitter,
+  DeviceEventEmitter,
+NativeModules
+} from 'react-native';
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import Banner from '../../component/Banner/Banner.js';
+import DailyNews from './DailyNews.js';
+import Album from './Album.js';
+import SearchContainer from '../../component/Search/SearchPage.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import Icon from '../../common/Icon.js';
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import Service from '../../configs/Service.js';
+import Util from '../../common/util.js';
+import Pay from '../Pay/pay.js';
+//登陆监听
+var LoginEvents = NativeModules.LoginEvent;
+const myLoginEvent = new NativeEventEmitter(LoginEvents);
+var loginSubscription;
+//退出登录成功
+var LogoutEvents = NativeModules.LogoutEvent;
+const myLogoutEvent = new NativeEventEmitter(LogoutEvents);
+var logoutSubscription;
+// 类
+//每日新闻
+var Bridges = NativeModules.BridgeEvents;
+const myEvent = new NativeEventEmitter(Bridges);
+var subscription;
+export default class Course extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      //每日新闻数据
+      dayNews:[],
+      //专辑数据
+      ablum:[],
+      isPlayingOrPause:0,
+      noLogin:false,
+      hideNoVip1:false,
+      isExistPlayedTrace:1,
+
+    };
+  }
+
+componentWillMount(){
+  this._getUserID();
+this.showCourseTabBar =   DeviceEventEmitter.addListener('showCourseTabBar',()=>{
+    RnNativeModules.hideTabBar('show');
+  });
+
+  //登陆成功监听
+  this.loginSubscription = myLoginEvent.addListener('LoginSuccess',(reminder)=>{
+        this._getUserID();
+        this._getReasults();
+      });
+
+    this.logoutSubscription = myLogoutEvent.addListener('LogoutSuccess',(reminder)=>{
+        console.log('新注销成功' + reminder.LogoutSuccess )
+            if (reminder.LogoutSuccess) {
+                  this._getUserID();
+                this._getReasults();
+            }
+          })
+
+          RnNativeModules.isExistPlayedTrace()
+          .then((data)=>{
+            this.setState({isExistPlayedTrace:data})
+          })
+}
+  // 加载完成
+ componentDidMount(){
+    //每日新闻数据
+  this._getReasults();
+
+
+  }
+
+    _getReasults(){
+
+    //专辑数据
+
+    }
+  // view卸载
+  componentWillUnmount(){
+this.showCourseTabBar && this.showCourseTabBar.remove();
+  this.subscription &&   this.subscription.remove();
+    this.loginSubscription &&   this.loginSubscription.remove();
+    this.logoutSubscription && this.logoutSubscription.remove();
+  }
+  componentDidMount(){
+  this.subscription = myEvent.addListener('playOrPauseToRN',(reminder)=>{
+       console.log( '播放状态'+ reminder.isPlayingOrPause);
+      this.setState({isPlayingOrPause:reminder.isPlayingOrPause})}
+    );
+
+    Service.loginServer.isPlayingOrPause()
+    .then((data) =>{
+      console.log('git获取状态' + data)
+
+      this.setState({isPlayingOrPause:data.isPlayingOrPause})
+    }).catch((err)=>{
+      console.log('错误' + err)
+      Util.AppToast('网络出错,请稍后再试')
+
+    })
+  }
+  _leftItemAction(){
+    RnNativeModules.searchView();
+  }
+  _rightItemAction(is1,is,is2){
+    if (this.state.noLogin == false) {
+        Util.AppToast('请先登录');
+    }else {
+      if (this.state.hideNoVip1 == false) {
+          this._alertHome();
+      }else {
+        RnNativeModules.goToPlayerView(is1,is,is2);
+      }
+    }
+
+  }
+  goToQiView(){
+      RnNativeModules.goToQiYu();
+  }
+
+  goToPayView(){
+    RnNativeModules.hideTabBar('hide');
+    this.props.navigator.push({
+      component: Pay,
+    })
+  }
+
+  _alertHome(){
+    Util.alertDialog({
+      msg:'成为友邻学员即可收听此课程',
+      oneBtn:'立即入学',
+      okBtn:'咨询阿树老师',
+      cancelBtn:'取消',
+      okFun:()=>{this.goToQiView()},
+      oneFun:()=>{this.goToPayView()},
+    })
+  }
+
+  _getUserID() {
+
+    RnNativeModules.getUserInfo().then((data) => {
+      var resultData = JSON.parse(data);
+        if (data == 0 || data == '0' ) {
+            this.setState({
+                noLogin:false,
+            })
+        }else {
+          this.setState({  noLogin:true,})
+              let isVip = Util.isVip(resultData)
+              if (isVip == false) {
+                this.setState({
+
+                    hideNoVip1:false,
+                })
+              }else {
+                this.setState({
+
+                    hideNoVip1:true,
+                })
+              }
+
+        }
+    }).catch((err) => {
+        console.log('albunShow获取userID失败' + err)
+    })
+
+
+  }
+
+  // render
+  render(){
+
+    return (
+
+      <View style={{height:g_AppValue.screenHeight -15 * g_AppValue.precent,backgroundColor:'#f2f5f6'}}>
+        <NavigationBar
+          title = '课程'
+          leftItemTitle = {Icon.search}
+          leftItemFunc = {this._leftItemAction.bind(this)}
+          rightImageSource={this.state.isExistPlayedTrace ? this.state.isPlayingOrPause == 0 ?  require('../../imgs/play1.png')  :require ('../../imgs/play.gif') : null}
+          rightItemFunc = {()=>this._rightItemAction('0',false,'[]')}
+          />
+
+              <ScrollView showsVerticalScrollIndicator = {false}>
+               <Banner navigator = {this.props.navigator}/>
+               <DailyNews  dayNews = {this.state.dayNews} navigator = {this.props.navigator}/>
+               <Album  navigator = {this.props.navigator} album = {this.state.ablum}/>
+             </ScrollView>
+
+
+      </View>
+    );
+  }
+
+
+
+}
+
+var styles = StyleSheet.create({
+
+})

@@ -1,0 +1,146 @@
+@import "style.00-variables";
+.ui-hide {
+    display: none;
+}
+
+.ui-container {
+	padding: @padding-tb @padding-lr;
+}
+.ui-section-top {
+    margin-top: @margin-tb;
+}
+.ui-section-bottom {
+    margin-bottom: @margin-tb;
+}
+.ui-section {
+    .ui-section-top;
+    .ui-section-bottom;
+}
+
+.ui-float-left {
+    float: left;
+}
+.ui-float-right {
+    float: right;
+}
+.ui-clearfix {
+    float: none;
+    clear: both;
+    overflow: auto;
+    _height: 1%
+}
+
+.ui-fixed-bottom {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    z-index: 9;
+}
+
+.ui-flex {
+    display: flex;
+    width: 100%;
+}
+.ui-flex-item {
+    display: -webkit-box;
+    display: -moz-box;
+    display: box;
+    width: 100%;
+    -webkit-box-flex: 1;
+    -webkit-box-orient: vertical;
+    -webkit-box-pack: center;
+    -webkit-box-align: center;
+}
+.ui-flex-seperated {
+    .ui-flex;
+    position: relative;
+    
+    .ui-flex-item {
+        &:before {
+            content: '';
+            position: absolute;
+            top: 20%;
+            bottom: 20%;
+            height: 60%;
+            width: 1px;
+            background-color: #e8e8e8;
+        }
+        &:first-child:before{
+            width: 0;
+        }
+    }
+}
+
+.ui-flow {
+    overflow: hidden;
+    width: 100%;
+    
+    &>[class*="ui-flow-col"]{
+        float: left;
+    }
+    .ui-flow-col5 {
+        width: 5%;
+    }
+    .ui-flow-col10 {
+        width: 10%;
+    }
+    .ui-flow-col15 {
+        width: 15%;
+    }
+    .ui-flow-col20 {
+        width: 20%;
+    }
+    .ui-flow-col25 {
+        width: 25%;
+    }
+    .ui-flow-col30 {
+        width: 30%;
+    }
+    .ui-flow-col33 {
+        width: 33.3333%;
+    }
+    .ui-flow-col35 {
+        width: 35%;
+    }
+    .ui-flow-col40 {
+        width: 40%;
+    }
+    .ui-flow-col45 {
+        width: 45%;
+    }
+    .ui-flow-col50 {
+        width: 50%;
+    }
+    .ui-flow-col55 {
+        width: 55%;
+    }
+    .ui-flow-col60 {
+        width: 60%;
+    }
+    .ui-flow-col65 {
+        width: 65%;
+    }
+    .ui-flow-col67 {
+        width: 66.6666%;
+    }
+    .ui-flow-col70 {
+        width: 70%;
+    }
+    .ui-flow-col75 {
+        width: 75%;
+    }
+    .ui-flow-col80 {
+        width: 80%;
+    }
+    .ui-flow-col85 {
+        width: 85%;
+    }
+    .ui-flow-col90 {
+        width: 90%;
+    }
+    .ui-flow-col95 {
+        width: 95%;
+    }
+}

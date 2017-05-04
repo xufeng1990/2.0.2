@@ -1,0 +1,28 @@
+//
+//  YLYKListenedAlbumNativeModule.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/24.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKListenedAlbumNativeModule.h"
+
+@implementation YLYKListenedAlbumNativeModule
+
+RCT_EXPORT_MODULE();
+
+- (dispatch_queue_t)methodQueue {
+    return dispatch_get_main_queue();
+}
+
+RCT_REMAP_METHOD(getListenAlbumList, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSDictionary *listenedAlbumList = [[NSUserDefaults standardUserDefaults] objectForKey:@"lastListenedAlbumList"];
+    NSMutableArray *albumListArray = [NSMutableArray array];
+    for (NSDictionary *dict in listenedAlbumList) {
+        NSDictionary *dic = [[dict allValues] objectAtIndex:0];
+        [albumListArray addObject:dic];
+    }
+}
+
+@end

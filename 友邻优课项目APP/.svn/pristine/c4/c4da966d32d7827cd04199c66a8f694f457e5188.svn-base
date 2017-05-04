@@ -1,0 +1,98 @@
+package com.zhuomogroup.ylyk.listener;
+
+import android.content.Context;
+
+import com.facebook.react.ReactApplication;
+import com.facebook.react.bridge.ReactContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.bridge.WritableNativeMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+import com.google.gson.Gson;
+import com.lzy.okserver.download.DownloadInfo;
+import com.lzy.okserver.listener.DownloadListener;
+import com.reactmodules.download.CourseBean;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.utils.FileUtil;
+import com.zhuomogroup.ylyk.utils.SharedPreferencesUtil;
+
+import org.greenrobot.eventbus.EventBus;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import static com.zhuomogroup.ylyk.utils.EncryptionUtil.MD5;
+import static com.zhuomogroup.ylyk.consts.YLStorageKey.USER_INFO;
+
+/**
+ * Created by xyb on 2017/3/20.
+ */
+
+public class AudioDownloadListener extends DownloadListener {
+    private Context mContext;
+    private long mExitTime;
+
+    public AudioDownloadListener(Context mContext) {
+        this.mContext = mContext;
+    }
+
+    @Override
+    public void onProgress(DownloadInfo downloadInfo) {
+        if ((System.currentTimeMillis() - mExitTime) > 500 && downloadInfo.getProgress() < 0.3) {
+            mExitTime = System.currentTimeMillis();
+            sendEvent(downloadInfo);
+        }
+    }
+
+    @Override
+    public void onFinish(DownloadInfo downloadInfo) {
+        sendEvent(downloadInfo);
+        EventBus.getDefault().post(downloadInfo);
+        int courseId = 0;
+        try {
+            CourseBean data = (CourseBean) downloadInfo.getData();
+            courseId = data.getId();
+            String user_info = (String) SharedPreferencesUtil.get(mContext, USER_INFO, "");
+            JSONObject object = new JSONObject(user_info);
+            int userId = object.getInt("id");
+
+            String md5 = MD5(userId + "." + courseId);
+            String filePath = md5 + ".cache";
+            FileUtil.renameFile(downloadInfo.getTargetPath(), downloadInfo.getTargetFolder() + filePath);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public void onError(DownloadInfo downloadInfo, String errorMsg, Exception e) {
+        sendEvent(downloadInfo);
+    }
+
+    private void sendEvent(DownloadInfo downloadInfo) {
+        WritableMap params = new WritableNativeMap();
+        JSONObject jsonObject = new JSONObject();
+        try {
+            jsonObject.put("saveName", downloadInfo.getFileName());
+            jsonObject.put("savePath", downloadInfo.getTargetPath());
+            jsonObject.put("downloadSize", downloadInfo.getProgress());
+            jsonObject.put("totalSize", downloadInfo.getTotalLength());
+            jsonObject.put("flag", downloadInfo.getState());
+            CourseBean downLoadBean = (CourseBean) downloadInfo.getData();
+            if (downLoadBean != null) {
+                Gson gson = new Gson();
+                String downloadBeanString = gson.toJson(downLoadBean);
+                JSONObject extra = new JSONObject(downloadBeanString);
+                jsonObject.put("extra", extra);
+            }
+            params.putString("downloadEvent", jsonObject.toString());
+            Context applicationContext = mContext.getApplicationContext();
+            ReactApplication reactApplication = (MainApplication) applicationContext;
+            ReactContext currentReactContext = reactApplication.getReactNativeHost().getReactInstanceManager().getCurrentReactContext();
+            if (currentReactContext != null) {
+                currentReactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class).emit("downloadEvent", params);
+            }
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+    }
+}

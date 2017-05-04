@@ -1,0 +1,196 @@
+package com.reactutils.oauth;
+
+import com.facebook.react.bridge.Promise;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.reactutils.callback.MyStringCallback;
+import com.reactutils.encryption.EncryptionTools;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhuomogroup.ylyk.utils.SPUtils;
+import com.zhy.http.okhttp.OkHttpUtils;
+import com.zhy.http.okhttp.callback.StringCallback;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+
+import okhttp3.Call;
+import okhttp3.MediaType;
+import okhttp3.Response;
+
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_APP_KEY;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.USERID_Authorization;
+
+/**
+ * Created by xyb on 2017/2/20.
+ */
+
+public class YLOauthModule extends ReactContextBaseJavaModule {
+    public YLOauthModule(ReactApplicationContext reactContext) {
+        super(reactContext);
+    }
+
+    @Override
+    public String getName() {
+        return "YLOauthModule";
+    }
+
+    @ReactMethod
+    public void GetTokenByMobilephoneCaptcha(String mobilephone, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("mobilephone", mobilephone);
+            jsonObject.put("app_key", BASE_APP_KEY);
+            String content = jsonObject.toString();
+            OkHttpUtils.postString()
+                    .url(BASE_URL_HEAD + "token" + Signature.UrlSignature())
+                    .addHeader("Content-Type", "application/json")
+                    .content(content)
+                    .mediaType(MediaType.parse("application/json; charset=utf-8"))
+                    .build().execute(new MyStringCallback(promise, "", getCurrentActivity()));
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+
+    }
+
+    /**
+     * 手机登录获取授权令牌
+     * @param mobilePhone
+     * @param captcha
+     * @param promise
+     */
+    @ReactMethod
+    public void GetTokenByMobilephone(String mobilePhone, String captcha, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("mobilephone", mobilePhone);
+            jsonObject.put("app_key", BASE_APP_KEY);
+            jsonObject.put("captcha", captcha);
+            String content = jsonObject.toString();
+            OkHttpUtils.postString()
+                    .url(BASE_URL_HEAD + "token" + Signature.UrlSignature())
+                    .addHeader("Content-Type", "application/json")
+                    .content(content)
+                    .mediaType(MediaType.parse("application/json; charset=utf-8"))
+                    .build().execute(new StringCallback() {
+
+                @Override
+                public void onError(Call call, Exception e, int id) {
+                    e.printStackTrace();
+                    promise.reject("999", "无法连接服务器");
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+
+                }
+
+
+                @Override
+                public boolean validateReponse(Response response, int id) {
+                    return true;
+                }
+
+                @Override
+                public String parseNetworkResponse(Response response, int id) throws IOException {
+                    String string = response.body().string();
+                    if (response.isSuccessful()) {
+                        promise.resolve(string + "");
+                        putAuthorization(string);
+                    } else {
+                        promise.reject(response.code() + "", string);
+                    }
+                    return "";
+                }
+            });
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+
+    }
+
+    /**
+     * 微信登录授权
+     *
+     * @param open_id      微信账号的openid
+     * @param union_id     微信账号的unionid
+     * @param access_token 微信账号的access_token
+     * @param promise
+     */
+    @ReactMethod
+    public void GetTokenByUnionId(String open_id, String union_id, String access_token, final Promise promise) {
+        try {
+            JSONObject jsonObject = new JSONObject();
+            jsonObject.put("open_id", open_id);
+            jsonObject.put("app_key", BASE_APP_KEY);
+            jsonObject.put("union_id", union_id);
+            jsonObject.put("access_token", access_token);
+            String content = jsonObject.toString();
+            OkHttpUtils.postString()
+                    .url(BASE_URL_HEAD + "token" + Signature.UrlSignature())
+                    .addHeader("Content-Type", "application/json")
+                    .content(content)
+                    .mediaType(MediaType.parse("application/json; charset=utf-8"))
+                    .build().execute(new StringCallback() {
+
+                @Override
+                public void onError(Call call, Exception e, int id) {
+                    e.printStackTrace();
+                    promise.reject("999", "无法连接服务器");
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+
+                }
+
+
+                @Override
+                public boolean validateReponse(Response response, int id) {
+                    return true;
+                }
+
+                @Override
+                public String parseNetworkResponse(Response response, int id) throws IOException {
+                    String string = response.body().string();
+                    if (response.isSuccessful()) {
+                        promise.resolve(string + "");
+                        putAuthorization(string);
+                    } else {
+                        promise.reject(response.code() + "", string);
+                    }
+                    return "";
+                }
+            });
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+            promise.reject(e);
+        }
+    }
+
+
+    public void putAuthorization(String response) {
+        try {
+            JSONObject jsonObject = new JSONObject(response);
+            String app_key = jsonObject.getString("app_key");
+            String app_token = jsonObject.getString("app_token");
+            String user_id = jsonObject.getString("user_id");
+            String Authorization = EncryptionTools.BASE64(app_key + ":" + app_token + ":" + user_id);
+            SPUtils.put(getCurrentActivity(), USERID_Authorization, Authorization);
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+
+}

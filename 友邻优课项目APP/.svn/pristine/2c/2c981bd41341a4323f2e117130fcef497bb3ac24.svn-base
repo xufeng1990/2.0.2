@@ -1,0 +1,105 @@
+//  AlbumNavTab
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component,} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    Platform,
+    DeviceEventEmitter
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+// 类
+export default class AlbumNavTab extends Component {
+    // 构造函数
+    constructor(props) {
+        super(props);
+        this.activeTab = true,
+            this.state = {
+                activeTab: true,
+            };
+    }
+    // static   propTypes = {
+    //      goToPage:React.PropTypes.func,//跳转对应的tab方法
+    //      activeTab:React.PropTypes.number,//当前被选中的下标
+    //       tabs:React.PropTypes.array,//所有tabs集合
+    //      tabNames:React.PropTypes.array,//保存tab名称
+    //
+    //    }
+    componentDidMount() {
+    }
+    _gotopage() {
+        if (this.activeTab) {
+            this.setState({
+                activeTab: false
+            })
+            this.activeTab = false
+        } else {
+            this.setState({
+                activeTab: true
+            })
+            this.activeTab = true
+        }
+    }
+    renderTabOption() {
+        // let color = this.state.activeTab == this.props.pageID ? "#0fabfa" : "#5a5a5a";
+        // let viewColor = this.state.activeTab == this.props.pageID ?  "#0fabfa" : "#ffffff" ;// 判断i是否是当前选中的tab，设置不同的颜色
+        return (
+            <TouchableOpacity style={styles.tab} onPress={() => { this._gotopage() }}>
+                <View style={styles.tabItem}>
+                    <Text
+                        style={{ color: this.state.activeTab ? "#0fabfa" : "#5a5a5a", fontSize: 18 * g_AppValue.precent }}>
+                        {this.props.tabNames[this.props.pageID]}
+                    </Text>
+                </View>
+                <View
+                    style={{ backgroundColor: this.state.activeTab ? "#0fabfa" : "#ffffff", width: 85 * g_AppValue.precent, height: 1 * g_AppValue.precent, marginTop: 10 * g_AppValue.precent }}>
+                </View>
+            </TouchableOpacity>
+        );
+    }
+    // render
+    render() {
+        var tabs = [1, 2, 3];
+        return (
+            <View style={styles.tabs}>
+                {tabs.map((tab) => this.renderTabOption())}
+            </View>
+        );
+    }
+    // 自定义方法区域
+    // your method
+}
+var styles = StyleSheet.create({
+    tabs: {
+        marginTop: 22,
+        flexDirection: 'row',
+        height: Platform.OS === 'ios' ? 42 * g_AppValue.precent : 47 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+    },
+    tab: {
+        // flex:1,
+        marginHorizontal: 20 * g_AppValue.precent,
+        width: 85 * g_AppValue.precent,
+        alignItems: 'center',
+        //backgroundColor:'black',
+    },
+    tabItem: {
+        marginTop: 12 * g_AppValue.precent,
+        flexDirection: 'column',
+        alignItems: 'center',
+        //backgroundColor:'green',
+    },
+})

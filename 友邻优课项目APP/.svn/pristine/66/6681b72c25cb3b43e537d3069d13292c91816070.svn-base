@@ -1,0 +1,148 @@
+//
+//  YLYKUserInterfaceConstant.h
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/25.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#ifndef YLYKUserInterfaceConstant_h
+#define YLYKUserInterfaceConstant_h
+
+#pragma mark - 通用字体颜色
+
+#define kBaseColor      [UIColor colorWithHexString:@"#000000"]
+#define KColor_202020   [UIColor colorWithHexString:@"#202020"]
+#define KColor_5a5a5a   [UIColor colorWithHexString:@"#5a5a5a"]
+#define KColor_9a9b9c   [UIColor colorWithHexString:@"#9a9b9c"]
+#define KColor_0fabfa   [UIColor colorWithHexString:@"#0fabfa"]
+#define KColor_666666   [UIColor colorWithHexString:@"#666666"]
+
+
+
+//播放页皮肤颜色依次顺序
+#define kColor_f8fafa   @"#f8fafa"
+#define kColor_bce0ce   @"#bce0ce"
+#define kColor_f9f2e2   @"#f9f2e2"
+#define kColor_171717   @"#171717"
+
+#pragma mark - 通用字体大小
+
+
+#define FONT8               [UIFont systemFontOfSize:8.0]
+#define FONT9               [UIFont systemFontOfSize:9.0]
+#define FONT10              [UIFont systemFontOfSize:10.0]
+#define FONT11              [UIFont systemFontOfSize:11.0]
+#define FONT12              [UIFont systemFontOfSize:12.0]
+#define FONT13              [UIFont systemFontOfSize:13.0]
+#define FONT15              [UIFont systemFontOfSize:15.0]
+#define FONT16              [UIFont systemFontOfSize:16.0]
+#define FONT17              [UIFont systemFontOfSize:17.0]
+#define FONT22              [UIFont systemFontOfSize:22.0]
+
+#define kCellMinimumFontSize        FONT11
+#define kCellFontSize_10            FONT10
+#define KcellBigFontSize            FONT17
+#define kCellNormalFontSize         FONT15
+#define kCellSmallFontSize          FONT13
+
+
+#define IsIpad  [[UIDevice currentDevice].model isEqualToString:@"iPad"]  ? YES : NO
+
+
+#pragma mark - 播放页换肤背景颜色
+
+#define KPlayerSkinColor       [[NSUserDefaults standardUserDefaults] objectForKey:@"playerSkinColor"]
+#define KPlayerBrightnessValue [[NSUserDefaults standardUserDefaults] objectForKey:@"playerBrightnessValue"]
+#define KPlayerPlayListNormalColor [[NSUserDefaults standardUserDefaults] objectForKey:@"playerPlayListNormalColor"]
+#define KPlayerPlayListSelectColor [[NSUserDefaults standardUserDefaults] objectForKey:@"playerPlayListSelectColor"]
+#define KPlayerFunctionTitleColor [[NSUserDefaults standardUserDefaults] objectForKey:@"playerFunctionTitleColor"]
+
+#define KPlayerCycleImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerCycleImg"]
+#define KPlayerBackImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerBackImg"]
+#define KPlayerPlayImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerPlayImg"]
+#define KPlayerPauseImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerPauseImg"]
+#define KPlayerForwardImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerForwardImg"]
+#define KPlayerMoreImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerMoreImg"]
+
+#define KPlayerWriteNoteImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerWriteNoteImg"]
+#define KPlayerNavBackImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerNavBackImg"]
+#define KPlayerNavSetImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerNavSetImg"]
+#define KPlayerNavDownloadImg [[NSUserDefaults standardUserDefaults] objectForKey:@"playerNavDownloadImg"]
+
+#pragma mark - 播放列表各种肤色颜色
+
+#define KPlayerPlayListNormalColor_yellow   @"#5a5a5a"
+#define KPlayerPlayListSelectColor_yellow   @"#ae7a33"
+
+#define KPlayerPlayListNormalColor_blue     @"#5a5a5a"
+#define KPlayerPlayListSelectColor_blue     @"#348a42"
+
+#define KPlayerPlayListNormalColor_default  @"#5a5a5a"
+#define KPlayerPlayListSelectColor_default  @"#348a42"
+
+#define KPlayerPlayListNormalColor_black    @"#5a5a5a"
+#define KPlayerPlayListSelectColor_black    @"#ffffff"
+
+
+#pragma mark - 播放页功能各种肤色颜色
+
+#define KPlayerFunctionTitleColor_yellow    @"#ae7a33"
+#define KPlayerFunctionTitleColor_blue      @"#348a42"
+#define KPlayerFunctionTitleColor_default   @"#9a9b9c"
+#define KPlayerFunctionTitleColor_black     @"#666666"
+
+#pragma mark - 播放页各种肤色下图片名称
+
+#define KPlayerCycleImg_default      @"night_icon_playlist"
+#define KPlayerCycleImg_green        @"green_icon_playlist"
+#define KPlayerCycleImg_yellow       @"yellow_icon_playlist"
+#define KPlayerCycleImg_black        @"night_icon_playlist"
+
+#define KPlayerBackImg_default      @"night_icon_10sback"
+#define KPlayerBackImg_green        @"green_icon_10sback"
+#define KPlayerBackImg_yellow       @"yellow_icon_10sback"
+#define KPlayerBackImg_black        @"night_icon_10sback"
+
+#define KPlayerPlayImg_default      @"night_play"
+#define KPlayerPlayImg_green        @"green_play"
+#define KPlayerPlayImg_yellow       @"yellow_play"
+#define KPlayerPlayImg_black        @"night_play"
+
+#define KPlayerPauseImg_default     @"night_icon_pause"
+#define KPlayerPauseImg_green       @"green_icon_pause"
+#define KPlayerPauseImg_yellow      @"yellow_icon_pause"
+#define KPlayerPauseImg_black       @"night_icon_pause"
+
+#define KPlayerForwardImg_default   @"night_icon_10sforward"
+#define KPlayerForwardImg_green     @"green_icon_10sforward"
+#define KPlayerForwardImg_yellow    @"yellow_icon_10sforward"
+#define KPlayerForwardImg_black     @"night_icon_10sforward"
+
+#define KPlayerMoreImg_default      @"night_icon_more"
+#define KPlayerMoreImg_green        @"green_icon_more"
+#define KPlayerMoreImg_yellow       @"yellow_icon_more"
+#define KPlayerMoreImg_black        @"night_icon_more"
+
+#define KPlayerWriteNoteImg_default @"night_icon_write"
+#define KPlayerWriteNoteImg_green   @"green_icon_write"
+#define KPlayerWriteNoteImg_yellow  @"yellow_icon_write"
+#define KPlayerWriteNoteImg_black   @"night_icon_write"
+
+#define KPlayerNavBackImg_default      @"night_nav_icon_back"
+#define KPlayerNavBackImg_green        @"green_nav_icon_back"
+#define KPlayerNavBackImg_yellow       @"yellow_nav_icon_back"
+#define KPlayerNavBackImg_black        @"night_nav_icon_back"
+
+#define KPlayerNavSetImg_default      @"night_nav_icon_set"
+#define KPlayerNavSetImg_green        @"green_nav_icon_set"
+#define KPlayerNavSetImg_yellow       @"yellow_nav_icon_set"
+#define KPlayerNavSetImg_black        @"night_nav_icon_set"
+
+#define KPlayerNavDownloadImg_default      @"default_nav_icon_download"
+#define KPlayerNavDownloadImg_green        @"green_nav_icon_download"
+#define KPlayerNavDownloadImg_yellow       @"yellow_nav_icon_download"
+#define KPlayerNavDownloadImg_black        @"night_nav_icon_download"
+
+
+#endif /* YLYKUserInterfaceConstant_h */

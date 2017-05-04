@@ -1,0 +1,41 @@
+//
+//  YLYKUserInterfaceConstant.h
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/25.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#ifndef YLYKUserInterfaceConstant_h
+#define YLYKUserInterfaceConstant_h
+
+#pragma mark - 通用字体颜色
+
+#define kBaseColor      [UIColor colorWithHexString:@"#000000"]
+#define KColor_202020   [UIColor colorWithHexString:@"#202020"]
+#define KColor_5a5a5a   [UIColor colorWithHexString:@"#5a5a5a"]
+#define KColor_9a9b9c   [UIColor colorWithHexString:@"#9a9b9c"]
+#define KColor_0fabfa   [UIColor colorWithHexString:@"#0fabfa"]
+
+#pragma mark - 通用字体大小
+
+
+#define FONT8               [UIFont systemFontOfSize:8.0]
+#define FONT9               [UIFont systemFontOfSize:9.0]
+#define FONT10              [UIFont systemFontOfSize:10.0]
+#define FONT11              [UIFont systemFontOfSize:11.0]
+#define FONT12              [UIFont systemFontOfSize:12.0]
+#define FONT13              [UIFont systemFontOfSize:13.0]
+#define FONT15              [UIFont systemFontOfSize:15.0]
+#define FONT16              [UIFont systemFontOfSize:16.0]
+#define FONT17              [UIFont systemFontOfSize:17.0]
+#define FONT22              [UIFont systemFontOfSize:22.0]
+
+#define kCellMinimumFontSize        FONT11
+#define kCellFontSize_10            FONT10
+#define KcellBigFontSize            FONT17
+#define kCellNormalFontSize         FONT15
+#define kCellSmallFontSize          FONT13
+
+
+#endif /* YLYKUserInterfaceConstant_h */

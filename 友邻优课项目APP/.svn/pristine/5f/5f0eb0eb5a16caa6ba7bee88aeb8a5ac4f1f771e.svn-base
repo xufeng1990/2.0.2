@@ -1,0 +1,18 @@
+//
+//  PhoneLoginViewController.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/6.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <React/RCTBridgeModule.h>
+typedef void(^loginSuccess)(NSString *userId);
+@interface PhoneLoginViewController : UIViewController <RCTBridgeModule>
+
+@property (nonatomic , copy) NSString * title;
+@property (weak, nonatomic) IBOutlet NSLayoutConstraint *highLayout;
+@property (weak, nonatomic) IBOutlet UILabel *label;
+@property (nonatomic, copy) loginSuccess loginSuccess;
+@end

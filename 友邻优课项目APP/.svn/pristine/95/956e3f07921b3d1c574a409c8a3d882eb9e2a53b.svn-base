@@ -1,0 +1,70 @@
+//
+//  DownloadEvent.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/4/6.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "DownloadEvent.h"
+@implementation DownloadEvent
+{
+    BOOL hasListeners;
+}
+@synthesize bridge = _bridge;
+RCT_EXPORT_MODULE();
+
+
++ (DownloadEvent *)shareInstance{
+    static id sharedInstance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedInstance = [[self alloc] init];
+    });
+    return sharedInstance;
+
+}
+
+- (NSArray<NSString *> *)supportedEvents {
+    return @[@"DownloadCourse"];
+}
+- (void)startObserving
+{
+    hasListeners = YES;
+    for (NSString *event in [self supportedEvents]) {
+            [[NSNotificationCenter defaultCenter] addObserver:self
+                                                     selector:@selector(handleNotification:)
+                                                         name:event
+                                                       object:nil];
+    }
+}
+
++ (BOOL)application:(UIApplication *)application withDownload:(NSDictionary *)downloadDict
+{
+    [self postNotificationName:@"DownloadCourse" withDownload:downloadDict];
+    return YES;
+}
+
++ (void)postNotificationName:(NSString *)name withDownload:(NSDictionary *)object
+{
+    [[NSNotificationCenter defaultCenter] postNotificationName:name
+                                                        object:self
+                                                      userInfo:object];
+}
+
+- (void)stopObserving {
+    hasListeners = NO;
+}
+
+- (void)handleNotification:(NSNotification *)notification {
+    if (hasListeners) { // Only send events if anyone is listening
+        [self sendEventWithName:@"DownloadCourse" body:notification.userInfo];
+    }
+    
+}
+
+-(void)dealloc{
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+@end

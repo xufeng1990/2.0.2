@@ -1,0 +1,55 @@
+/**
+ * Created by 艺术家 on 2017/2/28.
+ */
+import React, { Component } from 'react';
+import { StyleSheet } from 'react-native';
+
+export default StyleSheet.create({
+    bodyBackground: {
+        backgroundColor: '#f2f5f6'
+    },
+    listView: {
+        marginTop: 10,
+    },
+    container: {
+        flexDirection: 'row',
+        padding: 4
+    },
+    containerGrey: {
+        backgroundColor: '#eef1f2',
+        borderColor: '#000'
+    },
+    sections: {
+        flex: 1,
+        backgroundColor: '#fff',
+        paddingLeft: 12,
+        paddingTop: 15,
+        paddingRight: 12,
+        paddingBottom: 15,
+        //IOS
+        shadowColor: '#000',
+        shadowOffset: { w: 0, h: 0 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        //Android
+        elevation: 2,
+    },
+    courseList: {
+        lineHeight: 16,
+    },
+    textGrey: {
+        color: '#9a9b9c'
+    },
+    textSmall: {
+        fontSize: 14,
+    },
+    textNormol: {
+        fontSize: 16,
+    },
+    textGreen: {
+        color: '#0fabfa'
+    },
+    courseDesc: {
+        paddingTop: 10,
+    }
+});

@@ -1,0 +1,87 @@
+//
+//  YLYKPlayerContentView.m
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/25.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKPlayerContentView.h"
+
+@implementation YLYKPlayerContentView
+
+-(instancetype)initWithFrame:(CGRect)frame{
+    
+    self = [super initWithFrame:frame];
+    if (self) {
+        self.backgroundColor = [UIColor whiteColor];
+        [self configView];
+    }
+    return self;
+}
+
+- (void)configView{
+    
+    [self addSubview:self.contentWebView];
+}
+
+- (void)setItem:(YLYKCourseModel *)courseModel {
+    CGFloat fontSize = 0;
+    if ([FONT_SIZE isEqualToString:@"small"]) {
+        fontSize = 16;
+    } else if ([FONT_SIZE isEqualToString:@"middle"]){
+        fontSize = 18;
+    } else if([FONT_SIZE isEqualToString:@"big"]) {
+        fontSize = 20;
+    } else {
+        fontSize = 16;
+    }
+    
+    //介绍
+    CGRect frame = CGRectMake(0, 0, self.frame.size.width, self.frame.size.height);
+    self.contentWebView.scrollView.subviews[0].frame = frame;
+    
+    self.contentWebView.frame = frame;
+    
+    NSString *URL = STYLE_CSS_URL;
+    if (!URL) {
+        URL = @"https://static.youlinyouke.com/css/style.css";
+    }
+    NSString *html = [NSString stringWithFormat:@"<link rel=\"stylesheet\" href=\"%@\"/><style>html,body{background:#F8FAFA;color:#5a5a5a;font-size:%f;}*{-webkit-user-select:text!important;-moz-user-select:text!important;-ms-user-select: text!important;}</style> ", URL, fontSize];
+    NSString *str = [NSString stringWithFormat:@"%@%@",html,courseModel.content];
+    [self.contentWebView loadHTMLString:str baseURL:nil];
+    
+}
+- (void)updateFrame {
+    //介绍
+    CGRect frame = CGRectMake(0, 0, self.frame.size.width, self.frame.size.height);
+    self.contentWebView.scrollView.subviews[0].frame = frame;
+    self.contentWebView.frame = frame;
+    
+}
+
+
+#pragma mark - Getter Methods
+
+
+/*
+ *内容 webView 展示
+ */
+- (UIWebView *)contentWebView {
+    if (!_contentWebView){
+        _contentWebView = [[UIWebView alloc]initWithFrame:CGRectZero];
+        _contentWebView.backgroundColor = [UIColor colorWithRed:248/255.0 green:250/255.0 blue:250/255.0 alpha:1.0];
+        _contentWebView.userInteractionEnabled = YES;
+    }
+    return  _contentWebView;
+}
+
+/*
+ // Only override drawRect: if you perform custom drawing.
+ // An empty implementation adversely affects performance during animation.
+ - (void)drawRect:(CGRect)rect {
+ // Drawing code
+ }
+ */
+
+@end

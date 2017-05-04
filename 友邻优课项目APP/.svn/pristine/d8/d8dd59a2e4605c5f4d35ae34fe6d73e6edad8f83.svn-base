@@ -1,0 +1,181 @@
+package com.zhuomogroup.ylyk.activity;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+
+import com.RNFetchBlob.RNFetchBlobPackage;
+import com.actionsheet.ActionSheetPackage;
+import com.brentvatne.react.ReactVideoPackage;
+import com.facebook.react.ReactInstanceManager;
+import com.facebook.react.ReactRootView;
+import com.facebook.react.bridge.NativeModuleCallExceptionHandler;
+import com.facebook.react.common.LifecycleState;
+import com.facebook.react.modules.core.DefaultHardwareBackBtnHandler;
+import com.google.gson.Gson;
+import com.growingio.plugin.rnsdk.rnPackge.GrowingIOPackage;
+import com.reactutils.controller.YLIntentModule;
+import com.reactutils.download.CourseBean;
+import com.reactutils.MainReactPackage;
+import com.reactutils.loadingview.YLLoadingReactPackage;
+import com.rnfs.RNFSPackage;
+import com.zhuomogroup.ylyk.BuildConfig;
+import com.zhuomogroup.ylyk.bean.AudioDataBean;
+import com.zhuomogroup.ylyk.bean.DataListBean;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+
+import ca.jaysoo.extradimensions.ExtraDimensionsPackage;
+
+/**
+ * Created by xyb on 2017/3/25.
+ */
+
+public class YLNoteActivity extends Activity implements DefaultHardwareBackBtnHandler {
+
+    private static final String YLNEW_AUDIO_ACTIVITY = "com.zhuomogroup.ylyk.activity.YLAudioActivity";
+    private static final String OBJECT_JS = "AudioDataBean";
+
+    public static YLNoteActivity ylExpActivity;
+
+    private JSONObject courseInfo;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        ylExpActivity = this;
+        Intent intent = getIntent();
+        if (intent != null) {
+            String courseInfo = intent.getStringExtra("courseInfo");
+            if (courseInfo != null) {
+                try {
+                    this.courseInfo = new JSONObject(courseInfo);
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+        EventBus.getDefault().register(this); //第1步: 注册
+        Bundle bundle = new Bundle();
+        bundle.putString("tab_type", "NoteListView");
+        if (courseInfo != null) {
+            bundle.putString("courseInfo", courseInfo.toString());
+        }
+
+
+        ReactRootView mReactRootView = new ReactRootView(this);
+        ReactInstanceManager mReactInstanceManager = ReactInstanceManager.builder()
+                .setApplication(this.getApplication())
+                .setBundleAssetName("index.android.bundle")
+                .setJSMainModuleName("index.android")
+                .setNativeModuleCallExceptionHandler(new NativeModuleCallExceptionHandler() {
+                    @Override
+                    public void handleException(Exception e) {
+                        e.printStackTrace();
+                    }
+                })
+                .addPackage(new com.facebook.react.shell.MainReactPackage())
+                .addPackage(new MainReactPackage())
+                .addPackage(new GrowingIOPackage())
+                .addPackage(new ActionSheetPackage())
+                .addPackage(new RNFSPackage())
+                .addPackage(new RNFetchBlobPackage())
+                .addPackage(new ReactVideoPackage())
+                .addPackage(new ExtraDimensionsPackage())
+                .addPackage(new YLLoadingReactPackage(this))
+                .setUseDeveloperSupport(BuildConfig.DEBUG)
+                .setInitialLifecycleState(LifecycleState.RESUMED)
+                .build();
+        mReactRootView.startReactApplication(mReactInstanceManager, "AndroidNavigator", bundle);
+
+        setContentView(mReactRootView);
+
+
+    }
+
+    @Override
+    public void invokeDefaultOnBackPressed() {
+        super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        EventBus.getDefault().unregister(this); //第1步: 注册
+        ylExpActivity = null;
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN) //在ui线程执行
+    public void openAudio(YLIntentModule.IntentActivity intentActivity) {
+        Class toActivity;
+        try {
+            toActivity = Class.forName(YLNEW_AUDIO_ACTIVITY);
+
+            Intent intent = new Intent(this, toActivity);
+
+            AudioDataBean objectJS = new AudioDataBean();
+            objectJS.setCourseId(Integer.parseInt(intentActivity.getCourseId()));
+            if (intentActivity.isDownload()) {
+                org.json.JSONArray jsonArray = new org.json.JSONArray(intentActivity.getReadableMap());
+                ArrayList<DataListBean> dataLists = new ArrayList<>();
+
+                for (int i = 0; i < jsonArray.length(); i++) {
+
+                    org.json.JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                    Object teachers = jsonObject.get("teachers");
+                    if (teachers instanceof org.json.JSONArray) {
+                        int duration = jsonObject.getInt("duration");
+                        int id = jsonObject.getInt("id");
+                        String name = jsonObject.getString("name");
+                        String teachersString = jsonObject.getJSONArray("teachers").toString();
+                        long in_time = jsonObject.getLong("in_time");
+                        DataListBean dataList = new DataListBean();
+                        dataList.setCourseId(id);
+                        dataList.setName(name);
+                        dataList.setIn_time(in_time);
+                        dataList.setDuration(duration);
+                        dataList.setTeacherName(teachersString);
+                        dataLists.add(dataList);
+
+                    } else if (teachers instanceof String) {
+                        Gson gson = new Gson();
+                        CourseBean downLoadBean = gson.fromJson(jsonObject.toString(), CourseBean.class);
+                        String duration = downLoadBean.getDuration();
+                        int id = downLoadBean.getId();
+                        String name = downLoadBean.getName();
+                        String teachersString = downLoadBean.getTeachers();
+
+                        DataListBean dataList = new DataListBean();
+                        dataList.setCourseId(id);
+                        dataList.setName(name);
+                        dataList.setDuration(Integer.parseInt(duration));
+                        dataList.setTeacherName(teachersString);
+                        dataLists.add(dataList);
+                    }
+
+
+                }
+                objectJS.setDataLists(dataLists);
+            }
+            objectJS.setDownload(intentActivity.isDownload());
+            Bundle bundle = new Bundle();
+            bundle.putParcelable(OBJECT_JS, objectJS);
+            intent.putExtra(OBJECT_JS, bundle);
+            startActivity(intent);
+
+
+        } catch (ClassNotFoundException | JSONException e) {
+            e.printStackTrace();
+        }
+    }
+
+
+}

@@ -1,0 +1,70 @@
+//
+//  CourseTraceCell.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/16.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "CourseTraceCell.h"
+#import "UIImageView+WebCache.h"
+
+@interface CourseTraceCell ()
+@property (weak, nonatomic) IBOutlet UIView *layerView;
+@property (weak, nonatomic) IBOutlet UIView *opacityView;
+@property (nonatomic, copy) NSString *courseId;
+@end
+
+@implementation CourseTraceCell
+- (instancetype)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier
+{
+    if (self = [super initWithStyle:style reuseIdentifier:reuseIdentifier]) {
+        
+         self = [[[NSBundle mainBundle]loadNibNamed:@"CourseTraceCell" owner:self options:nil] lastObject];
+    }
+    return self;
+}
+
+
+- (void)setTraceModel:(TraceModel *)traceModel
+{
+    _timeLabel.text = [self dateWithDateString:traceModel.in_time];
+    _learnTimeLabel.text = [self timeFormatted:traceModel.listened_time];
+    self.layerView.layer.borderColor = [[UIColor colorWithRed:0.400 green:1.000 blue:1.000 alpha:1.000] CGColor];
+    NSString *courseId = [NSString stringWithFormat:@"%@",[traceModel.course objectForKey:@"id"]];
+    self.courseId = courseId;
+    NSString *URLString = [NSString stringWithFormat:@"%@course/%@/cover",BASEURLSTRING, courseId];
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(openPlayerController:)];
+        _opacityView.userInteractionEnabled = YES;
+    [_opacityView addGestureRecognizer:tap];
+    [_courseImage sd_setImageWithURL:[NSURL URLWithString:URLString]];
+    _teacherNameLabel.text = traceModel.teacherName;
+    _courseNameLabel.text = [traceModel.course objectForKey:@"name"];
+}
+
+- (void)openPlayerController:(UITapGestureRecognizer *)tap
+{
+    [self.courseDelegate open:self.courseId];
+}
+
+
+- (NSString *)timeFormatted:(NSInteger)totalSeconds
+{
+//    NSInteger seconds = totalSeconds % 60;
+    NSInteger minutes = totalSeconds / 60;
+    return [NSString stringWithFormat:@"学习%ld分钟",(long)minutes];
+}
+
+- (NSString *)dateWithDateString:(NSInteger)timeInteval
+{
+    NSTimeZone *timeZone = [NSTimeZone systemTimeZone];
+    NSInteger delta = [timeZone secondsFromGMT];
+    NSDateFormatter *matter = [[NSDateFormatter alloc] init];
+    matter.dateFormat =@"HH:mm";
+    NSDate *date = [NSDate dateWithTimeIntervalSince1970:timeInteval+delta];
+    NSString*timeStr = [matter stringFromDate:date];
+    
+    return timeStr;
+}
+
+@end

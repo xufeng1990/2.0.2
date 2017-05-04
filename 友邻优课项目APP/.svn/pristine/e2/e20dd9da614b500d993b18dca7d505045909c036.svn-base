@@ -1,0 +1,100 @@
+package com.zhuomogroup.ylyk.bean;
+
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import com.zhuomogroup.ylyk.adapter.YLPhotoAdapter;
+
+import java.util.ArrayList;
+
+/**
+ * Created by xyb on 2017/1/26.
+ */
+
+public class ShowPushTipsBean implements Parcelable {
+    private YLPhotoAdapter photoAdapter;
+    private  ArrayList<String> selectedPhotos;
+    private int courseId;
+    private  String authorization;
+    private  String name;
+
+    public YLPhotoAdapter getPhotoAdapter() {
+        return photoAdapter;
+    }
+
+    public void setPhotoAdapter(YLPhotoAdapter photoAdapter) {
+        this.photoAdapter = photoAdapter;
+    }
+
+    public ArrayList<String> getSelectedPhotos() {
+        return selectedPhotos;
+    }
+
+    public void setSelectedPhotos(ArrayList<String> selectedPhotos) {
+        this.selectedPhotos = selectedPhotos;
+    }
+
+    public int getCourseId() {
+        return courseId;
+    }
+
+    public void setCourseId(int courseId) {
+        this.courseId = courseId;
+    }
+
+    public String getAuthorization() {
+        return authorization;
+    }
+
+    public void setAuthorization(String authorization) {
+        this.authorization = authorization;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public ShowPushTipsBean(YLPhotoAdapter photoAdapter, ArrayList<String> selectedPhotos, int courseId, String authorization, String name) {
+        this.photoAdapter = photoAdapter;
+        this.selectedPhotos = selectedPhotos;
+        this.courseId = courseId;
+        this.authorization = authorization;
+        this.name = name;
+    }
+
+    protected ShowPushTipsBean(Parcel in) {
+        selectedPhotos = in.createStringArrayList();
+        courseId = in.readInt();
+        authorization = in.readString();
+        name = in.readString();
+    }
+
+    public static final Creator<ShowPushTipsBean> CREATOR = new Creator<ShowPushTipsBean>() {
+        @Override
+        public ShowPushTipsBean createFromParcel(Parcel in) {
+            return new ShowPushTipsBean(in);
+        }
+
+        @Override
+        public ShowPushTipsBean[] newArray(int size) {
+            return new ShowPushTipsBean[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeStringList(selectedPhotos);
+        dest.writeInt(courseId);
+        dest.writeString(authorization);
+        dest.writeString(name);
+    }
+}

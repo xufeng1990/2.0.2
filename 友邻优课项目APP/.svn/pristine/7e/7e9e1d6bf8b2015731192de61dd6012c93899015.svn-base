@@ -1,0 +1,93 @@
+package com.zhuomogroup.ylyk.wxapi;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import android.widget.Toast;
+
+import com.tencent.mm.sdk.constants.ConstantsAPI;
+import com.tencent.mm.sdk.modelbase.BaseReq;
+import com.tencent.mm.sdk.modelbase.BaseResp;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.tencent.mm.sdk.openapi.IWXAPIEventHandler;
+import com.zhuomogroup.ylyk.MainApplication;
+
+import org.greenrobot.eventbus.EventBus;
+
+/**
+ * Created by xyb on 2017/2/9.
+ */
+
+public class WXEntryActivity extends Activity implements IWXAPIEventHandler {
+
+    public static final String OTHER_CODE = "未知状态,请重试!";
+    public static final String CANCEL = "已取消";
+    public static final String NULL = "";
+    private IWXAPI iwxapi;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        MainApplication application = (MainApplication) getApplication();
+        iwxapi = application.getIwxapi();
+        iwxapi.handleIntent(getIntent(), this);
+
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        iwxapi.handleIntent(intent, this);
+    }
+
+    @Override
+    public void onReq(BaseReq baseReq) {
+        switch (baseReq.getType()) {
+            case ConstantsAPI.COMMAND_GETMESSAGE_FROM_WX:
+
+                break;
+            case ConstantsAPI.COMMAND_SHOWMESSAGE_FROM_WX:
+
+                break;
+            default:
+                break;
+        }
+    }
+
+    @Override
+    public void onResp(BaseResp baseResp) {
+        String result = "";
+
+        switch (baseResp.errCode) {
+            case BaseResp.ErrCode.ERR_OK:
+                EventBus.getDefault().post(baseResp);
+                result = NULL;
+                break;
+            case BaseResp.ErrCode.ERR_USER_CANCEL:
+                result = CANCEL;
+                break;
+            case BaseResp.ErrCode.ERR_AUTH_DENIED:
+                result = CANCEL;
+                break;
+            default:
+                result = OTHER_CODE;
+                break;
+        }
+
+        EventBus.getDefault().post("loading");
+
+        if (!"".equals(result)) {
+            Toast.makeText(this, result, Toast.LENGTH_LONG).show();
+        }
+        finish();
+
+
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+}

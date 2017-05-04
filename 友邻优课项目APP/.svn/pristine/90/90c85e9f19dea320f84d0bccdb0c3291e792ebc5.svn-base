@@ -1,0 +1,28 @@
+@import "style.00-variables";
+.ui-table {
+    display: table;
+	width: 100%;
+	border-collapse: collapse;
+	border-spacing: 0;
+	
+	.ui-border {
+        border: 1px solid @border-color;
+	}
+}
+.ui-table tr th,
+.ui-table tr td {
+	vertical-align: middle;
+	border: 1px solid #d9d9d9;
+	padding: 9px 6px;
+	word-break: break-all;
+	text-align: inherit;
+}
+.ui-table thead th {
+	background: #e8e8e8;
+	font-weight: bold;
+	text-align: center;
+}
+.ui-table-cell {
+    display: table-cell;
+    vertical-align: middle;
+}

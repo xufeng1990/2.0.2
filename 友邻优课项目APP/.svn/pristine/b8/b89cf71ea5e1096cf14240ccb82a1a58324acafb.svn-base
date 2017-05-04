@@ -1,0 +1,510 @@
+//  MyNoteList
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    NativeModules,
+    Modal,
+    DeviceEventEmitter,
+      InteractionManager,
+      Platform,
+} from 'react-native';
+import { SwRefreshScrollView, SwRefreshListView, RefreshStatus, LoadMoreStatus } from 'react-native-swRefresh';
+
+import UltimateListView from "react-native-ultimate-listview";
+
+import g_AppValue from '../../configs/AppGlobal.js';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import Until from '../../common/util.js';
+import ImageZoom from 'react-native-image-pan-zoom';
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import Loading from '../../component/Loading/Loading.js';
+import Icon from '../../common/Icon.js';
+
+// 类
+import Service from '../../configs/Service.js';
+export default class MyNoteList extends Component {
+    // 构造函数
+    _page = 2;
+    _dataSource = new ListView.DataSource({
+        rowHasChanged: (row1, row2) => row1 !== row2
+    })
+    _alldata = [];
+    _followeeArr = [];
+    constructor(props) {
+        super(props);
+        this.state = {
+            dataSource: this._dataSource.cloneWithRows(this._alldata),
+            modalVisible: false,
+            isLoading: true,
+            isConnected: true,
+            saveModalVisible:false,
+            currentImageUrl: ""
+        };
+    }
+
+    // 加载完成
+    componentDidMount() {
+  //this._onListRefersh()
+
+     }
+    componentWillMount() {
+
+    }
+
+    // view卸载
+    componentWillUnmount() {
+        DeviceEventEmitter.emit('showProfileTabBar', '1');
+    }
+    _goBack() {
+        RnNativeModules.hideTabBar('show');
+        DeviceEventEmitter.emit('refreshData');
+        this.props.navigator.pop();
+    }
+
+    _showModal() {
+        this.setState({
+          modalVisible: true,
+          transparent: true,
+          currentImageUrl: ""
+        })
+
+    }
+    _saveImage(item) {
+      this.setState({
+        saveModalVisible: true,
+        currentImageUrl: item
+      });
+    }
+    _backMode() {
+        console.log('返回')
+        this.setState({ modalVisible: false, transparent: false })
+    }
+    //保存图片
+    //保存图片
+    _save(){
+    //  console.log('图片路径'+i)
+      RnNativeModules.saveImage(this.state.currentImageUrl)
+      .then((data) =>{
+        // alert('保存成功')
+          this.setState({saveModalVisible: false})
+      }).catch((err)=>{
+        console.log('保存图片失败' + err)
+      })
+    }
+    _saveBack(){
+        this.setState({saveModalVisible: false})
+    }
+
+    _goToPlayView(payId) {
+        RnNativeModules.goToPlayerView(payId + '',false,[])
+    }
+    _renderItem(item, i) {
+        return (
+            <TouchableOpacity activeOpacity ={1}  style={styles.imageItem} onPress={() => { this._showModal() }}>
+                <Image style={styles.imageItem} source={{
+                    uri: item
+                }} />
+            </TouchableOpacity>
+
+        );
+    }
+
+    _deleteFunc(noteId, sectionID,rowID) {
+        Service.service.deleteNote(noteId + '').then((data) => {
+            this._alldata.splice(rowID, 1)
+             //delete this._alldata[rowID];
+            this.setState({
+                dataSource: this._dataSource.cloneWithRows(this._alldata)
+            })
+
+        }).catch((err) => {
+            console.log('数据错误' + err);
+        })
+    }
+
+    _deleteNote(noteId, sectionID,rowID) {
+        Until.alert({
+            msg: '确定要删除这条心得吗',
+            okBtn: '删除',
+            cancelBtn: '取消',
+            okFun: () => { this._deleteFunc(noteId, sectionID,rowID) }
+        })
+
+    }
+
+    _rowRow(rowData, sectionID, rowID) {
+
+      if (!rowData) {
+        return(<View></View>);
+      }
+        var payId = rowData.course.id;
+        var noteId = rowData.id;
+
+        var in_time = Until.dateFormat(rowData.in_time, 'yyyy-MM-dd');
+        var str = in_time.split('-')
+        var is_liked = rowData.is_liked;
+
+
+
+        return (
+            <View style={styles.cellView}>
+                <View style={styles.cellContentView}>
+                    <Text style={styles.contentText}>{rowData.content.replace(/<br>/g, '\n')}</Text>
+                    <View style={styles.ImageView}>
+                        {rowData.images.map((item, i) => this._renderItem(item, i))}
+                    </View>
+
+                    <TouchableOpacity activeOpacity ={1}  onPress={() => this._goToPlayView(payId)}>
+                        <View style={styles.payView}>
+                            <Image style={styles.payImageOne} source={{
+                                uri: ImgUrl.baseImgUrl + 'course/' + rowData.course.id + '/cover'
+                            }} />
+
+                            <View style={styles.payRightView}>
+                                <Text style={styles.payRightTitleText}>{rowData.course.name}</Text>
+                                <Text style={styles.payRightNameText}></Text>
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                    <View style={styles.ThumbView}>
+                        <TouchableWithoutFeedback   style={styles.deleteTextAction} onPress={() => {
+                            this._deleteNote(noteId,sectionID, rowID)
+                        }}>
+                            <Text style={styles.deleteText}>删除</Text>
+                        </TouchableWithoutFeedback>
+                    </View>
+
+                </View>
+                <View style={styles.timeView}>
+                    <Text style={{
+                        fontSize: 18 * g_AppValue.precent,
+                        color: '#5a5a5a'
+                    }}>{str[2]} </Text>
+                    <Text style={{
+                        fontSize: 11 * g_AppValue.precent,
+                        color: '#9a9b9c',
+                        marginTop: 7 * g_AppValue.precent
+                    }}>
+                        {str[1]}月</Text>
+                </View>
+                <Modal style={{
+                    backgroundColor: 'black'
+                }} visible={this.state.modalVisible}>
+
+                    <ScrollView contentContainerStyle={{
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }} style={{
+                        backgroundColor: 'black'
+                    }} horizontal={true} pagingEnabled={true}>
+
+                        {rowData.images.map((item, i) => {
+                          let images = rowData.images;
+                            return (
+                              <View>
+                                <ImageZoom
+                                  cropWidth={g_AppValue.screenWidth}
+                                  cropHeight={g_AppValue.screenHeight}
+                                  imageWidth={g_AppValue.screenWidth}
+                                  imageHeight={g_AppValue.screenHeight}
+                                  onClick={() => this._backMode()}
+                                  onLongPress={() => this._saveImage(item)}>
+                                    <Image style={{resizeMode: 'contain',width: g_AppValue.screenWidth,height: g_AppValue.screenHeight}} source={{uri: item}} />
+                                </ImageZoom>
+                                </View>
+                            );
+                        })}
+
+                        <Modal animationType='slide' transparent={true} visible={this.state.saveModalVisible}>
+                            <View style={styles.saveImageView}>
+                                <TouchableOpacity activeOpacity ={1}  onPress = {()=>{this._save()}}>
+                                  <View style = {styles.saveView}>
+                                      <Text>保存图片</Text>
+                                  </View>
+
+                                </TouchableOpacity>
+                                <TouchableOpacity activeOpacity ={1}  onPress= {()=>{this._saveBack()}}>
+                                    <View style = {[styles.saveView,{marginTop:10 * g_AppValue.precent,}]}>
+                                    <Text >取消</Text>
+                                      </View>
+                                </TouchableOpacity>
+                            </View>
+                        </Modal>
+                    </ScrollView>
+                </Modal>
+            </View>
+        );
+    }
+
+    // render
+    render() {
+        // console.log('心得数组数据' + this._alldata)
+        // console.log('心得dataSource' + this.state.dataSource)
+        if (!this.state.dataSource) {
+          return(<View></View>);
+        }
+        return (
+            <View style={styles.container}>
+                <View style={styles.headerView}>
+                    <View style={styles.headerContentView}>
+                        <TouchableOpacity activeOpacity ={1}  style={styles.backButtomA} onPress={() => {
+                            this._goBack()
+                        }}>
+                            <Text style={styles.backButtom}>{Icon.back}</Text>
+                        </TouchableOpacity>
+                        <Text style={styles.headerTitle}>我的心得</Text>
+                    </View>
+                </View>
+                <Loading visible = {this.state.isLoading}/>
+                {this.state.isLoading ?   <UltimateListView
+                    ref='listview'
+                    onFetch={this._onListRefersh.bind(this)}
+                    enableEmptySections
+                    //----Normal Mode----
+                    separator={false}
+                    rowView={this._rowRow.bind(this)}
+                    refreshableTitleWillRefresh="下拉刷新..."
+                    refreshableTitleInRefreshing="下拉刷新..."
+                    refreshableTitleDidRefresh="Finished"
+                    refreshableTitleDidRefreshDuration={10000}
+                    allLoadedText=''
+                    waitingSpinnerText=''
+                /> : (this.state.isConnected ? this._alldata.length == 0
+                    ? <BlankPages ImageUrl={require('../../imgs/note.png')} titleText='心得' contentText='学习除了大量输入之外也要有内化和输出的过程' />
+
+
+                    :
+                    <UltimateListView
+                    ref='listview'
+                    onFetch={this._onListRefersh.bind(this)}
+                    enableEmptySections
+                    //----Normal Mode----
+                    separator={false}
+                    rowView={this._rowRow.bind(this)}
+                    refreshableTitleWillRefresh="下拉刷新..."
+                    refreshableTitleInRefreshing="下拉刷新..."
+                    refreshableTitleDidRefresh="Finished"
+                    refreshableTitleDidRefreshDuration={10000}
+                    allLoadedText=''
+                    waitingSpinnerText=''
+                />
+
+                    : <BlankPages ImageUrl={require('../../imgs/none.png')} contentText='无法连接到服务器,请检查你的网络设置' />)
+                }
+
+            </View>
+        );
+    }
+
+    _onListRefersh(page = 1, callback, options) {
+        let that = this;
+          const pageLimit = 10;
+        let logId = parseInt(Math.random() * 100000);
+          InteractionManager.runAfterInteractions(()=>{
+        Service.service.getNoteList({ 'page': page, 'user_id': this.props.user_id, 'limit': pageLimit }).then((data) => {
+            console.log(data)
+            var resultData = JSON.parse(data);
+
+          if(page === 1){
+               that._alldata = [];
+                that._alldata = resultData;
+          }else{
+               that._alldata = that._alldata.concat(resultData);
+          }
+
+            that.setState({
+               isLoading: false
+            });
+
+            options.pageLimit = pageLimit;
+
+            callback(resultData, options);
+
+            //end()
+        }).catch((err) => {
+            console.warn(logId + ' 数据erroooooo', err);
+            this.setState({isLoading:false})
+        });
+          })
+    }
+
+    //
+    //
+}
+
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f2f5f6'
+    },
+    headerView: {
+        width: g_AppValue.screenWidth,
+        height: Platform.OS == 'ios' ? 64 * g_AppValue.precent : 44 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        //marginBottom: 10 *g_AppValue.precent
+    },
+    listView: {
+        marginTop: 10 * g_AppValue.precent,
+    },
+    headerContentView: {
+        width: g_AppValue.screenWidth,
+        height: 24 * g_AppValue.precent,
+        //  backgroundColor:'yellow',
+        marginTop: Platform.OS == 'ios' ? 31 * g_AppValue.precent : 10 * g_AppValue.precent,
+        justifyContent: 'center',
+        alignItems: 'center'
+    },
+    headerTitle: {
+        fontSize: 18 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    backButtomA: {
+        position: 'absolute',
+        top:3 * g_AppValue.precent,
+        width: 18 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+        left: 12 * g_AppValue.precent
+    },
+    backButtom: {
+
+        fontSize: 18,
+        fontFamily: 'iconfont',
+        //  backgroundColor:'black',
+
+    },
+    cellView: {
+        width: g_AppValue.screenWidth,
+        backgroundColor: '#ffffff',
+        marginTop: 10 * g_AppValue.precent
+    },
+    cellContentView: {
+        width: 284 * g_AppValue.precent,
+        //backgroundColor:'green',
+        marginTop: 20 * g_AppValue.precent,
+        marginLeft: 79 * g_AppValue.precent,
+        marginRight: 12 * g_AppValue.precent
+    },
+    contentText: {
+        fontSize: 14 * g_AppValue.precent,
+        color: '#5a5a5a',
+        marginBottom: 12 * g_AppValue.precent
+    },
+    ImageView: {
+        width: 304 * g_AppValue.precent,
+        marginLeft: -20 * g_AppValue.precent,
+        flexWrap: 'wrap',
+        flexDirection: 'row',
+        //backgroundColor:'red',
+    },
+    imageItem: {
+        width: 88 * g_AppValue.precent,
+        height: 88 * g_AppValue.precent,
+        marginBottom: 10 * g_AppValue.precent,
+        marginLeft: 10 * g_AppValue.precent
+    },
+    payView: {
+        //marginTop:20 * g_AppValue.precent,
+        width: 284 * g_AppValue.precent,
+        height: 48 * g_AppValue.precent,
+        borderWidth:1,
+        borderColor:'rgba(200,200,200,0.5)',
+        flexDirection: 'row'
+    },
+    payImageOne: {
+        width: 64 * g_AppValue.precent,
+        height: 47 * g_AppValue.precent
+    },
+    payImageTwo: {
+        position: 'absolute',
+        top: 0 * g_AppValue.precent,
+        width: 64 * g_AppValue.precent,
+        height: 48 * g_AppValue.precent
+    },
+    payRightView: {
+        marginLeft: 10 * g_AppValue.precent,
+        width: 200 * g_AppValue.precent,
+        height: 48 * g_AppValue.precent
+    },
+    payRightTitleText: {
+        marginTop: 8 * g_AppValue.precent,
+        fontSize: 13 * g_AppValue.precent,
+        color: '#5a5a5a',
+        textAlign: 'left'
+    },
+    payRightNameText: {
+        marginTop: 4 * g_AppValue.precent,
+        fontSize: 12 * g_AppValue.precent,
+        color: '#5a5a5a',
+        textAlign: 'left'
+    },
+    ThumbView: {
+        flex: 1,
+        height: 16 * g_AppValue.precent,
+        marginTop: 15 * g_AppValue.precent,
+        marginBottom: 14 * g_AppValue.precent,
+        marginRight: 12 * g_AppValue.precent,
+        //justifyContent: 'flex-end',
+        flexDirection: 'row',
+      //  backgroundColor:'yellow',
+
+    },
+    thumbImage: {
+        width: 16 * g_AppValue.precent,
+        height: 16 * g_AppValue.precent,
+        marginRight: 6 * g_AppValue.precent
+    },
+    thumbText: {
+        fontSize: 14 * g_AppValue.precent,
+        color: '#9a9b9c',
+        textAlign: 'right'
+    },
+    deleteTextAction: {
+
+        marginTop: 5 * g_AppValue.precent,
+        marginBottom: 14 * g_AppValue.precent
+    },
+    deleteText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c'
+    },
+    timeView: {
+        width: 50 * g_AppValue.precent,
+        position: 'absolute',
+        top: 19 * g_AppValue.precent,
+        left: 12 * g_AppValue.precent,
+        //backgroundColor:'yellow',
+        flexDirection: 'row'
+    },
+    saveImageView: {
+        position: 'absolute',
+        bottom: 0,
+        width: g_AppValue.screenWidth,
+        height: 120 * g_AppValue.precent,
+        backgroundColor: '#f2f5f6',
+        // opacity:0.3,
+    },
+    saveView:{
+        width:g_AppValue.screenWidth,
+        height:55 * g_AppValue.precent,
+        justifyContent:'center',
+        alignItems:'center',
+        backgroundColor:'#ffffff',
+    },
+
+})

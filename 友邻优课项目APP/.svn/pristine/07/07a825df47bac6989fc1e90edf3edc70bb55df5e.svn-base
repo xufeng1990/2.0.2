@@ -1,0 +1,122 @@
+package com.reactmodules.loadingview;
+
+import android.content.Context;
+import android.os.Build;
+import android.support.annotation.RequiresApi;
+import android.util.AttributeSet;
+import android.view.LayoutInflater;
+import android.view.animation.Animation;
+import android.view.animation.LinearInterpolator;
+import android.view.animation.RotateAnimation;
+import android.widget.FrameLayout;
+
+import com.zhuomogroup.ylyk.R;
+
+/**
+ * loading 图
+ * Created by xyb on 2017/3/15.
+ */
+
+public class RotateRing extends FrameLayout {
+    // 颜色数组，定义渐变色；
+    private int[] colors;
+    private int[] ints;
+
+    public RotateRing(Context context) {
+        this(context, null);
+        initView(context);
+    }
+
+    public RotateRing(Context context, AttributeSet attrs) {
+        this(context, attrs, 0);
+        initView(context);
+    }
+
+    public RotateRing(Context context, AttributeSet attrs, int defStyleAttr) {
+        super(context, attrs, defStyleAttr);
+//        colors = new int[] {// 渐变色数组 7色
+//               0x00FFffFF,0xFF9a9b9c };
+//        ints = new  int[]{
+//          90,180,270,360
+//        };
+        initView(context);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.LOLLIPOP)
+    public RotateRing(Context context, AttributeSet attrs, int defStyleAttr, int defStyleRes) {
+        super(context, attrs, defStyleAttr, defStyleRes);
+        initView(context);
+    }
+
+
+    private void initView(Context context) {
+        LayoutInflater.from(context).inflate(R.layout.loading_view,this);
+    }
+
+//    @Override
+//    protected void onDraw(Canvas canvas) {
+//        super.onDraw(canvas);
+//
+//        float radius = 50; //圆半径
+//        int cX = getWidth() / 2;    //圆心
+//        int cY = getHeight() / 2;
+//
+//        Paint paint = new Paint();
+//        paint.setAntiAlias(true);
+//        paint.setStyle(Paint.Style.STROKE); // 设置空心
+//        paint.setStrokeWidth(3); // 设置圆环的宽度
+//
+//        SweepGradient shader = new SweepGradient(cX, cY, // 渐变区域,左上右下
+//                colors, null);
+//
+//        paint.setShader(shader);
+//
+//
+//        canvas.drawCircle(cX, cY, radius, paint);// 画圆
+//
+////        canvas.rotate(ints[0]);
+////        canvas.save();
+////        Paint paint1 = new Paint();
+////        Bitmap bitmap = BitmapFactory.decodeResource(getResources(), R.mipmap.ic_launcher);
+////        int width = bitmap.getWidth();
+////        int height = bitmap.getHeight();
+////        int i = width / 2;
+////        int i1 = height / 2;
+////        canvas.drawBitmap(bitmap, cX -i , cY -i1, paint1);
+//
+////        SystemClock.sleep(500);
+////        rotateArray(colors);
+//    }
+
+    /**
+     * 改变颜色数组内颜色值位置，实现颜色转动
+     * @param arr 颜色数组
+     */
+    public void rotateArray(int[] arr) {
+        int tmp = arr[0];
+        for (int i = 0; i < arr.length - 1; i++) {
+            arr[i] = arr[i + 1];
+        }
+        arr[arr.length - 1] = tmp;
+        invalidate();   //重绘
+    }
+
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+
+        RotateAnimation  animation = new RotateAnimation(0,359, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 0.5f);
+        animation.setDuration(1200);
+        animation.setRepeatCount(RotateAnimation.INFINITE);//无限循环
+        LinearInterpolator lin = new LinearInterpolator();//默认状态是随sdk不同而不同，5.0以上会一快一慢，这里用线性插值器限定其匀速转动
+        animation.setInterpolator(lin);
+        this.startAnimation(animation);
+    }
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        clearAnimation();
+    }
+
+}

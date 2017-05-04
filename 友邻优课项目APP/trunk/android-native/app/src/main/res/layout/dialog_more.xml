@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.zhy.autolayout.AutoFrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/play_more_bg"
+    android:tag="skin:play_more_bg:background">
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="bottom"
+        android:orientation="vertical">
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="176dp"
+            android:orientation="horizontal">
+
+
+            <RelativeLayout
+                android:id="@+id/add_re"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center">
+
+
+                <ImageView
+                    android:id="@+id/text_size"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_centerHorizontal="true"
+                    android:gravity="center" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/text_size"
+                    android:layout_marginTop="15dp"
+                    android:gravity="center"
+                    android:tag="skin:text_color:textColor"
+
+                    android:text="字号"
+                    android:textColor="#9a9b9c" />
+
+
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/like_album"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center">
+
+
+                <ImageView
+                    android:id="@+id/like_img"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_centerHorizontal="true"
+                    android:src="@drawable/like"
+
+                    android:tag="skin:like:src" />
+
+                <TextView
+                    android:id="@+id/like_text_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/like_img"
+                    android:layout_marginTop="15dp"
+                    android:gravity="center"
+                    android:text="赞(0)"
+                    android:tag="skin:text_color:textColor"
+
+                    android:textColor="#9a9b9c" />
+
+
+            </RelativeLayout>
+
+
+            <RelativeLayout
+                android:id="@+id/all_tips"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center">
+
+
+                <ImageView
+                    android:id="@+id/tips_img"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_centerHorizontal="true"
+                    android:src="@mipmap/all_tips"
+
+                    android:tag="skin:all_tips:imgSrc" />
+
+                <TextView
+                    android:id="@+id/tips_text_size"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/tips_img"
+                    android:layout_marginTop="15dp"
+                    android:gravity="center"
+                    android:tag="skin:text_color:textColor"
+
+                    android:text="心得(99+)"
+                    android:textColor="#9a9b9c" />
+
+
+            </RelativeLayout>
+
+            <RelativeLayout
+                android:id="@+id/play_times"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center">
+
+
+                <ImageView
+                    android:id="@+id/play_times_img"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:layout_centerHorizontal="true"
+                    android:src="@mipmap/play_button_1times" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/play_times_img"
+                    android:layout_marginTop="15dp"
+                    android:gravity="center"
+                    android:text="倍速"
+                    android:tag="skin:text_color:textColor"
+
+                    android:textColor="#9a9b9c" />
+
+
+            </RelativeLayout>
+
+
+        </LinearLayout>
+
+
+        <RelativeLayout
+            android:id="@+id/back_rel"
+            android:layout_width="match_parent"
+            android:layout_height="49dp"
+            android:background="#f8fafb"
+            android:orientation="vertical"
+            android:tag="skin:play_list_bottom_bg:background">
+
+            <ImageView
+                android:id="@+id/close"
+                android:layout_width="13dp"
+                android:layout_height="13dp"
+                android:layout_centerInParent="true"
+                android:tag="skin:play_icon_close:imgSrc"
+                android:src="@mipmap/play_icon_close" />
+
+        </RelativeLayout>
+    </LinearLayout>
+
+</com.zhy.autolayout.AutoFrameLayout>

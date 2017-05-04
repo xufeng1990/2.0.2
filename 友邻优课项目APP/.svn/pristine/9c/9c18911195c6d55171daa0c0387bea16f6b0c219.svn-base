@@ -1,0 +1,55 @@
+package com.reactmodules;
+
+import com.facebook.react.ReactPackage;
+import com.facebook.react.bridge.JavaScriptModule;
+import com.facebook.react.bridge.NativeModule;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.uimanager.ViewManager;
+import com.reactmodules.controller.YLIntentModule;
+import com.reactmodules.download.YLYKDownloadNativeModule;
+import com.reactmodules.encryption.YLEncryptionModule;
+import com.reactmodules.oauth.YLYKTokenServiceModule;
+import com.reactmodules.request.YLRequestModule;
+import com.reactmodules.request.YLServiceModule;
+import com.reactmodules.setting.YLSettingModule;
+import com.reactmodules.storage.YLStorageModule;
+import com.reactmodules.userinfo.YLBridgeNativeModule;
+import com.reactmodules.loadingview.YLReactLoadingManager;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Created by xyb on 2017/2/13.
+ */
+
+public class MainReactPackage implements ReactPackage {
+    @Override
+    public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
+        List<NativeModule> modules = new ArrayList<>();
+        modules.add(new YLEncryptionModule(reactContext));
+        modules.add(new YLStorageModule(reactContext));
+        modules.add(new YLRequestModule(reactContext));
+        modules.add(new YLYKTokenServiceModule(reactContext));
+        modules.add(new YLServiceModule(reactContext));
+        modules.add(new YLIntentModule(reactContext));
+        modules.add(new YLYKDownloadNativeModule(reactContext));
+        modules.add(new YLSettingModule(reactContext));
+        modules.add(new YLBridgeNativeModule(reactContext));
+        return modules;
+    }
+
+    @Override
+    public List<Class<? extends JavaScriptModule>> createJSModules() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
+        return Arrays.<ViewManager>asList(
+                new YLReactLoadingManager()
+        );
+    }
+}

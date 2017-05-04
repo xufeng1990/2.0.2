@@ -1,0 +1,143 @@
+//
+//  YLYKHighlightingFontManager.m
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/24.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKHighlightingFontManager.h"
+
+@interface YLYKHighlightingFontManager() {
+    UIFont *_font; /** 字体大小  **/
+    UIColor *_highlightingColor;/** 高亮字体字体颜色  **/
+}
+@end
+
+@implementation YLYKHighlightingFontManager
+
+
++ (YLYKHighlightingFontManager *)shareInstance {
+    static id sharedInstance = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        sharedInstance = [[self alloc] init];
+    });
+    return sharedInstance;
+}
+
+/*
+ *获取需要标记高亮的字符串
+ *@prama aString           需要被标记的字符串
+ *@prama keyString         标记高亮的关键字
+ *@prama font              要被标记的字体大小
+ *@prama highlightingColor 标记高亮字体颜色
+ */
+- (NSMutableAttributedString *)getHiglightingFontString:(NSString *)aString keyString:(NSString *)keyString font:(UIFont *)font highlightingColor:(UIColor *)highlightingColor {
+    _font = font;
+    _highlightingColor = highlightingColor;
+    NSMutableAttributedString *attributedStr = [[NSMutableAttributedString alloc]initWithString:aString];
+    NSArray *keyStrArr = [keyString componentsSeparatedByString:@" "];
+    for(int i = 0; i< keyStrArr.count; i++){
+        NSString *keyStr = [keyStrArr objectAtIndex:i];
+        if([self isChinese:keyStr]){//中文字符
+            attributedStr = [self getHiglightingFontString:aString keyCNString:keyStr];
+        } else {//英文字符
+            attributedStr = [self getHiglightingFontString:aString keyENString:keyStr];
+        }
+    }
+    return attributedStr;
+}
+
+/*
+ *中文标记高亮关键字
+ */
+- (NSMutableAttributedString *)getHiglightingFontString:(NSString *)aString keyCNString:(NSString *)keyCNString{
+    NSMutableAttributedString *attributedStr = [[NSMutableAttributedString alloc]initWithString:aString];
+    NSRange keyCNStrRange = [aString rangeOfString:keyCNString];
+    [attributedStr setAttributes:@{NSForegroundColorAttributeName:_highlightingColor,
+                                             NSFontAttributeName :_font
+                                                          } range:keyCNStrRange];
+    return attributedStr;
+}
+
+/*
+ *英文标记高亮关键字
+ */
+- (NSMutableAttributedString *)getHiglightingFontString:(NSString *)aString keyENString:(NSString *)keyENString {
+    NSMutableAttributedString *attributedStr = [[NSMutableAttributedString alloc]initWithString:aString];
+    NSMutableArray *keyENStrArr = [self getENWordArrFromString:aString keyENString:keyENString];
+    attributedStr = [self getHiglightingFontString:aString keyENArr:keyENStrArr];
+    return attributedStr;
+}
+
+/*
+ *英文标记高亮关键字
+ */
+- (NSMutableAttributedString *)getHiglightingFontString:(NSString *)aString
+    keyENArr:(NSMutableArray *)keyENArr {
+    NSMutableAttributedString *attributedStr = [[NSMutableAttributedString alloc]initWithString:aString];
+    NSRange keyENStrRange;
+    NSString *keyENStr = @"";
+    for (int i = 0; i < keyENArr.count; i++) {
+        keyENStr      = [keyENArr objectAtIndex:i];
+        keyENStrRange = [aString rangeOfString:keyENStr];
+        [attributedStr setAttributes:@{NSForegroundColorAttributeName:_highlightingColor,                  NSFontAttributeName :_font
+                                                              } range:keyENStrRange];
+    }
+    return attributedStr;
+}
+
+/*
+ *查找包含该英文字符的单词数组
+ */
+- (NSMutableArray *)getENWordArrFromString:(NSString *)aString keyENString:(NSString *)keyENString {
+    NSMutableArray *enWordArr = [NSMutableArray arrayWithCapacity:1];
+    NSArray *aStrArr = [aString componentsSeparatedByString:@" "];
+    NSString *tempStr = @"";
+    for (int i = 0; i< aStrArr.count; i++) {
+        tempStr = [aStrArr objectAtIndex:i];
+        if ([tempStr containsString:keyENString]) {
+            [enWordArr addObject:tempStr];
+        }
+    }
+    return enWordArr;
+}
+
+- (void)splitString:(NSString *)str {
+    
+}
+
+/*
+ *去重
+ */
+- (void)removeSameObj:(NSMutableArray *)array {
+    NSMutableDictionary *dict = [NSMutableDictionary dictionaryWithCapacity:16];
+    NSMutableIndexSet *removeSet = [NSMutableIndexSet indexSet];
+    int index = 0;
+    
+    for(id obj in array) {
+        if(dict[obj] == nil) {
+            dict[obj] = @YES;
+        } else {
+            [removeSet addIndex:index];
+        }
+        index++;
+    }
+    [array removeObjectsAtIndexes:removeSet];
+}
+
+/*
+ *判断一个字符串是否有中文
+ */
+- (BOOL)isChinese:(NSString *)str {
+    for (int i = 0; i < [str length]; i++) {
+        int a = [str characterAtIndex:i];
+        if( a > 0x4e00 && a < 0x9fff) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+@end

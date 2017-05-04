@@ -1,0 +1,54 @@
+@import "style.00-variables";
+[class*="ui-image"],
+[class*="ui-avatar"] {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+    border: 0;
+    
+    &.ui-round {
+        @radius: 99999px;
+        border-radius: @radius;
+        border-top-left-radius: @radius;
+        border-top-right-radius: @radius;
+        border-bottom-left-radius: @radius;
+        border-bottom-right-radius: @radius;
+    }
+    
+    &.ui-text-center {
+        margin-left: auto;
+        margin-right: auto;
+    }
+    
+    &.ui-text-right {
+        margin-left: auto;
+    }
+}
+.ui-avatar-tiny {
+    height: 36px!important;
+    width: 36px!important;
+}
+.ui-avatar-small {
+    height: 48px!important;
+    width: 48px!important;
+}
+.ui-avatar-normal {
+    height: 64px!important;
+    width: 64px!important;
+}
+.ui-avatar-midium {
+    height: 72px!important;
+    width: 72px!important;
+}
+.ui-avatar-midium {
+    height: 96px!important;
+    width: 96px!important;
+}
+.ui-avatar-large {
+    height: 108px!important;
+    width: 108px!important;
+}
+.ui-avatar-huge {
+    height: 128px!important;
+    width: 128px!important;
+}

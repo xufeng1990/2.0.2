@@ -1,0 +1,281 @@
+//  MyFans
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    NativeModules,
+    DeviceEventEmitter,
+    Platform
+} from 'react-native';
+import NavigationBar from '../../component/Navigator/NavigationBar.js';
+import g_AppValue from '../../configs/AppGlobal.js';
+import ProfileRowCell from '../../component/AlbumCell/ProfileRowCell.js';
+import StudentsInformation from './StudentsInformation.js';
+import * as ImgUrl from '../../configs/BaseImgUrl.js';
+import * as RnNativeModules from '../../configs/RnNativeModules.js';
+import Service from '../../configs/Service.js';
+import Icon from '../../common/Icon.js';
+import BlankPages from '../../component/AlbumCell/BlankPages.js';
+import Loading from '../../component/Loading/Loading.js';
+import Util  from '../../common/util.js';
+
+
+// 类
+export default class MyFans extends Component {
+    _fansData = [];
+    _followee = [];
+    _dataSource = new ListView.DataSource({
+        rowHasChanged: (row1, row2) => row1 !== row2
+    })
+    // 构造函数
+    constructor(props) {
+        super(props);
+        this.state = {
+            //关注状态
+            followee: this._followee,
+            dataSource: this._dataSource.cloneWithRows(this._fansData),
+            isLoading:true,
+            isConnected:true,
+        };
+    }
+
+    componentDidMount() {
+
+        //二界面关注状态传回
+        this.changeRowId = DeviceEventEmitter.addListener('changeRowId', (rowID) => {
+
+            var arr = this.state.followee;
+            arr[rowID] = !arr[rowID];
+            this.setState({followee: arr})
+        })
+        //粉丝页面数据
+        Service.service.getFansList({
+            'page': 1,
+            'user_id': this.props.user_id + ''
+        }).then((data) => {
+            this._fansData = [];
+            var resultData = JSON.parse(data);
+            for (var i = 0; i < resultData.length; i++) {
+                this._fansData.push(resultData[i]);
+                this._followee.push(resultData[i].is_followee);
+
+            }
+            this.setState({
+                dataSource: this._dataSource.cloneWithRows(this._fansData),
+                followee: this._followee,
+                isLoading:false,
+            })
+            // console.log("请求" + this._followee)
+        }).catch((err) => {
+            // console.log('数据错误......' + err)
+            this.setState({isConnected:false,  isLoading:false,})
+        })
+    }
+    componentWillUnmount() {
+        this.changeRowId && this.changeRowId.remove();
+          DeviceEventEmitter.emit('showProfileTabBar','1');
+            DeviceEventEmitter.emit('refreshData', '1');
+    }
+
+    _goToInformationPage(fansId, is_followee, rowID) {
+        var is_followee = this.state.followee[rowID];
+        this.props.navigator.push({
+            component: StudentsInformation,
+            params: {
+                fansId: fansId,
+                is_followee: is_followee,
+                rowID: rowID,
+                isVip:this.props.isVip,
+            }
+        })
+    }
+    _goBack() {
+        var user_id = this.props.user_id;
+
+        RnNativeModules.hideTabBar('show');
+
+        this.props.navigator.pop();
+
+    }
+
+    _deleteFunc(rowData,rowID){
+      Service.service.deleteFollowee({'user_id': rowData.user.id})
+      .then((data) => {
+          var arr = this.state.followee
+          arr[rowID] = !arr[rowID]
+          DeviceEventEmitter.emit('refreshData', '1');
+          this.setState({
+            followee: arr,
+            dataSource: this._dataSource.cloneWithRows(this._fansData),
+          })
+        //   console.log('取消失败')
+      }).catch((err) => {
+        //   console.log("取消关注失败" + err)
+      })
+    }
+    //关注按钮实现
+    _focusAction(rowData, sectionID, rowID) {
+
+        if (rowData.is_followee == false) {
+            Service.service.createFollowee({'user_id': rowData.user.id})
+            .then((data) => {
+                var arr = this.state.followee;
+                arr[rowID] = !arr[rowID];
+                DeviceEventEmitter.emit('refreshData', '1');
+                // console.log('关注前' + this.state.followee)
+                this.setState({
+                  followee: arr,
+                  dataSource: this._dataSource.cloneWithRows(this._fansData),
+                })
+
+                // console.log('关注成功')
+            }).catch((err) => {
+                // console.log("关注失败" + err)
+            })
+        } else {
+          Util.alert({
+            msg:'确定不再关注' + rowData.user.nickname + '了吗?',
+            okBtn:'确定',
+            cancelBtn:'取消',
+            okFun:()=>{this._deleteFunc(rowData,rowID)}
+          })
+
+        }
+    }
+
+    ////require('../Course/images/Focus2.png') : require('../Course/images/Focus1.png')
+    _renderRow(rowData, sectionID, rowID) {
+        let fansId = rowData.user.id;
+        let is_followee = rowData.is_followee;
+
+        return (
+
+            <TouchableOpacity activeOpacity ={1}  onPress={() => {
+                this._goToInformationPage(fansId, is_followee, rowID)
+            }}>
+                <ProfileRowCell name={rowData.user.nickname}
+                headerImage={ !rowData.user.id ?require('../../imgs/11.png') :{uri: ImgUrl.baseImgUrl + 'user/' + rowData.user.id + '/avatar'}}
+                contentText={rowData.user.intro}
+                focusImagePath={this.state.followee[rowID] ? require('../Course/images/Focus2.png'): require('../Course/images/Focus1.png')}
+                foucsActionFnc= {() => this._focusAction(rowData,sectionID,rowID)}/>
+            </TouchableOpacity>
+        );
+    }
+    // render
+    render() {
+      //  console.log('粉丝关注数据' + this.state.dataSource)
+        if (!this.state.dataSource) {
+            return (
+                <View></View>
+            )
+        }
+//   <Loading visible = {this.state.isLoading} />
+        return (
+            <View style={styles.container}>
+                <View style={styles.headerView}>
+                    <Text style={styles.titleText}>粉丝</Text>
+                    <TouchableOpacity activeOpacity ={1}  style={styles.touchBackImage} onPress={this._goBack.bind(this)}>
+                        <Text style={styles.backImage}>{Icon.back}</Text>
+                    </TouchableOpacity>
+                </View>
+                <Loading visible = {this.state.isLoading}/>
+                   {this.state.isLoading ? null :  (!g_AppValue.isConnected ? <BlankPages ImageUrl={require('../../imgs/none.png')}  contentText='无法连接到服务器,请检查你的网络设置'/>
+                  : this._fansData.length == 0
+                  ?  <BlankPages ImageUrl={require('../../imgs/fans.png')} titleText='粉丝' contentText='心得质量高 粉丝才会多'/>
+                : <ListView ref='scrollView' enableEmptySections={true} dataSource={this.state.dataSource} renderRow={this._renderRow.bind(this)}/>)
+                }
+
+            </View>
+        );
+    }
+
+}
+
+// {data.map((item, i) => this._renderItem(item,i))}
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#f2f5f6'
+    },
+    headerView: {
+        width: g_AppValue.screenWidth,
+        height: Platform.OS == 'ios'
+            ? 65 * g_AppValue.precent
+            : 44 * g_AppValue.precent,
+        alignItems: 'center',
+        backgroundColor: '#ffffff'
+    },
+    titleText: {
+        marginTop: Platform.OS == 'ios'
+            ? 34 * g_AppValue.precent
+            : 10 * g_AppValue.precent,
+        fontSize: 18 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    touchBackImage: {
+        position: 'absolute',
+        top: Platform.OS == 'ios'
+            ? 33 * g_AppValue.precent
+            : 15 * g_AppValue.precent,
+        left: 12 * g_AppValue.precent
+    },
+    backImage: {
+        fontSize: 18 *g_AppValue.precent,
+        fontFamily: 'iconfont'
+    },
+    rowView: {
+        width: g_AppValue.screenWidth,
+        height: 82 * g_AppValue.precent,
+        backgroundColor: '#ffffff',
+        marginTop: 10 * g_AppValue.precent,
+        flexDirection: 'row'
+    },
+    headerImage: {
+        width: 58 * g_AppValue.precent,
+        height: 58 * g_AppValue.precent,
+        marginTop: 15 * g_AppValue.precent,
+        marginLeft: 12 * g_AppValue.precent
+    },
+    cintentView: {
+        width: 200 * g_AppValue.precent,
+        height: 35 * g_AppValue.precent,
+        // backgroundColor:'red',
+        marginLeft: 12 * g_AppValue.precent,
+        marginTop: 25 * g_AppValue.precent
+    },
+    nameText: {
+        fontSize: 14 * g_AppValue.precent,
+        color: '#5a5a5a'
+    },
+    introduceText: {
+        fontSize: 11 * g_AppValue.precent,
+        color: '#9a9b9c',
+        marginTop: 8 * g_AppValue.precent
+    },
+    touchFocusImage: {
+        //  backgroundColor:'black',
+        position: 'absolute',
+        top: 31 * g_AppValue.precent,
+        right: 12 * g_AppValue.precent,
+        bottom: 30 * g_AppValue.precent
+    },
+    focusImage: {
+        width: 54 * g_AppValue.precent,
+        height: 21 * g_AppValue.precent
+    }
+
+})

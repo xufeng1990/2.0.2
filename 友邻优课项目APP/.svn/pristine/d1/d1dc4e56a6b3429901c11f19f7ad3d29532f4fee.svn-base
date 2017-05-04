@@ -1,0 +1,14 @@
+//
+//  BridgeEvents.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/29.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <React/RCTEventEmitter.h>
+#import <React/RCTBridgeModule.h>
+
+@interface BridgeEvents : RCTEventEmitter <RCTBridgeModule>
++ (BOOL)application:(UIApplication *)application withPlaying:(NSDictionary *)playing;
+@end

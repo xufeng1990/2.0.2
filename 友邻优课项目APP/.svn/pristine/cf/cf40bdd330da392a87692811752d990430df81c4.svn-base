@@ -1,0 +1,87 @@
+/**
+ * Created by 艺术家 on 2017/3/12.
+ */
+
+
+import React, { Component } from 'react';
+import { Text, View, TouchableOpacity, Dimensions, ListView } from 'react-native';
+import Icon from "../../common/Icon.js";
+import styles from "../../common/styles.js";
+import Header from "../../component/HeaderBar/HeaderBar.js";
+import JobData from "./data/jobDdata.js";
+import Cell from "../../component/Cells/Cell.js";
+import CityData from "./data/cityData.js";
+
+
+
+export default class City extends Component {
+
+    constructor(props) {
+        super(props);
+        var ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
+        this.state = {
+            dataSource: ds.cloneWithRows([]),
+        };
+    }
+
+    _backFun = (job) => {
+        this.props.navigator.pop();
+    };
+
+    componentWillMount() {
+        //获取数据
+        let dataSource = [];
+        let cityData = CityData[this.props.index].children;
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(cityData),
+        });
+
+    }
+
+    componentDidMount() {
+
+    }
+
+    _selectCity(rowId) {
+        //获取选择的省市
+        let city = CityData[this.props.index].value + " "
+            + CityData[this.props.index].children[rowId].value;
+        //刷新个人资料页面数据
+        this.props.setCity(city);
+        //返回个人资料
+
+
+        var routes = this.props.navigator.state.routeStack;
+
+        var destinationRoute = this.props.navigator.getCurrentRoutes()[routes.length - 3];
+        this.props.navigator.popToRoute(destinationRoute);
+
+    }
+
+    render() {
+        return (
+            <View style={[styles.bgGrey]}>
+                <Header backFun={this._backFun} title={"选择地区"} />
+                <View style={[styles.section, styles.bgWhite]}>
+                    <ListView
+                        style={[{ height: Dimensions.get('window').height - 84 }]}
+                        dataSource={this.state.dataSource}
+                        enableEmptySections={true}
+                        removeClippedSubviews={false}
+                        renderRow={(rowData, sectionId, rowId) =>
+
+                            <TouchableOpacity activeOpacity={1} onPress={() => {
+                                this._selectCity(rowId);
+                            }}
+                                style={[styles.cell, rowId >= CityData.length - 1 ? null : styles.cellBorder]} >
+                                <Text style={[styles.textLeft, styles.text16]}>
+                                    {rowData.value}
+                                </Text>
+                            </TouchableOpacity>
+                        }
+                    />
+                </View>
+            </View>
+        )
+    }
+}

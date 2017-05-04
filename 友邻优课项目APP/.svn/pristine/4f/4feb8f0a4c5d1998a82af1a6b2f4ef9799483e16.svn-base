@@ -1,0 +1,51 @@
+//
+//  AppDelegate.m
+//  YLYKPlayer
+//
+//  Created by 友邻优课 on 2017/1/17.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+typedef enum
+{
+    YLYKCourseTypeLocal,
+    YLYKCourseTypeRemote
+}YLYKCourseType;
+
+@interface YLYKCourse : NSObject
+
+@property (nonatomic,assign) NSInteger courseId;
+
+@property (nonatomic,copy) NSString * name;
+
+@property (nonatomic,copy) NSString * image;
+
+@property (nonatomic,copy) NSDictionary * album;
+
+@property (nonatomic,copy) NSArray * teachers;
+
+@property (nonatomic,copy) NSString * content;
+
+@property (nonatomic,copy) NSString * media;
+
+@property (nonatomic,copy) NSString * media_url;
+
+@property (nonatomic,assign) NSInteger duration;
+
+@property (nonatomic,assign) NSInteger  like_count;
+
+@property (nonatomic,assign) NSInteger  user_count;
+
+@property (nonatomic,assign) NSInteger note_count;
+
+@property (nonatomic,assign) BOOL is_liked;
+
+@property (nonatomic,assign) NSInteger in_time;
+
+
+/** 类型 */
+@property (nonatomic,assign) YLYKCourseType type;
+
+@end

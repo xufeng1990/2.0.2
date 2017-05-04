@@ -1,0 +1,210 @@
+//
+//  Download.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/7.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "Download.h"
+#import <React/RCTEventDispatcher.h>
+#import "TYDownLoadUtility.h"
+#import "TYDownloadSessionManager.h"
+@interface Download () <TYDownloadDelegate>
+
+@property (nonatomic,strong) TYDownloadModel *downloadModel;
+
+@property (nonatomic,strong) NSMutableArray * downloadurlArray;
+
+@property (nonatomic, strong)NSMutableArray * downloadlistArray;
+
+@property (nonatomic, strong)NSMutableArray * extraArray;
+
+@property (nonatomic, copy) NSString * totalSize;
+
+@end
+
+@implementation Download
+
+
+
+#pragma mark -懒加载
+- (NSMutableArray *)downloadurlArray
+{
+    if (!_downloadurlArray) {
+        _downloadurlArray = [NSMutableArray array];
+    }
+    return _downloadurlArray;
+}
+
+- (NSMutableArray *)extraArray
+{
+    if (!_extraArray) {
+        _extraArray = [NSMutableArray array];
+    }
+    return _extraArray;
+}
+
+- (NSMutableArray *)downloadlistArray
+{
+    if (!_downloadlistArray) {
+        _downloadlistArray = [NSMutableArray array];
+    }
+    return _downloadlistArray;
+}
+
+
+RCT_EXPORT_MODULE();
+
+- (NSMutableArray *)getDownloadingModels
+{
+    TYDownloadSessionManager * manager = [TYDownloadSessionManager manager];
+    for (int i = 0; i<manager.waitingDownloadModels.count; i++) {
+        TYDownloadModel * model = manager.waitingDownloadModels[i];
+        NSDictionary * extraDic;
+        for (NSDictionary * dic in self.extraArray) {
+            NSString * str = [dic objectForKey:@"media_url"];
+            if ([str isEqualToString:model.downloadURL]) {
+                extraDic = dic;
+            }
+        }
+        NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:model.fileName,@"saveName",model.filePath,@"filePath",model.progress.totalBytesExpectedToWrite,@"totalSize",[NSString stringWithFormat:@"%ld",model.state] ,@"flag",extraDic,@"extra", nil];
+        [self.downloadlistArray addObject:dict];
+    }
+    return manager.downloadingModels;
+}
+
+- (NSMutableArray *)getWaitingDownloadModels
+{
+    TYDownloadSessionManager * manager = [TYDownloadSessionManager manager];
+    for (int i = 0; i<manager.waitingDownloadModels.count; i++) {
+        TYDownloadModel * model = manager.waitingDownloadModels[i];
+        NSDictionary * extraDic;
+        for (NSDictionary * dic in self.extraArray) {
+            NSString * str = [dic objectForKey:@"media_url"];
+            if ([str isEqualToString:model.downloadURL]) {
+                extraDic = dic;
+            }
+        }
+        NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:model.fileName,@"saveName",model.filePath,@"filePath",model.progress.totalBytesExpectedToWrite,@"totalSize",[NSString stringWithFormat:@"%ld",model.state] ,@"flag",extraDic,@"extra", nil];
+        [self.downloadlistArray addObject:dict];
+    }
+    
+    return manager.waitingDownloadModels;
+}
+
+RCT_REMAP_METHOD(getDownloadList, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    [self getWaitingDownloadModels];
+    [self getDownloadingModels];
+    if (self.downloadlistArray) {
+        resolve(self.downloadlistArray);
+    } else {
+        reject(@"",@"没有下载内容",nil);
+    }
+    
+}
+
+RCT_EXPORT_METHOD(startDownload:(NSString *)downloadStr resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject)
+{
+    NSArray * courseArray = [self jsonStringToNSDictionaryOrArrayWithString:downloadStr];
+    
+    for (NSDictionary * dict in courseArray) {
+        [self.downloadurlArray addObject:[dict objectForKey:@"media_url"]];
+    }
+    [TYDownloadSessionManager manager].delegate = self;
+    for (NSString * url in self.downloadurlArray) {
+        TYDownloadModel * model = [[TYDownloadModel alloc] initWithURLString:url];
+        _downloadModel = model;
+        
+        if (!_downloadModel.task && [[TYDownloadSessionManager manager] backgroundSessionTasksWithDownloadModel:_downloadModel]) {
+            // 开始下载
+            TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+            [manager startWithDownloadModel:_downloadModel progress:^(TYDownloadProgress *progress) {
+                
+                
+                // 实时监听下载进度
+                NSString *fileSizeInUnits = [NSString stringWithFormat:@"%.2f %@",
+                                             [TYDownloadUtility calculateFileSizeInUnit:(unsigned long long)progress.totalBytesExpectedToWrite],
+                                             [TYDownloadUtility calculateUnit:(unsigned long long)progress.totalBytesExpectedToWrite]];
+                
+                NSDictionary * dict = [NSDictionary dictionaryWithObjectsAndKeys:[NSString stringWithFormat:@"%.3f",progress.progress] ,@"downloadSize",_downloadModel.fileName,@"saveName",_downloadModel.filePath,@"filePath",fileSizeInUnits,@"totalSize",[NSString stringWithFormat:@"%ld",_downloadModel.state] ,@"flag", nil];
+                [self.bridge.eventDispatcher sendAppEventWithName:@"downloadCourse" body:dict];
+                
+                
+            } state:^(TYDownloadState state, NSString *filePath, NSError *error) {
+                if (state == TYDownloadStateCompleted) {
+                    NSLog(@"已下载");
+                    NSNotification * noti = [NSNotification notificationWithName:[NSString stringWithFormat:@"downloadFinish%@",_downloadModel.downloadURL] object:nil userInfo:@{@"finish":@"111"}];
+                    [[NSNotificationCenter defaultCenter] postNotification:noti];
+                }
+            }];
+            
+        }
+    }
+    
+    if (_downloadModel) {
+        resolve(@"success");
+    } else{
+         reject(@"100",@"fail",nil);
+    }
+    
+    
+}
+
+// 恢复下载
+- (void)resumeDownloadWithUrl:(NSString *)url
+{
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    TYDownloadModel * model = [manager downLoadingModelForURLString:url];
+    _downloadModel = model;
+    if (model.state == TYDownloadStateSuspended) {
+        [manager resumeWithDownloadModel:model];
+    } else {
+        [manager startWithDownloadModel:model];
+    }
+    
+}
+// 暂停下载
+- (void)suspendDownloadWithUrl:(NSString *)url
+{
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    TYDownloadModel * model = [manager downLoadingModelForURLString:url];
+    _downloadModel = model;
+    [manager suspendWithDownloadModel:model];
+}
+ // 取消下载
+- (void)cancelDownloadWithUrl:(NSString *)url
+{
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    TYDownloadModel * model = [manager downLoadingModelForURLString:url];
+    _downloadModel = model;
+    [manager cancleWithDownloadModel:model];
+}
+
+// 删除下载
+- (void)deleteDownloadWithUrl:(NSString *)url
+{
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    TYDownloadModel * model = [manager downLoadingModelForURLString:url];
+    _downloadModel = model;
+    [manager deleteFileWithDownloadModel:model];
+}
+
+- (id)jsonStringToNSDictionaryOrArrayWithString:(NSString *)string
+{
+    NSError *error = nil;
+    NSData * jsonData = [string dataUsingEncoding:NSUTF8StringEncoding];
+    id jsonObject = [NSJSONSerialization JSONObjectWithData:jsonData
+                                                    options:NSJSONReadingAllowFragments
+                                                      error:&error];
+    
+    if (jsonObject != nil ){
+        return jsonObject;
+    }else{
+        // 解析错误
+        return nil;
+    }
+}
+
+@end

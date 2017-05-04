@@ -1,0 +1,19 @@
+//
+//  CourseTraceCell.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/16.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKBaseTraceCell.h"
+#import "YLYKTraceModel.h"
+
+@interface YLYKCourseTraceCell : YLYKBaseTraceCell
+@property (weak, nonatomic) IBOutlet UILabel *timeLabel;
+@property (weak, nonatomic) IBOutlet UILabel *learnTimeLabel;
+@property (weak, nonatomic) IBOutlet UIImageView *courseImage;
+@property (weak, nonatomic) IBOutlet UILabel *courseNameLabel;
+@property (weak, nonatomic) IBOutlet UILabel *teacherNameLabel;
+@property (strong, nonatomic) YLYKTraceModel *traceModel;
+@end

@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">友邻优课</string>
+    <string name="main_home">最新</string>
+    <string name="main_me">我</string>
+    <string name="main_idea">心得</string>
+    <string name="main_know">课程</string>
+    <string name="telephone_login">手机登录</string>
+    <string name="u_content_u">登录即同意《<u>友邻优课用户许可协议</u>》</string>
+    <string name="photo_close">完成</string>
+    <string name="http_exception">网络出错，请稍后再试</string>
+    <string name="http_500">服务器故障：服务器去学英语了，请通知阿树老师把它抓回来！</string>
+    <string name="toast_licenten">您拒绝了读写权限申请</string>
+    <string name="next_day">未来的路需要慢慢走</string>
+</resources>

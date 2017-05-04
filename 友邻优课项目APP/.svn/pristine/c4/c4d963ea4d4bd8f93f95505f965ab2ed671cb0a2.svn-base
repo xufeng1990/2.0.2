@@ -1,0 +1,160 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, {Component,} from 'react';
+import {
+    Text,
+    View,
+    Image,
+    TextInput,
+    ScrollView,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    TouchableHighlight,
+    TouchableWithoutFeedback,
+    Alert,
+    WebView,
+    Dimensions,
+    Modal,
+    DeviceEventEmitter,
+    ActivityIndicator,
+    BackAndroid,
+    Platform,
+    StatusBar,
+    PixelRatio,
+} from 'react-native';
+//common
+import Util from '../../common/util.js';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+//configs
+import g_AppValue from '../../configs/AppGlobal.js';
+import YLYKNatives from "../../configs/ylykbridges/YLYKNatives.js";
+import YLYKServices from "../../configs/ylykbridges/YLYKServices.js";
+import YLYKStorages from "../../configs/ylykbridges/YLYKStorages.js";
+//组件
+import VideoPlayer from 'react-native-video-controls';
+import Loading from '../Loading/Loading.js';
+
+
+
+
+
+// 类
+//
+
+
+
+var {width, height} = Dimensions.get('window');
+export default class VideoView extends Component {
+    // 构造函数
+    constructor(props) {
+        super(props);
+        this.state = {
+
+        };
+    }
+    // 加载完成
+    componentDidMount() {
+          //YLYKNatives.$screen.landscapAction();
+    }
+    componentWillMount() {
+
+    }
+    // view卸载
+    componentWillUnmount() {
+        if (this.props.hideTabBar == 0) {
+            return;
+        } else {
+            YLYKNatives.$showOrHideTabbar.showOrHideTabbar('show');
+        }
+    }
+
+    _onError() {
+        Util.alert({
+            msg: '视频加载出现错误,请稍后再试',
+            oneBtn: '确定',
+            cancelBtn: '取消',
+            okFun: () => {this._back()},
+            cancelFun:()=>{this._back()}
+        })
+    }
+
+
+    _back() {
+      YLYKNatives.$screen.portraitAction();
+        this.props.navigator.pop();
+    }
+
+    _paused(){
+      this._back();
+    }
+    //<View style={{height: width, width: height, marginTop: (height-width)/2,  marginLeft: (width-height)/2, backgroundColor: 'red', transform: [{ rotateZ: '90deg' }]}}>
+    render() {
+        return (
+          <View style={{width:width,height:211}}>
+                <VideoPlayer
+                      source={!this.props.videoSource ? { uri: 'https://mv-static.youlinyouke.com/web/declaration-1490083383-160k44100.mp4' } : { uri: this.props.videoSource }}//视频播放地址
+                      playInBackground={ false }
+                      playWhenInactive={ false }
+                      resizeMode={ 'contain' }
+                      paused={ this.state.paused }
+                      repeat={ true }
+                      muted={ false }
+                      title={ this.props.albumName }
+                      volume={ 1 }
+                      rate={ 1 }
+                      controlTimeout={ 15000 }
+                      navigator={ this.props.navigator }
+                      seekColor={ 'red' }
+                      onError={ () => {this._onError()} }
+                      onBack={ () => {this._back()} }
+                      onEnd={ () => {this._paused()} }
+                    />
+                </View>
+        );
+    }
+    // 自定义方法区域
+    // your method
+}
+
+var styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: 'black',
+    },
+    video: {
+        marginTop: 180 * g_AppValue.precent,
+        width: width,
+        height: 215 * g_AppValue.precent,
+        //backgroundColor:'red',
+    },
+    playView: {
+        width: width,
+        height: 20 * g_AppValue.precent,
+        backgroundColor: 'red',
+        justifyContent: 'center',
+    },
+    playButtonView: {
+        width: width,
+        height: 215 * g_AppValue.precent,
+    },
+    playButton: {
+        width: width,
+        height: 215 * g_AppValue.precent,
+        backgroundColor: 'red',
+        opacity: 0.5,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    backImage: {
+        width: 18 * g_AppValue.precent,
+        height: 18 * g_AppValue.precent,
+        marginTop: 30 * g_AppValue.precent,
+        marginLeft: 15 * g_AppValue.precent,
+    },
+
+})

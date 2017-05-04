@@ -1,0 +1,55 @@
+package com.reactutils;
+
+import com.facebook.react.ReactPackage;
+import com.facebook.react.bridge.JavaScriptModule;
+import com.facebook.react.bridge.NativeModule;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.uimanager.ViewManager;
+import com.reactutils.controller.YLIntentModule;
+import com.reactutils.download.YLDownLoadModule;
+import com.reactutils.encryption.YLEncryptionModule;
+import com.reactutils.oauth.YLOauthModule;
+import com.reactutils.request.YLRequestModule;
+import com.reactutils.request.YLServiceModule;
+import com.reactutils.setting.YLSettingModule;
+import com.reactutils.storage.YLStorageModule;
+import com.reactutils.userinfo.YLBridgeNativeModule;
+import com.reactutils.loadingview.YLReactLoadingManager;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+/**
+ * Created by xyb on 2017/2/13.
+ */
+
+public class MainReactPackage implements ReactPackage {
+    @Override
+    public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
+        List<NativeModule> modules = new ArrayList<>();
+        modules.add(new YLEncryptionModule(reactContext));
+        modules.add(new YLStorageModule(reactContext));
+        modules.add(new YLRequestModule(reactContext));
+        modules.add(new YLOauthModule(reactContext));
+        modules.add(new YLServiceModule(reactContext));
+        modules.add(new YLIntentModule(reactContext));
+        modules.add(new YLDownLoadModule(reactContext));
+        modules.add(new YLSettingModule(reactContext));
+        modules.add(new YLBridgeNativeModule(reactContext));
+        return modules;
+    }
+
+    @Override
+    public List<Class<? extends JavaScriptModule>> createJSModules() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
+        return Arrays.<ViewManager>asList(
+                new YLReactLoadingManager()
+        );
+    }
+}

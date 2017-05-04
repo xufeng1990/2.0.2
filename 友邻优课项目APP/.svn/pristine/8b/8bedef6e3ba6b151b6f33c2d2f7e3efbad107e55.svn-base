@@ -1,0 +1,42 @@
+/** Created by 艺术家 on 2017/3/9. cell */
+import React, { Component } from 'react';
+import { Text, View, TouchableOpacity, ListView, TouchableHighlight } from 'react-native';
+//common
+import Icon from "../../common/Icon.js";
+import styles from "../../common/styles.js"
+export default class BottomCheckbox extends Component { /* 构造*/
+    constructor(props) {
+        super(props);
+        this.state = {};
+    }
+    render() {
+        return (
+            <TouchableOpacity activeOpacity ={1}  activeOpacity={this.props.cellPull ? 0.97 : 1} onPress={this.props.cellPull ? this.props.cellFun : () => { }}>
+                <View style={styles.bgWhite}>
+                    <View style={[styles.cell, this.props.cellLast ? null : styles.cellBorder]} >
+                        <View >
+                            <Text style={[styles.textLeft, styles.text16]}>
+                                {this.props.tag}
+                            </Text>
+                        </View>
+                        <View style={[styles.primary, { paddingLeft: 12, justifyContent: "flex-end" },]}>
+                            <Text style={[styles.textRight, styles.text16, styles.textGrey]} numberOfLines={1}>
+                                {this.props.content}
+                            </Text>
+                        </View>
+                        {
+                            this.props.cellPull ?
+                                <View style={[styles.cellPull]}>
+                                    <Text style={[styles.text16, styles.textGrey, styles.textCenter, styles.icon]}>
+                                        {Icon.rightArrow}
+                                    </Text>
+                                </View>
+                                : null
+                        }
+                    </View>
+                </View>
+            </TouchableOpacity>
+
+        )
+    }
+}

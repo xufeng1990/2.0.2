@@ -1,0 +1,128 @@
+package com.zhuomogroup.ylyk.adapter;
+
+import android.content.Context;
+import android.support.v4.view.PagerAdapter;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.google.gson.Gson;
+import com.reactutils.callback.BaseStringCallback;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.bean.RequestBean;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhy.http.okhttp.OkHttpUtils;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import okhttp3.Call;
+
+import static com.zhuomogroup.ylyk.base.YLBaseUrl.BASE_URL_HEAD;
+
+
+/**
+ * Created by xyb on 2017/3/5.
+ */
+
+public class YLAudioAdapter extends PagerAdapter {
+    TextView albumName;
+    TextView courseName;
+    TextView teacherName;
+    private Context context;
+    private int courseId;
+
+    public YLAudioAdapter(Context context, int courseId) {
+        this.context = context;
+        this.courseId = courseId;
+    }
+
+    @Override
+    public int getCount() {
+        return 1;
+    }
+
+    @Override
+    public boolean isViewFromObject(View view, Object object) {
+        return view == object;
+    }
+
+    @Override
+    public void destroyItem(ViewGroup container, int position, Object object) {
+        container.removeView((View) object);
+    }
+
+    @Override
+    public Object instantiateItem(ViewGroup container, int position) {
+
+
+        View view = LayoutInflater.from(context).inflate(R.layout.item_audio, container, false);
+
+        ImageView imageView = (ImageView) view.findViewById(R.id.audio_img);
+
+        final TextView albumNameT = (TextView) view.findViewById(R.id.album_name);
+        final TextView courseNameT = (TextView) view.findViewById(R.id.course_name);
+        final TextView teacherNameT = (TextView) view.findViewById(R.id.teacher_name);
+
+        OkHttpUtils.get()
+                .url(BASE_URL_HEAD + "course/" + courseId + Signature.UrlSignature())
+                .headers(Signature.UrlHeaders(context))
+                .build()
+                .execute(new BaseStringCallback() {
+                    @Override
+                    public void onError(Call call, Exception e, int id) {
+                        e.printStackTrace();
+                    }
+
+                    @Override
+                    public void onResponse(String response, int id) {
+                        Gson gson = new Gson();
+                        RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                        if (requestBean.isResult()) {
+                            response = requestBean.getResponse();
+                            try {
+                                JSONObject object = new JSONObject(response);
+
+                                String name = object.getString("name");
+                                JSONArray teachers = object.getJSONArray("teachers");
+                                JSONObject jsonObject = teachers.getJSONObject(0);
+                                String teacherName = jsonObject.getString("name");
+                                JSONObject album = object.getJSONObject("album");
+                                String albumName = album.getString("name");
+                                albumNameT.setText(albumName);
+                                courseNameT.setText(name);
+                                teacherNameT.setText(teacherName);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    }
+                });
+        Glide.with(context)
+                .load(BASE_URL_HEAD + "course/" + courseId + "/cover")
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
+                .into(imageView);
+        container.addView(view);
+        return view;
+    }
+
+
+    public int getCourseId() {
+        return courseId;
+    }
+
+    public void setCourseId(int courseId) {
+        this.courseId = courseId;
+        notifyDataSetChanged();
+    }
+
+    @Override
+    public int getItemPosition(Object object) {
+        return POSITION_NONE;
+    }
+}

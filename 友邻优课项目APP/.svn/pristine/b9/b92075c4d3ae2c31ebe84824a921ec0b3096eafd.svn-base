@@ -1,0 +1,378 @@
+//
+//  DownloadManager.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/3/1.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import "YLYKDownloadNativeModule.h"
+#import <React/RCTEventDispatcher.h>
+#import "TYDownLoadUtility.h"
+#import "TYDownloadSessionManager.h"
+#import "NSStringTools.h"
+#import "YLYKServiceModule.h"
+#import "UIImageView+WebCache.h"
+#import "DownloadEvent.h"
+#import "YLYKCourseServiceModule.h"
+#import "OAuthAndErrorString.h"
+
+NSString *kDownloadListKey = @"DownloadManager_downloadList";
+NSString *kURL = @"media_url";
+
+@interface YLYKDownloadNativeModule  ()
+
+@end
+
+@implementation YLYKDownloadNativeModule 
+
+@synthesize bridge = _bridge;
+
+#pragma mark - init
++ (instancetype)sharedManager {
+    static YLYKDownloadNativeModule *manager = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        manager = [[self alloc] init];
+    });
+    return manager;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(appWillTerminate:)
+                                                     name:UIApplicationWillTerminateNotification
+                                                   object:nil];
+    }
+    return self;
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+
+#pragma mark - 获取下载列表
+- (NSMutableArray *)downloadList {
+    NSArray *downloadList = [[NSUserDefaults standardUserDefaults] objectForKey:kDownloadListKey];
+    if (!downloadList) {
+        return [NSMutableArray array];
+    }
+    return [downloadList mutableCopy];
+}
+
+- (void)addItemsToDownloadList:(NSArray *)items {
+    if (![items isKindOfClass:[NSArray class]] || items.count == 0) return;
+    NSMutableArray *downloadList = [self downloadList];
+    [downloadList addObjectsFromArray:items];
+    [[NSUserDefaults standardUserDefaults] setObject:downloadList forKey:kDownloadListKey];
+    for (NSDictionary *item in items) {
+        [self saveDownloadRecordForRawDict:[item valueForKey:@"extra"]];
+    }
+}
+
+#pragma mark - 移除下载列表
+- (void)removeItemFromDownloadList:(id)aItem {
+    if (!aItem) return;
+    NSDictionary *aRawData = [aItem valueForKey:@"extra"];
+    NSString *courseId = [NSString stringWithFormat:@"%@",[aRawData valueForKey:@"id"]];
+    NSMutableArray *downloadList = [self downloadList];
+    for (NSDictionary *item in downloadList) {
+        NSDictionary *rawData = [item valueForKey:@"extra"];
+        if ([[NSString stringWithFormat:@"%@",[rawData objectForKey:@"id"]] isEqualToString:courseId]) {
+            [downloadList removeObject:item];
+            break;
+        }
+    }
+    [[NSUserDefaults standardUserDefaults] setObject:downloadList forKey:kDownloadListKey];
+    [self removeDownloadRecordForRawDict:[aItem valueForKey:@"extra"]];
+}
+
+#pragma mark - 更新下载列表
+- (NSDictionary *)updateDownloadListItemForCourseId:(NSString *)courseId withProgress:(float)progress totalSize:(int64_t)totalSize flag:(TYDownloadState)flag {
+    NSDictionary *newItem = nil;
+    NSMutableArray *downloadList = [self downloadList];
+    for (NSDictionary *aItem in downloadList) {
+        NSDictionary *rawData = [aItem valueForKey:@"extra"];
+        BOOL isSame = [[NSString stringWithFormat:@"%@",[rawData objectForKey:@"id"]] isEqualToString:[NSString stringWithFormat:@"%@",courseId]];
+        if (isSame) {
+                newItem = [self itemWithRawData:rawData progress:progress totalSize:totalSize flag:flag];
+                [downloadList removeObject:aItem];
+                [downloadList addObject:newItem];
+                [[NSUserDefaults standardUserDefaults] setObject:downloadList forKey:kDownloadListKey];
+            break;
+        }
+    }
+    return newItem;
+}
+
+- (NSDictionary *)itemWithRawData:(NSDictionary *)rawData progress:(float)progress totalSize:(int64_t)totalSize flag:(TYDownloadState)flag {
+    NSString *courseId = [rawData valueForKey:@"id"];
+    TYDownloadModel *model = [[TYDownloadModel alloc] initWithURLString:[rawData valueForKey:kURL]];
+    model.courseId = courseId;
+    NSDictionary *item = [NSDictionary dictionaryWithObjectsAndKeys:rawData, @"extra",
+                          @(progress).stringValue, @"downloadSize",
+                          courseId, @"saveName",
+                          model.filePath, @"filePath",
+                          @(totalSize).stringValue, @"totalSize",
+                          @(flag).stringValue, @"flag",
+                          nil];
+    return item;
+}
+
+- (BOOL)validateRawDict:(NSDictionary *)dict {
+    if ([dict isKindOfClass:[NSDictionary class]]) {
+        NSNumber *courseId = [dict valueForKey:@"id"];
+        BOOL courseIdIsValid = ([courseId isKindOfClass:[NSNumber class]] && [courseId integerValue] > 0);
+        if (courseIdIsValid) {
+            return YES;
+        }
+    }
+    return NO;
+}
+
+#pragma mark -保存下载记录
+- (void)saveDownloadRecordForRawDict:(NSDictionary *)dict {
+    if (![self validateRawDict:dict]) return;
+    NSString *courseId = [NSString stringWithFormat:@"%@", [dict valueForKey:@"id"]];
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:[NSString stringWithFormat:@"%@HASDOWNLOD", courseId]];
+}
+
+#pragma mark - 是否已经下载
+- (BOOL)hasDownloadRawDict:(NSDictionary *)dict {
+    if (![self validateRawDict:dict]) return NO;
+    NSString *courseId = [NSString stringWithFormat:@"%@", [dict valueForKey:@"id"]];
+    return [[NSUserDefaults standardUserDefaults] boolForKey:[NSString stringWithFormat:@"%@HASDOWNLOD", courseId]];
+}
+
+#pragma mark - 移除下载记录
+- (void)removeDownloadRecordForRawDict:(NSDictionary *)dict {
+    if (![self validateRawDict:dict]) return;
+    NSString *courseId = [NSString stringWithFormat:@"%@", [dict valueForKey:@"id"]];
+    [[NSUserDefaults standardUserDefaults] setBool:NO forKey:[NSString stringWithFormat:@"%@HASDOWNLOD", courseId]];
+}
+
+RCT_EXPORT_MODULE();
+
+#pragma mark - RN 获取下载列表
+RCT_REMAP_METHOD(getDownloadList, resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSArray *array = [self downloadList];
+    if (array) {
+        resolve([self JSONStringWithJSONObject:array]);
+    } else {
+        reject(@"",@"没有下载内容",nil);
+    }
+}
+
+#pragma mark - 原生 开始下载
+- (void)startDownload:(NSArray *)downloadList {
+    for (NSDictionary *dict in downloadList) {
+        if ([self validateRawDict:dict]) {
+            if (![self hasDownloadRawDict:dict]) {
+                NSDictionary *item = [self itemWithRawData:dict progress:0 totalSize:0 flag:TYDownloadStateNone];
+                [self addItemsToDownloadList:@[item]];
+                [self startDownloadItem:item];
+            } else {
+                for (NSDictionary *item in [self downloadList]) {
+                    NSDictionary *rawData = [item valueForKey:@"extra"];
+                    NSString *courseId = [NSString stringWithFormat:@"%@",[rawData valueForKey:@"id"]];
+                    BOOL isSame = [courseId isEqualToString:[NSString stringWithFormat:@"%@",[dict valueForKey:@"id"]]];
+                    if (isSame) {
+                        TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+                        NSString *URL = [self getURLFromCourseId:courseId];
+                        TYDownloadModel *model = [manager downLoadingModelForURLString:URL];
+                        if (model) {
+                            [manager startWithDownloadModel:model];
+                        } else {
+                            BOOL notFinish = ![[item objectForKey:@"flag"] isEqualToString:@"4"];
+                            if (notFinish) {
+                                [self startDownloadItem:item];
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+#pragma mark - RN 开始下载
+RCT_EXPORT_METHOD(startDownload:(NSString *)downloadStr resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    YLYKServiceModule *work = [[YLYKServiceModule alloc] init];
+    NSString *sign = [OAuthAndErrorString getSecurtyUrlString:BASEURL_STRING withParameters:nil];
+    
+    NSArray *downloadList = [self arrayWithJSONString:downloadStr];
+    NSMutableArray *array = [NSMutableArray array];
+    for (NSMutableDictionary *dicts in downloadList) {
+        NSMutableDictionary *dict = [dicts mutableCopy];
+        NSString *courseId = [dict objectForKey:@"id"];
+        NSString * URL = [NSString stringWithFormat:@"%@course/%@/media?%@",BASEURL_STRING,courseId,sign];
+        [dict setObject:URL forKey:@"media_url"];
+        [array addObject:dict];
+        [[NSUserDefaults standardUserDefaults] setObject:URL forKey:[NSString stringWithFormat:@"%@downloade_course_id",courseId]];
+    }
+    [self startDownload:array];
+    resolve(@"success");
+}
+
+#pragma mark - 开始下载
+- (void)startDownloadItem:(NSDictionary *)item {
+    TYDownloadModel *model = [[TYDownloadModel alloc] initWithURLString:[[item valueForKey:@"extra"] valueForKey:kURL]];
+    model.courseId = [[item valueForKey:@"extra"] valueForKey:@"id"];
+    __block float lastProgress = 0.0;
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    [manager startWithDownloadModel:model
+                           progress:^(TYDownloadProgress *progress) {
+                               dispatch_async(dispatch_get_global_queue(0, 0), ^{
+                                   if ((progress.progress - lastProgress) > 0.15) {
+                                       NSDictionary *newItem = [self updateDownloadListItemForCourseId:model.courseId
+                                                                                     withProgress:progress.progress
+                                                                                        totalSize:progress.totalBytesExpectedToWrite
+                                                                                             flag:model.state];
+                                       lastProgress = progress.progress;
+                                       DownloadEvent *events = [[DownloadEvent alloc] init];
+                                       [DownloadEvent application:[UIApplication sharedApplication] withDownload:newItem];
+                                       [events startObserving];
+                                       
+                                   }
+                               });
+                           }
+                              state:^(TYDownloadState state, NSString *filePath, NSError *error) {
+                                  NSDictionary *newItem = [self updateDownloadListItemForCourseId:model.courseId
+                                                                                withProgress:model.progress.progress
+                                                                                   totalSize:model.progress.totalBytesExpectedToWrite
+                                                                                        flag:state];
+                                  DownloadEvent *events = [[DownloadEvent alloc] init];
+                                  [DownloadEvent application:[UIApplication sharedApplication] withDownload:newItem];
+                                  [events startObserving];
+                                  if (state==4) {
+                                      
+                                      NSDictionary *extra = [newItem objectForKey:@"extra"];
+                                      NSString *courseId = [extra objectForKey:@"id"];
+                                      [[NSNotificationCenter defaultCenter] postNotificationName:[NSString stringWithFormat:@"downloadFinish%@",courseId]
+                                                                                          object:nil
+                                                                                        userInfo:nil];
+                                      [self loadDataWithCourseId: [courseId integerValue]];
+                                  }
+                              }];
+}
+
+#pragma mark - RN 暂停下载
+RCT_EXPORT_METHOD(pauseDownload:(NSString *)urlList resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSArray *array = [self arrayWithJSONString:urlList];
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    for (NSString *urlstring in array) {
+        TYDownloadModel *model = [manager downLoadingModelForURLString:[self getURLFromCourseId:urlstring]];
+        if ([[NSString stringWithFormat:@"%@",model.courseId] isEqualToString:[NSString stringWithFormat:@"%@",urlstring]]) {
+            [manager suspendWithDownloadModel:model];
+        }
+    }
+}
+
+#pragma mark - appWillTerminate 通知
+- (void)appWillTerminate:(NSNotification *)notification {
+    TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+    for (NSDictionary *item in [self downloadList]) {
+        NSString *courseId = [NSString stringWithFormat:@"%@",[[item valueForKey:@"extra"] valueForKey:@"id"]];
+        NSString *URL = [self getURLFromCourseId:courseId];
+        TYDownloadModel *model = [manager downLoadingModelForURLString:URL];
+        [manager suspendWithDownloadModel:model];
+        [self updateDownloadListItemForCourseId:model.courseId
+                                   withProgress:model.progress.progress
+                                      totalSize:model.progress.totalBytesExpectedToWrite
+                                           flag:TYDownloadStateSuspended];
+    }
+}
+
+#pragma mark - RN 删除下载
+RCT_EXPORT_METHOD(deleteDownload:(NSString *)urlList :(BOOL)isDeleteFile resolver:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject) {
+    NSArray *array = [self arrayWithJSONString:urlList];
+    for (NSString *urlstring in array) {
+        NSArray *list = [self downloadList];
+        for (NSDictionary *item in list) {
+            NSDictionary *rawData = [item valueForKey:@"extra"];
+            if ([[NSString stringWithFormat:@"%@",[rawData valueForKey:@"id"]] isEqualToString:[NSString stringWithFormat:@"%@",urlstring]]) {
+                NSString *URL = [self getURLFromCourseId:urlstring];
+                TYDownloadModel *model = [[TYDownloadSessionManager manager] downLoadingModelForURLString:URL];
+                TYDownloadSessionManager *manager = [TYDownloadSessionManager manager];
+                [manager deleteFileWithDownloadModel:model];
+                NSFileManager *fileManager = [NSFileManager defaultManager];
+                NSString *fileName = [NSStringTools getMD5String:[NSString stringWithFormat:@"%@.%@",USERID,urlstring]];
+                NSArray *paths = NSSearchPathForDirectoriesInDomains(NSCachesDirectory, NSUserDomainMask, YES);
+                NSString *path = [paths objectAtIndex:0];
+                NSString *filePath = [path stringByAppendingPathComponent:[NSString stringWithFormat:@"Pandora/downloads/62933a2951ef01f4eafd9bdf4d3cd2f0/%@.mp3",fileName]];
+                if ([fileManager fileExistsAtPath:filePath] ) {
+                    NSError *error  = nil;
+                    [fileManager removeItemAtPath:filePath error:&error];
+                    if (error) {
+                    }
+                }
+                [self removeItemFromDownloadList:item];
+            }
+        }
+    }
+     resolve(@"success");
+}
+
+#pragma mark - 获取下载URL地址
+- (NSString *)getURLFromCourseId:(NSString *)courseId {
+    NSString * URL = [[NSUserDefaults standardUserDefaults] objectForKey:[NSString stringWithFormat:@"%@downloade_course_id",courseId]];
+    if (URL) {
+        return URL;
+    } else {
+        return nil;
+    }
+}
+
+- (void)pauseAllDownload {
+    
+}
+
+- (NSArray *)arrayWithJSONString:(NSString *)aJSONString {
+    NSAssert([aJSONString isKindOfClass:[NSString class]], @"aJSONString is illegal");
+    NSData *aJSONData = [aJSONString dataUsingEncoding:NSUTF8StringEncoding];
+    id aJSONObject = [NSJSONSerialization JSONObjectWithData:aJSONData
+                                                     options:NSJSONReadingAllowFragments
+                                                       error:nil];
+    return [aJSONObject isKindOfClass:[NSArray class]] ? aJSONObject : nil;
+}
+
+- (NSString *)JSONStringWithJSONObject:(id)aJSONObject {
+    NSData *aJSONData = [NSJSONSerialization dataWithJSONObject:aJSONObject
+                                                        options:NSJSONWritingPrettyPrinted
+                                                          error:nil];
+    return [[NSString alloc] initWithData:aJSONData encoding:NSUTF8StringEncoding];
+}
+
+#pragma mark - 加载缓存数据 通过courseId
+- (void)loadDataWithCourseId:(NSInteger)courseId {
+    [YLYKCourseServiceModule getCourseById:[NSString stringWithFormat:@"%ld",(long)courseId] success:^(id responseObject) {
+        [[NSUserDefaults standardUserDefaults] setObject:responseObject forKey:[NSString stringWithFormat:@"%li",(long)courseId]];
+        UIImage *image = [[UIImage alloc] init];
+        NSURL *URL = [NSURL URLWithString:[NSString stringWithFormat:@"%@course/%ld/cover",BASEURL_STRING,(long)courseId]];
+        //[[SDWebImageManager sharedManager] loadImageWithURL:URL options:SDWebImageCacheMemoryOnly progress:nil completed:nil];
+
+        SDWebImageManager *manager = [SDWebImageManager sharedManager];
+        __block UIImage *img;
+        [manager diskImageExistsForURL:URL completion:^(BOOL isInCache) {
+            if (isInCache) {
+                img =  [[manager imageCache] imageFromDiskCacheForKey:URL.absoluteString];
+                NSString*cacheImageKey = [[SDWebImageManager sharedManager] cacheKeyForURL:URL];
+                if(cacheImageKey.length) {
+                    NSString *cacheImagePath = [[SDImageCache sharedImageCache] defaultCachePathForKey:cacheImageKey];
+//                    resolve(cacheImagePath);
+                }
+            } else {
+                NSData *data = [NSData dataWithContentsOfURL:URL];
+                img = [UIImage imageWithData:data];
+            }
+        }];
+    } failure:^(NSError *error) {
+        
+    }];
+}
+
+
+@end

@@ -1,0 +1,104 @@
+import React, { Component } from 'react';
+import {
+  Text,
+  View,
+  TouchableOpacity,
+  NativeModules,
+  DeviceEventEmitter,
+} from 'react-native';
+import Search from './Search.js';
+const searchResult = NativeModules.NativeNetwork;
+export default class SearchContainer extends Component {
+  _items = [];
+  constructor(props) {
+    super(props);
+    this.state = {
+      items:[],
+      results: []
+    };
+    this._handleResults = this._handleResults.bind(this);
+  }
+
+  componentDidMount(){
+    DeviceEventEmitter.addListener('searchResult',(data)=>{
+      this.setState({
+        items:data,
+      })
+     //console.log('DATA' + this.state.items)
+    })
+    // searchResult.getCourseList({})
+    // .then((data)=>{
+    //   console.log('全部数据' + data)
+    //   console.log('数据长度' + JSON.parse(data))
+    //   var resultData = JSON.parse(data);
+    //   for (var i = 0; i < resultData.length; i++) {
+    //         this._items.push(resultData[i]);
+    //         console.log('this._items',this._items)
+    //   }
+    //   this.setState({items:this._items})
+    // }).catch((err)=>{
+    //   console.log('数据错误' + err)
+    // })
+  }
+
+  _handleResults(results) {
+    this.setState({ results });
+  }
+
+  goBackView(){
+    this.props.navigator.pop();
+  }
+
+  render() {
+
+  //   const items = [
+  //   1337,
+  //   'janeway',
+  //   {
+  //     lots: 'of',
+  //     different: {
+  //       types: 0,
+  //       data: false,
+  //       that: {
+  //         can: {
+  //           be: {
+  //             quite: {
+  //               complex: {
+  //                 hidden: [ 'gold!' ],
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   },
+  //   [ 4, 2, 'tree' ],
+  // ];
+
+  console.log('qqqqqqqqqqq' + this.state.items)
+
+    return (
+
+      <View style={{backgroundColor:'#ffffff'}}>
+        <View style={{ marginTop: 110 ,backgroundColor:'#ffffff'}}>
+          {
+            this.state.results.map((result, i) => {
+              return (
+                <Text key={i}>
+                  {typeof result === 'object' && !(result instanceof Array) ? '' : result.toString()}
+                </Text>
+              );
+            })
+          }
+        </View>
+        <Search
+          ref={(ref) => this.searchBar = ref}
+          data={this.state.items}
+          handleResults={this._handleResults}
+          showOnLoad
+          goBack = {()=>this.goBackView()}
+        />
+      </View>
+    );
+  }
+}

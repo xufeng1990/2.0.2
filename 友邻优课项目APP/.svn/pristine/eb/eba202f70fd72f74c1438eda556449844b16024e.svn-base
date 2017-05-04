@@ -1,0 +1,496 @@
+package com.zhuomogroup.ylyk.pupwindow;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.Matrix;
+import android.graphics.drawable.ColorDrawable;
+import android.media.ExifInterface;
+import android.os.Bundle;
+import android.support.annotation.Nullable;
+import android.support.v4.app.DialogFragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v7.widget.OrientationHelper;
+import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.StaggeredGridLayoutManager;
+import android.util.Base64;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.adapter.PhotoAdapter;
+import com.zhuomogroup.ylyk.base.YLBaseUrl;
+import com.zhuomogroup.ylyk.bean.ShowPushTipsBean;
+import com.zhuomogroup.ylyk.listener.RecyclerItemClickListener;
+import com.zhuomogroup.ylyk.utils.GMTTimeUtils;
+import com.zhuomogroup.ylyk.utils.UserAgentUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.util.ArrayList;
+
+import me.iwf.photopicker.PhotoPicker;
+import me.iwf.photopicker.PhotoPreview;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Headers;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+
+import static com.reactutils.encryption.EncryptionTools.MD5;
+
+
+/**
+ * Created by xyb on 2017/1/22.
+ */
+
+public class PushTipsPopupWindow extends DialogFragment implements View.OnClickListener {
+
+    private View mMenuView;
+//    private LocationManagerProxy locationManagerProxy;
+    private TextView map_text;
+    private TextView pushText;
+    private TextView close;
+    private ProgressDialog progressDialog;
+    //    private PopupWindow popupWindow;
+//    private AMapLocationListener aMapLocationListener;
+    private ArrayList<String> selectedPhotos;
+    private int courseId;
+    private EditText tips_editText;
+    private Activity context;
+    private String authorization;
+    private String name;
+    private String editText;
+    private PhotoAdapter photoAdapter;
+
+
+    @Override
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setStyle(DialogFragment.STYLE_NORMAL, android.R.style.Theme_Holo_Light_DialogWhenLarge_NoActionBar);
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putString("EditText", tips_editText.getText().toString());
+        outState.putStringArrayList("selectedPhotos", selectedPhotos);
+    }
+
+
+    @Nullable
+    @Override
+    public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        Bundle arguments = getArguments();
+        ShowPushTipsBean showPushTipsBean = arguments.getParcelable("pushDialog");
+        this.selectedPhotos = showPushTipsBean.getSelectedPhotos();
+        this.courseId = showPushTipsBean.getCourseId();
+        this.authorization = showPushTipsBean.getAuthorization();
+        this.name = showPushTipsBean.getName();
+        this.photoAdapter = showPushTipsBean.getPhotoAdapter();
+        if (savedInstanceState != null) {
+            editText = savedInstanceState.getString("EditText");
+            selectedPhotos = savedInstanceState.getStringArrayList("selectedPhotos");
+        }
+        context = getActivity();
+        getDialog().getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        mMenuView = inflater.inflate(R.layout.popwindow_pushtips, null);
+        RecyclerView recyclerView = (RecyclerView) mMenuView.findViewById(R.id.recycler_view);
+        map_text = (TextView) mMenuView.findViewById(R.id.map_text);
+        close = (TextView) mMenuView.findViewById(R.id.close);
+        tips_editText = (EditText) mMenuView.findViewById(R.id.tips_editText);
+        pushText = (TextView) mMenuView.findViewById(R.id.push);
+
+
+        recyclerView.setLayoutManager(new StaggeredGridLayoutManager(6, OrientationHelper.VERTICAL));
+        recyclerView.setAdapter(photoAdapter);
+
+        recyclerView.addOnItemTouchListener(new RecyclerItemClickListener(getActivity(),
+                new RecyclerItemClickListener.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(View view, int position) {
+                        if (photoAdapter.getItemViewType(position) == PhotoAdapter.TYPE_ADD) {
+                            PhotoPicker.builder()
+                                    .setPhotoCount(PhotoAdapter.MAX)
+                                    .setShowCamera(true)
+                                    .setPreviewEnabled(false)
+                                    .setSelected(selectedPhotos)
+                                    .start(getActivity());
+                        } else {
+                            PhotoPreview.builder()
+                                    .setPhotos(selectedPhotos)
+                                    .setCurrentItem(position)
+                                    .start(getActivity());
+                        }
+                    }
+                }));
+
+        pushText.setOnClickListener(this);
+        map_text.setOnClickListener(this);
+        close.setOnClickListener(this);
+        if (editText != null) {
+            tips_editText.setText(editText);
+        }
+//        locationManagerProxy = LocationManagerProxy.getInstance(getActivity());
+//        aMapLocationListener = new AMapLocationListener() {
+//            @Override
+//            public void onLocationChanged(AMapLocation aMapLocation) {
+//                if (aMapLocation != null) {
+//                    String city = aMapLocation.getCity();
+//                    String substring = city.substring(city.length() - 1);
+//                    if (substring.equals("市")) {
+//                        String nowCity = city.substring(0, city.length() - 1);
+//                        map_text.setText(nowCity);
+//                    } else {
+//                        map_text.setText(city);
+//                    }
+//                }
+//            }
+//
+//            @Override
+//            public void onLocationChanged(Location location) {
+//
+//            }
+//
+//            @Override
+//            public void onStatusChanged(String provider, int status, Bundle extras) {
+//
+//            }
+//
+//            @Override
+//            public void onProviderEnabled(String provider) {
+//
+//            }
+//
+//            @Override
+//            public void onProviderDisabled(String provider) {
+//
+//            }
+//        };
+//        locationManagerProxy.requestLocationUpdates(LocationProviderProxy.AMapNetwork, 5000, 10, aMapLocationListener);
+
+        return mMenuView;
+    }
+
+
+    /**
+     * 把一个View控件添加到PopupWindow上并且显示
+     */
+    public void showPopupWindow(FragmentManager manager) {
+        show(manager, "");
+    }
+
+
+    public void gotoDismiss() {
+
+        dismiss();
+    }
+
+    @Override
+    public void onDestroy() {
+        if (photoAdapter != null) {
+            photoAdapter.notifyDataSetChanged();
+        }
+//        if (aMapLocationListener != null) {
+//            clearMap();
+//        }
+        super.onDestroy();
+
+    }
+
+    public void clearMap() {
+//        if (locationManagerProxy != null && aMapLocationListener != null) {
+//            locationManagerProxy.removeUpdates(aMapLocationListener);
+//            locationManagerProxy.destroy();
+//        }
+
+    }
+
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.push:
+                pushIntent();
+                break;
+            case R.id.map_text:
+                if (map_text.getText().toString().trim().equals("正在定位中...")) {
+                    Toast.makeText(v.getContext(), "请检查您的定位权限问题", Toast.LENGTH_SHORT).show();
+                }
+                break;
+            case R.id.close:
+
+                gotoDismiss();
+                if (photoAdapter != null) {
+                    photoAdapter.notifyDataSetChanged();
+                }
+//                if (aMapLocationListener != null) {
+//                    clearMap();
+//                }
+                break;
+        }
+
+    }
+
+    private void pushIntent() {
+
+        if (context != null) {
+            if (tips_editText.getText().toString().equals("")) {
+                Toast.makeText(context, "写点什么再发布吧", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (progressDialog == null) {
+                progressDialog = new ProgressDialog(context);
+                progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);// 设置进度条的形式为圆形转动的进度条
+                progressDialog.setCancelable(true);// 设置是否可以通过点击Back键取消
+                progressDialog.setCanceledOnTouchOutside(false);// 设置在点击Dialog外是否取消Dialog进度条
+                progressDialog.setMessage("正在发布...");
+                progressDialog.show();
+            }
+
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+
+                    final MediaType MEDIA_TYPE_PNG = MediaType.parse("application/octet-stream");
+
+                    final OkHttpClient.Builder httpBuilder = new OkHttpClient.Builder();
+
+
+                    if (selectedPhotos != null) {
+                        MultipartBody.Builder requestBuilder = new MultipartBody.Builder()
+                                .setType(MultipartBody.FORM);
+
+                        try {
+                            JSONObject jsonObject = new JSONObject();
+                            jsonObject.put("course_id", courseId);
+                            String tips = tips_editText.getText().toString();
+                            tips = tips.replaceAll("\n", "<br />");// 发布心得的回车
+                            jsonObject.put("content", tips);
+                            String trim = map_text.getText().toString().trim();
+                            if (trim.equals("正在定位中...")) {
+                                jsonObject.put("position", "");
+                            } else {
+                                jsonObject.put("position", trim);
+                            }
+                            // 将参数转化为 base64
+                            byte[] dataByte = jsonObject.toString().getBytes();
+                            String base64Data = Base64.encodeToString(dataByte, Base64.DEFAULT);
+                            requestBuilder.addPart(Headers.of("Content-Disposition", "form-data; name=\"data\""), RequestBody.create(null, base64Data));
+
+                            for (int i = 0; i < selectedPhotos.size(); i++) {
+                                String img_url = selectedPhotos.get(i);
+                                Bitmap bitmap = loadBitmap(img_url, true);
+                                saveBitmapFile(bitmap, img_url + "small");
+                                if (bitmap.isRecycled()) {
+                                    bitmap.recycle();
+                                    bitmap = null;
+                                }
+                                File file = new File(img_url + "small");
+                                requestBuilder.addPart(Headers.of("Content-Disposition", "form-data; name=\"file" + i + "\" filename=\"" + file.getName() + "\"   "),
+                                        RequestBody.create(MEDIA_TYPE_PNG, file));
+                            }
+
+                            MultipartBody requestBody = requestBuilder.build();
+                            long timeMillis = System.currentTimeMillis() / 1000;
+                            int random = (int) (1 + Math.random() * (10000 - 1 + 1000));
+                            String urlData = "nonce=" + random + "&timestamp=" + timeMillis;
+                            String signature = MD5(urlData);
+                            Request request = new Request.Builder()
+                                    .header("Content-Type", "multipart/form-data")
+                                    .header("Authorization", "USERID " + authorization)
+                                    .header("User-Agent", UserAgentUtils.getUserAgent(context) + UserAgentUtils.MANIFEST + UserAgentUtils.getVersionName(getContext()))
+                                    .header("X-Date", GMTTimeUtils.changeTimeZone())
+                                    .url(YLBaseUrl.BASE_URL_HEAD + "note?" + urlData + "&signature=" + signature)
+                                    .post(requestBody)
+                                    .build();
+
+
+
+
+
+
+                            OkHttpClient build = httpBuilder.build();
+                            build.newCall(request).enqueue(new Callback() {
+                                @Override
+                                public void onFailure(Call call, IOException e) {
+                                    try {
+                                        if (progressDialog.isShowing()) {
+                                            progressDialog.dismiss();
+                                            progressDialog = null;
+                                        }
+                                        getActivity().runOnUiThread(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                Toast.makeText(getActivity(), "发布超时,请稍后重试!", Toast.LENGTH_SHORT).show();
+                                            }
+                                        });
+                                        clearSmallFile(selectedPhotos);
+//                                Response execute = call.execute();
+//                                Log.e("PushTipsPopupWindow", "execute.code():" + execute.code());
+                                    } catch (Exception e1) {
+                                        e1.printStackTrace();
+                                    }
+                                }
+
+                                @Override
+                                public void onResponse(Call call, Response response) throws IOException {
+                                    String htmlStr = response.body().string();
+                                    try {
+                                        JSONObject jsonObject1 = new JSONObject(htmlStr);
+                                        boolean aBoolean = jsonObject1.getBoolean("result");
+                                        if (aBoolean) {
+                                            if (progressDialog.isShowing()) {
+                                                progressDialog.dismiss();
+                                            }
+                                            context.runOnUiThread(new Runnable() {
+                                                @Override
+                                                public void run() {
+                                                    String[] images = new String[0];
+                                                    if (selectedPhotos != null && selectedPhotos.size() > 0) {
+                                                        images = new String[selectedPhotos.size()];
+                                                        for (int i = 0; i < selectedPhotos.size(); i++) {
+                                                            images[i] = "\"" + selectedPhotos.get(i) + "\"";
+                                                        }
+                                                    }
+                                                    clearSmallFile(selectedPhotos);
+                                                    // TODO: 2017/2/12 images
+//                                            YlMainActivity.OnClick(PUSH_TIPS, courseId, name, images);
+                                                    context.finish();
+                                                }
+                                            });
+                                        }
+                                    } catch (JSONException e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            });
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }).start();
+
+
+        }
+
+
+    }
+
+    private void clearSmallFile(ArrayList<String> selectedPhotos) {
+        for (String selectedPhoto : selectedPhotos) {
+            deleteFile(selectedPhoto + "small");
+        }
+
+    }
+
+    /**
+     * 删除单个文件
+     *
+     * @param fileName 要删除的文件的文件名
+     * @return 单个文件删除成功返回true，否则返回false
+     */
+    public boolean deleteFile(String fileName) {
+        File file = new File(fileName);
+        // 如果文件路径所对应的文件存在，并且是一个文件，则直接删除
+        if (file.exists() && file.isFile()) {
+            if (file.delete()) {
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    public void saveBitmapFile(Bitmap bitmap, String path) {
+        File file = new File(path);//将要保存图片的路径
+        try {
+            BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(file));
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bos);
+            bos.flush();
+            bos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * 从给定路径加载图片
+     */
+    public Bitmap loadBitmap(String imgpath) {
+        return BitmapFactory.decodeFile(imgpath, getBitmapOption(2));
+    }
+
+    private BitmapFactory.Options getBitmapOption(int inSampleSize) {
+        System.gc();
+        BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inPurgeable = true;
+        options.inSampleSize = inSampleSize;
+        return options;
+    }
+
+
+    /**
+     * 从给定的路径加载图片，并指定是否自动旋转方向
+     */
+    public Bitmap loadBitmap(String imgpath, boolean adjustOritation) {
+        if (!adjustOritation) {
+            return loadBitmap(imgpath);
+        } else {
+            Bitmap bm = loadBitmap(imgpath);
+            int digree = 0;
+            ExifInterface exif = null;
+            try {
+                exif = new ExifInterface(imgpath);
+            } catch (IOException e) {
+                e.printStackTrace();
+                exif = null;
+            }
+            if (exif != null) {
+                // 读取图片中相机方向信息
+                int ori = exif.getAttributeInt(ExifInterface.TAG_ORIENTATION,
+                        ExifInterface.ORIENTATION_UNDEFINED);
+                // 计算旋转角度
+                switch (ori) {
+                    case ExifInterface.ORIENTATION_ROTATE_90:
+                        digree = 90;
+                        break;
+                    case ExifInterface.ORIENTATION_ROTATE_180:
+                        digree = 180;
+                        break;
+                    case ExifInterface.ORIENTATION_ROTATE_270:
+                        digree = 270;
+                        break;
+                    default:
+                        digree = 0;
+                        break;
+                }
+            }
+            if (digree != 0) {
+                // 旋转图片
+                Matrix m = new Matrix();
+                m.postRotate(digree);
+                bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(),
+                        bm.getHeight(), m, true);
+            }
+            return bm;
+        }
+    }
+}

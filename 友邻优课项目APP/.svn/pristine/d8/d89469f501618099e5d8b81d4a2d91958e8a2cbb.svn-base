@@ -1,0 +1,24 @@
+//
+//  YLYKCreateBasicControlManager.h
+//  ylyk
+//
+//  Created by 许锋 on 2017/4/25.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+@interface YLYKCreateBasicControlManager : NSObject
+
+/*
+ *
+ */
++ (UIButton *)showInView:(UIView *)view buttonType:(UIButtonType)buttonType rect:(CGRect)rect title:(NSString *)title textColor:(UIColor *)tcolor textFont:(UIFont *)font titleEdgeInsets:(UIEdgeInsets)tInset imageName:(NSString *)imgName imageEdgeInsets:(UIEdgeInsets)iInset tag:(int)tag addTarget:(id)target action:(SEL)action bgColor:(UIColor *)color bgImageName:(id)bgImgName;
+
+/*
+ *
+ */
++ (UILabel *)showLabInView:(UIView *)view rect:(CGRect)rect text:(NSString *)text textColor:(UIColor *)color textFont:(UIFont *)font textAligment:(NSTextAlignment)textAligment numberOfLines:(NSInteger)numberOfLines;
+
+
+@end

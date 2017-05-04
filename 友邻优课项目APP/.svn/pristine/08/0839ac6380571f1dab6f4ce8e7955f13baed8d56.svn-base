@@ -1,0 +1,15 @@
+//
+//  PushNative.h
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/2/22.
+//  Copyright © 2017年 友邻优课. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+#import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+@interface BridgeNative : NSObject <RCTBridgeModule>
++ (void)loginAlertViewWithCaptcha:(NSString *)mobilephone
+                          success:(void (^)(id))success;
+@end

@@ -1,0 +1,348 @@
+/**
+ * Created by 艺术家 on 2017/3/3.
+ */
+
+
+import React, { Component } from 'react';
+import {
+    Text,
+    View,
+    Image,
+    ListView,
+    StyleSheet,
+    TouchableOpacity,
+    Alert,
+    Dimensions,
+    NativeModules,
+    eviceEventEmitter,
+    ProgressBarAndroid,
+    DeviceEventEmitter,
+    NativeEventEmitter,
+    Animated,
+    Easing,
+    Platform
+} from 'react-native';
+//common
+import styles from "../../common/styles.js";
+import Util from "../../common/util.js";
+import Enums from "../../common/enums.js";
+import Icon from "../../common/Icon.js";
+//configs
+
+
+import YLYKNatives from "../../configs/ylykbridges/YLYKNatives.js";
+import YLYKServices from "../../configs/ylykbridges/YLYKServices.js";
+import YLYKStorages from "../../configs/ylykbridges/YLYKStorages.js";
+
+//component
+import BottomCheckbox from "../../component/BottomCheckbox/BottomCheckbox.js";
+import BlankPages from "../../component/AlbumCell/BlankPages.js";
+//组件
+import CachedImage from 'react-native-cached-image';
+
+
+var DownloadEvent = NativeModules.DownloadEvent;
+const myDownloadEvent = new NativeEventEmitter(DownloadEvent);
+var downloadSubscription;
+const BASE_URL = Enums.baseUrl;
+class TopBtns extends Component {
+    constructor(props) {
+        super(props)
+    }
+    render() {
+        return (
+            <View>
+                <View style={[styles.bgWhite, styles.alignCenter, styles.row, styles.container, { height: 40 }]}>
+                    <Text style={[styles.textGrey, styles.text16, styles.primary, styles.textLeft,]}>
+                        共下载{this.props.len}集
+                    </Text>
+                    <TouchableOpacity activeOpacity={1} style={[styles.primary]} onPress={() => { this.props.managerFun() }}>
+                        <Text style={[styles.textGrey, styles.text16, styles.textRight]}>
+                            {this.props.isShowBottomBar ? "取消" : "批量管理"}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        )
+    }
+}
+
+export default class DownloadCourse extends Component {
+    constructor(props) {
+        super(props);
+        const ds = new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 });
+        this.state = {
+            dataSource: ds.cloneWithRows([]),
+            isShowBottomBar: false,
+            isCheckedAll: false,
+        };
+    }
+
+    //挂载
+    componentWillMount() {
+        //初始化一个Animated.Value
+        this._animValue = new Animated.Value(-56);
+        YLYKNatives.$download.getDownloadList().then(downloadList => {
+            downloadList = JSON.parse(downloadList).reverse();
+            this._getStateData(downloadList);
+        })
+    }
+
+    componentDidMount() {
+        //下载监听
+        downloadSubscription = myDownloadEvent.addListener('DownloadCourse', (message) => {
+            let messages = message;
+            let progress = messages.downloadSize;
+            let newData = JSON.stringify(this.state.dataSource._dataBlob.s1),
+                newDataSource = JSON.parse(newData);
+            if (progress == 1) {
+                let rowId = getIndex();
+                newDataSource[rowId].isShow = true;
+                newDataSource[rowId].totalSize = messages.totalSize;
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+                });
+            }
+            function getIndex() {
+                for (let i = 0; i < newDataSource.length; i++) {
+                    if (messages.extra.id == newDataSource[i].id) {
+                        return i;
+                    }
+                }
+            }
+        });
+
+        DeviceEventEmitter.addListener("downloadEvent", (message) => {
+            let messages = JSON.parse(message.downloadEvent);
+            let progress = messages.downloadSize;
+            let newData = JSON.stringify(this.state.dataSource._dataBlob.s1),
+                newDataSource = JSON.parse(newData);
+            if (progress == 1) {
+                let rowId = getIndex();
+                newDataSource[rowId].isShow = true;
+                newDataSource[rowId].totalSize = messages.totalSize;
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+                });
+            }
+
+            function getIndex() {
+                for (let i = 0; i < newDataSource.length; i++) {
+                    if (messages.extra.id == newDataSource[i].id) {
+                        return i;
+                    }
+                }
+            }
+        })
+    }
+
+    //props 改变
+    componentWillReceiveProps(newData) {
+        if (newData.isShow) {
+            YLYKNatives.$download.getDownloadList().then(downloadList => {
+                downloadList = JSON.parse(downloadList).reverse();
+                this._getStateData(downloadList);
+            })
+        }
+    }
+
+    // view卸载
+    componentWillUnmount() {
+        DeviceEventEmitter.emit('showProfileTabBar', '1');
+        DeviceEventEmitter.removeAllListeners("downloadEvent");
+        downloadSubscription && downloadSubscription.remove();
+    }
+
+    //删除操作
+    delete(courseId) {
+        YLYKNatives.$download.deleteDownload(courseId, true).then((info) => {
+            YLYKNatives.$download.getDownloadList().then(downloadList => {
+                downloadList = JSON.parse(downloadList).reverse();
+                this._getStateData(downloadList);
+            })
+        });
+    }
+
+    //删除
+    deleteItem(rowId) {
+        let courseId = [this.state.dataSource._dataBlob.s1[rowId].id];
+        this.delete(courseId);
+    }
+
+    //批量删除
+    deleteBatch() {
+        let urlList = [];
+        this.state.dataSource._dataBlob.s1.forEach((item) => {
+            if (item.isChecked) {
+                urlList.push(item.id);
+            }
+        });
+        this.delete(urlList);
+    }
+
+    //批量管理切换
+    manager() {
+        if (this.state.isShowBottomBar) {
+            this._animValue.setValue(-56);
+            this.setState({
+                isShowBottomBar: false
+            })
+        } else {
+            this._animValue.setValue(0);
+            this.setState({
+                isShowBottomBar: true
+            })
+        }
+    }
+
+    //全选
+    checkedAllFun() {
+        //使用JSON.parse 实现简单的深复制
+        let stateData = this.state.dataSource._dataBlob.s1;
+        let newDataSource = JSON.parse(JSON.stringify(stateData));
+        newDataSource.forEach((item) => {
+            item.isChecked = !this.state.isCheckedAll;
+        });
+        //刷新视图
+        this.setState({
+            dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+            isCheckedAll: !this.state.isCheckedAll
+        });
+    }
+
+    //点击其中的一条
+    onPressItem(rowId) {
+        let stateData = this.state.dataSource._dataBlob.s1;
+        if (this.state.isShowBottomBar) {
+            let newDataSource = JSON.parse(JSON.stringify(stateData));
+            newDataSource[rowId].isChecked = !newDataSource[rowId].isChecked;
+            //取消全选状态
+            if (!newDataSource[rowId].isChecked) {
+                this.setState({ isCheckedAll: false })
+            }
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows(newDataSource),
+            });
+        } else {
+            let msg = this.state.dataSource._dataBlob.s1;
+            YLYKNatives.$player.openPlayerController(JSON.stringify(msg[rowId].id), true, msg);
+        }
+    }
+
+    render() {
+        return (
+            <View style={[styles.bgGrey, styles.primary]}>
+                {
+                    this.state.dataSource._dataBlob.s1.length == 0 ? <BlankPages contentText={"你还没有下载过任何课程"} ImageUrl={require("../../imgs/dowload.png")} /> :
+                        <View style={{ flex: 1 }}>
+                            <TopBtns len={this.state.dataSource._dataBlob.s1.filter(item => item.isShow == true).length}
+                                isShowBottomBar={this.state.isShowBottomBar}
+                                managerFun={() => { this.manager() }} />
+                            <ListView
+                                style={this.state.isShowBottomBar ? pageStyles.listBottom : pageStyles.list}
+                                dataSource={this.state.dataSource}
+                                enableEmptySections={true}
+                                renderRow={(rowData, sectionId, rowId) =>
+                                    rowData.isShow ?
+                                        <Animated.View style={[styles.section, styles.row,
+                                        styles.bgWhite, pageStyles.container, pageStyles.transformItem,
+                                        { transform: [{ translateX: this._animValue }] },]}>
+                                            {/*复选框*/}
+                                            <TouchableOpacity activeOpacity={1} style={[styles.alignCenter, { width: 56, marginRight: 12 }]} onPress={() => {
+                                                this.onPressItem(rowId);
+                                            }}>
+                                                <Text style={[rowData.isChecked ? styles.textRed : styles.textGrey, styles.icon, styles.text21]}>
+                                                    {rowData.isChecked || rowData.isDownloaded ? Icon.checked : Icon.checkBox}
+                                                </Text>
+                                            </TouchableOpacity>
+
+                                            <TouchableOpacity activeOpacity={1} onPress={() => { this.onPressItem(rowId) }} style={[styles.primary, styles.row]}>
+                                                <CachedImage source={{ uri: rowData.cover }}
+                                                    style={{ width: 120, height: 90 }} />
+                                                <View style={[styles.container, styles.primary, pageStyles.borderRight,]}>
+                                                    <Text style={[styles.textBlack, styles.text14, styles.textLeft, { marginVertical: 4 }]}>{rowData.name}</Text>
+                                                    <View style={[{ marginTop: 6 }]}>
+                                                        <Text style={[styles.textBlack, styles.text13, styles.textLeft]}>{"#" + rowData.album.name}</Text>
+                                                        {/*<Text style={[styles.textGrey,styles.text13,styles.textLeft,]}>
+                                                      {"@" + rowData.teachers}</Text>*/}
+                                                        {/*<Text style={[styles.textGrey, styles.text13, styles.textLeft]}>{*/}
+                                                        {/*rowData.durationFormat + "\t\t\t" + (rowData.totalSize / 1024 / 1024).toFixed(1) + "M"}*/}
+                                                        {/*</Text>*/}
+                                                    </View>
+                                                </View>
+                                                {/*删除按钮*/}
+                                                <TouchableOpacity activeOpacity={1} style={[styles.alignCenter, { width: 56 }]} onPress={() => {
+                                                    this.deleteItem(rowId);
+                                                }}>
+                                                    <Text style={[styles.icon, styles.textGrey, styles.text20]}>{Icon.delete}</Text>
+                                                </TouchableOpacity>
+                                            </TouchableOpacity>
+                                        </Animated.View> : null
+                                }
+                            />
+                            {this.state.isShowBottomBar ?
+                                <BottomCheckbox checkedCallBack={() => { this.checkedAllFun() }}
+                                    onPressBtnCallBack={() => { this.deleteBatch() }}
+                                    btnText={"删除"}
+                                    isShowCheckBox={true}
+                                    checkState={this.state.isCheckedAll}
+                                /> : null
+                            }
+                        </View>
+                }
+            </View>
+        );
+    }
+
+    //下载列表 --> this.state.dataSource
+    _getStateData(downloadList) {
+        if (downloadList && downloadList.length > 0) {
+            //将下载中的列表加到state中
+            let sourceData = [];
+            downloadList.forEach((item) => {
+                sourceData.push({
+                    id: item.extra.id || 0,
+                    name: item.extra.name || "友邻优课",
+                    teachers: item.extra.teachers || "",
+                    album: {
+                        id: item.extra.album.id || 0,
+                        name: item.extra.album.name || "",
+                    },
+                    duration: item.extra.duration,
+                    durationFormat: Util.timeFormat(item.extra.duration),
+                    url: item.extra.url,
+                    isChecked: false,
+                    totalSize: item.totalSize,
+                    isShow: +item.flag == Enums.downloads.DOWNLOAD_DONE,
+                    cover: BASE_URL + "course/" + item.extra.id + "/cover$c240w180h"
+                })
+            });
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows(sourceData),
+            });
+        } else {
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows([]),
+            });
+        }
+    }
+}
+
+var pageStyles = StyleSheet.create({
+    container: {
+        paddingVertical: 10,
+    },
+    borderRight: {
+        borderRightColor: "#f2f5f6",
+        borderRightWidth: 1,
+    },
+    transformItem: {
+        width: Dimensions.get('window').width + 56,
+    },
+    list: {
+        //marginBottom: 40,
+    },
+    listBottom: {
+        marginBottom: 50,
+    }
+});

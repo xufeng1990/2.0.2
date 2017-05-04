@@ -1,0 +1,165 @@
+//
+//  YLYKTabBarController.m
+//  ylyk
+//
+//  Created by 友邻优课 on 2017/2/16.
+//  Copyright © 2017年 Facebook. All rights reserved.
+//
+
+#import "YLYKTabBarController.h"
+#import "YLYKHomepageViewController.h"
+#import "CourseViewController.h"
+#import "YLYKNoteViewController.h"
+#import "YLYKProfileViewController.h"
+#import "YLYKNavigationController.h"
+#import "LoginViewController.h"
+#import "NativeNetwork.h"
+#import "AppDelegate.h"
+#import "CBLProgressHUD.h"
+#import "PhoneLoginViewController.h"
+#import "SplashScreen.h"
+
+@interface YLYKTabBarController ()<UIGestureRecognizerDelegate>
+
+@end
+
+@implementation YLYKTabBarController
+
+#pragma mark - Lifecycle
+- (void)viewDidLoad {
+    [super viewDidLoad];
+    ((AppDelegate *)[UIApplication sharedApplication].delegate).allowRotation = NO;
+    NSUserDefaults *user = [NSUserDefaults standardUserDefaults];
+    NSString *firstComeInTeacherDetail = @"isFirstEnterHere";
+    if (![user objectForKey:firstComeInTeacherDetail]) {
+        if (!USERID) {
+            UIWindow *keywindow = [UIApplication sharedApplication].delegate.window;
+            UINavigationController *nav = (UINavigationController *)keywindow.rootViewController;
+            LoginViewController *login = [[LoginViewController alloc] init];
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(isLoginSuccess:) name:@"isLoginSuccess" object:nil];
+            [nav presentViewController:login animated:YES completion:nil];
+            [self addController];
+        } else {
+            [self updateUserInfo];
+            [self addController];
+        }
+    } else {
+        [self updateUserInfo];
+        [self addController];
+    }
+}
+
+- (void)addController {
+    YLYKHomepageViewController * homepage = [[YLYKHomepageViewController alloc] init];
+    [self addChildVc:homepage WithTitle:@"最新" image:@"bottom_icon_home_default" selectedImage:@"bottom_icon_home_highlight"];
+    CourseViewController * course = [[CourseViewController alloc] init];
+    [course viewDidLoad];
+    [self addChildVc:course WithTitle:@"课程" image:@"bottom_icon_knowledge_default" selectedImage:@"bottom_icon_knowledge_highlight"];
+    YLYKNoteViewController * note = [[YLYKNoteViewController alloc] init];
+    [note viewDidLoad];
+    [self addChildVc:note WithTitle:@"心得" image:@"bottom_icon_experences_default" selectedImage:@"bottom_icon_experences_highlight"];
+    YLYKProfileViewController * profile = [[YLYKProfileViewController alloc] init];
+    [profile viewDidLoad];
+    [self addChildVc:profile WithTitle:@"我" image:@"bottom_icon_personal_default" selectedImage:@"bottom_icon_personal_highlight"];
+}
+
+#pragma mark - 更新用户信息
+- (void)updateUserInfo {
+    [[NativeNetwork sharedInstance] getUserById:USERID success:^(id responseObject) {
+        NSData *aJSONData = [responseObject dataUsingEncoding:NSUTF8StringEncoding];
+        NSDictionary * dict = [NSJSONSerialization JSONObjectWithData:aJSONData
+                                                              options:NSJSONReadingAllowFragments
+                                                                error:nil];
+        [[NSUserDefaults standardUserDefaults] setObject:dict forKey:@"userInfo"];
+        NSString * xdyId = [NSString stringWithFormat:@"%@",[dict objectForKey:@"xdy_id"]]  ;
+        NSLog(@"%@",xdyId);
+        [[NSUserDefaults standardUserDefaults] setObject:xdyId forKey:@"xdy_id"];
+        if ([dict objectForKey:@"vip"]) {
+            if ([[dict objectForKey:@"mobilephone"] isEqualToString:@""] || ![dict objectForKey:@"mobilephone"] ) {
+                BOOL isOutlandUser = [[NSUserDefaults standardUserDefaults] boolForKey:@"isOutlandUser"];
+                if (!isOutlandUser) {
+                    // 未绑定手机号的，需要怎么做
+                    [CBLProgressHUD showTextHUDInWindowWithText:@"请先绑定手机"];
+                    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(isLoginSuccess:) name:@"isLoginSuccess" object:nil];
+                    PhoneLoginViewController *bandPhone = [[PhoneLoginViewController alloc] init];
+                    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(isLoginSuccess:) name:@"isLoginSuccess" object:nil];
+                    bandPhone.title = @"绑定手机号";
+                    UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:bandPhone];
+                    [self presentViewController:nav animated:YES completion:nil];
+                }
+            }
+        }
+    } failure:^(NSError *error) {
+        
+    }];
+}
+
+#pragma mark - 登陆成功通知回调
+- (void)isLoginSuccess:(NSNotification *)notification {
+    if ([notification.object isEqualToString:@"failed"]) {
+        [self makeFunctionGuide];
+    } else {
+        [self makeFunctionGuide];
+    }
+}
+
+#pragma mark - 首次进入功能引导图
+- (void)makeFunctionGuide {
+    NSUserDefaults *user = [NSUserDefaults standardUserDefaults];
+    NSString *firstComeInTeacherDetail = @"isFirstEnterHere";
+    if (![user objectForKey:firstComeInTeacherDetail]) {
+        [user setObject:firstComeInTeacherDetail forKey:firstComeInTeacherDetail];
+        [user synchronize];
+        [self makeGuideView];
+    }
+}
+
+- (void)makeGuideView {
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    UIImageView *imageView1 = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"leading_1"]];
+    imageView1.frame = CGRectMake(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    [window addSubview:imageView1];
+    imageView1.userInteractionEnabled = YES;
+    UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(hideGuideView:)];
+    [imageView1 addGestureRecognizer:tap];
+}
+
+#pragma mark - 隐藏引导图
+- (void)hideGuideView:(UITapGestureRecognizer *)tap {
+    UIImageView *imageView = (UIImageView *)tap.view;
+    [imageView removeFromSuperview];
+    UIWindow *window = [UIApplication sharedApplication].keyWindow;
+    UIImageView *imageView1 = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"leading_2"]];
+    imageView1.frame = CGRectMake(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    [window addSubview:imageView1];
+    imageView1.userInteractionEnabled = YES;
+    UITapGestureRecognizer *tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(removeGuideView:)];
+    [imageView1 addGestureRecognizer:tapGesture];
+}
+
+#pragma mark - 移除引导图
+- (void)removeGuideView:(UITapGestureRecognizer *)tap{
+    UIImageView *imageView = (UIImageView *)tap.view;
+    [imageView removeFromSuperview];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:@"isLoginSuccess" object:nil];
+}
+
+- (void)didReceiveMemoryWarning {
+    [super didReceiveMemoryWarning];
+}
+
+- (void)addChildVc: (UIViewController *)childVc WithTitle:(NSString *)title  image:(NSString *)image selectedImage:(NSString *)selectedImage {
+    childVc.tabBarItem.title = title;
+    childVc.navigationItem.title = title;
+    childVc.tabBarItem.image = [UIImage imageNamed:image];
+    childVc.tabBarItem.selectedImage = [[UIImage imageNamed:selectedImage] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+    NSMutableDictionary * selectedtextAtt = [NSMutableDictionary dictionary];
+    selectedtextAtt[NSForegroundColorAttributeName] = [UIColor grayColor];
+    [childVc.tabBarItem setTitleTextAttributes:selectedtextAtt forState:UIControlStateSelected];
+    [self addChildViewController:childVc];
+}
+
+@end

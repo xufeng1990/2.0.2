@@ -1,0 +1,57 @@
+@import "style.00-variables";
+.ui-black {
+    color: @black;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @black;
+    }
+}
+.ui-white {
+    color: #fff;
+    &.ui-inverted {
+        color: #333;
+        background-color: #fff;
+    }
+}
+.ui-grey {
+    color: @grey;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @grey;
+    }
+}
+.ui-red {
+    color: @red;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @red;
+    }
+}
+.ui-yellow {
+    color: @yellow;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @yellow;
+    }
+}
+.ui-orange {
+    color: @orange;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @orange;
+    }
+}
+.ui-blue {
+    color: @blue;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @blue;
+    }
+}
+.ui-green {
+    color: @green;
+    &.ui-inverted {
+        color: #fff;
+        background-color: @green;
+    }
+}

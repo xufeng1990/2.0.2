@@ -1,0 +1,19 @@
+/**
+ * Created by 艺术家 on 2017/3/1.
+ */
+export default {
+    //格式化日期
+    downloads: {
+        DOWNLOAD_NONE: 0,            //文件不存在
+        DOWNLOAD_WATING: 1,       //等待下载
+        DOWNLOAD_DOWNLOADING: 2,    //正在下载
+        DOWNLOAD_PAUSE: 3,           // 下载暂停
+        DOWNLOAD_DONE: 4,        //下载完成
+        DOWNLOAD_FAILED: 5,      //下载失败
+    },
+
+    // color:{
+    //     GREY: "#9a9b9c",
+    // },
+    baseUrl: "https://api.youlinyouke.com/v1/"
+}

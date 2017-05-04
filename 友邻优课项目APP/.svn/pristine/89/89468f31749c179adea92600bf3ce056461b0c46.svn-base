@@ -1,0 +1,183 @@
+@import "style.00-variables";
+
+@light-green: #98e156;
+@light-grey: #ccc;
+@margin-lr: 12px;
+@padding-lr: 12px;
+
+.ui-dialog-wrapper {
+    padding: 9px 3px;
+    /*height: 100%;*/
+    /*overflow: scroll;*/
+}
+
+.ui-dialog {
+    overflow: hidden;
+    padding: 10px;
+}
+
+.ui-dialog-left,
+.ui-dialog-right {
+    .ui-image {
+        width: 40px;
+        height: 40px;
+    }
+}
+
+.ui-dialog-left {
+    float: left;
+    &+.ui-dialog-content {
+        max-width: 80%;
+        padding-right: 36px;
+        
+        .ui-dialog-name {
+            margin-left: @margin-lr;
+            text-align: left;
+        }
+        
+        .ui-dialog-bubble {
+            margin-left: @margin-lr;
+            float: left;
+            
+            &:before {
+                content: "";
+                border: solid transparent 6px;
+                position: absolute;
+                left: -@margin-lr;
+                top: 10px;
+                border-right-color: @white;
+            }
+            
+            &.ui-white.ui-inverted:before {
+                border-right-color: @white;
+            }
+            &.ui-red.ui-inverted:before {
+                border-right-color: @red;
+            }
+            &.ui-orange.ui-inverted:before {
+                border-right-color: @orange;
+            }
+            &.ui-yellow.ui-inverted:before {
+                border-right-color: @yellow;
+            }
+            &.ui-blue.ui-inverted:before {
+                border-right-color: @blue;
+            }
+            &.ui-green.ui-inverted:before {
+                border-right-color: @light-green;
+            }
+            &.ui-grey.ui-inverted:before {
+                border-right-color: @grey;
+            }
+        }
+    }
+}
+.ui-dialog-right {
+    float: right;
+    &+.ui-dialog-content {
+        padding-left: 36px;
+        
+        .ui-dialog-name {
+            margin-right: @margin-lr;
+            text-align: right;
+        }
+        
+        .ui-dialog-bubble {
+            margin-right: @margin-lr;
+            float: right;
+            
+            &:after {
+                content: "";
+                border: solid transparent 8px;
+                position: absolute;
+                right: -@margin-lr;
+                top: 10px;
+                border-left-color: @white;
+            }
+            
+            &.ui-white.ui-inverted:after {
+                border-left-color: @white;
+            }
+            &.ui-red.ui-inverted:after {
+                border-left-color: @red;
+            }
+            &.ui-orange.ui-inverted:after {
+                border-left-color: @orange;
+            }
+            &.ui-yellow.ui-inverted:after {
+                border-left-color: @yellow;
+            }
+            &.ui-blue.ui-inverted:after {
+                border-left-color: @blue;
+            }
+            &.ui-green.ui-inverted:after {
+                border-left-color: @light-green;
+            }
+            &.ui-grey.ui-inverted:after {
+                border-left-color: @grey;
+            }
+        }
+    }
+}
+
+.ui-dialog-content {
+    overflow: hidden;
+    
+    .ui-dialog-name {
+        margin-bottom: 3px;
+    }
+    
+    .ui-dialog-bubble {
+        position: relative;        
+        padding: 9px;
+        background-color: @white;
+        border-radius: 3px;
+    
+        &.ui-white.ui-inverted {
+            color: @black;
+            background-color: @white;
+        }
+        &.ui-red.ui-inverted {
+            color: @black;
+            background-color: @red;
+        }
+        &.ui-yellow.ui-inverted {
+            color: @black;
+            background-color: @yellow;
+        }
+        &.ui-blue.ui-inverted {
+            color: @black;
+            background-color: @blue;
+        }
+        &.ui-green.ui-inverted {
+            color: @black;
+            background-color: @light-green;
+        }
+        &.ui-grey.ui-inverted {
+            color: @black;
+            background-color: @grey;
+        }
+    }
+
+    img {
+        max-width: 100%;
+    }
+}
+
+.ui-dialog-tip {
+    position: relative;
+    margin-bottom: @margin-tb;
+    margin-top: @margin-tb;
+    text-align: center;
+    
+    .ui-badge {
+        &.ui-grey {
+            color: @light-grey;
+            
+            &.ui-inverted {
+                color: @white;
+                background-color: @light-grey;
+            }
+        }
+    }
+}

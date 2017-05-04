@@ -1,0 +1,213 @@
+package com.zhuomogroup.ylyk.adapter;
+
+import android.content.Context;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Bundle;
+import android.support.v7.widget.RecyclerView;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageView;
+import android.widget.TextView;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.activity.YLAudioActivity;
+import com.zhuomogroup.ylyk.base.YLBaseUrl;
+import com.zhuomogroup.ylyk.bean.AudioDataBean;
+import com.zhuomogroup.ylyk.bean.CourseListBean;
+import com.zhuomogroup.ylyk.utils.AudioTimeUtil;
+import com.zhy.autolayout.utils.AutoUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import butterknife.BindView;
+import butterknife.ButterKnife;
+
+/**
+ * Created by xyb on 2017/3/24.
+ */
+
+public class YLSearchAdapter extends RecyclerView.Adapter<YLSearchAdapter.ViewHolder> {
+
+    protected Context context;
+    private ArrayList<CourseListBean> courseList;
+    private String keyword;
+
+    public YLSearchAdapter(Context context) {
+        this.context = context;
+        courseList = new ArrayList<>();
+    }
+
+    @Override
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(context).inflate(R.layout.re_item_search, parent, false);
+        return new ViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        CourseListBean courseListBean = courseList.get(position);
+        int duration = courseListBean.getDuration();
+        int id = courseListBean.getId();
+        String name = courseListBean.getName();
+        CourseListBean.AlbumBean album = courseListBean.getAlbum();
+        int albumId = album.getId();
+        String albumName = album.getName();
+        List<CourseListBean.TeachersBean> teachers = courseListBean.getTeachers();
+
+        if (keyword != null) {
+            if (teachers.size() > 0) {
+                String teacher = teachers.get(0).getName();
+                holder.teacherName.setText(setKeyWordColor(teacher, keyword));
+
+            }
+            holder.albumName.setText(setKeyWordColor(albumName, keyword));
+            holder.courseName.setText(setKeyWordColor(name, keyword));
+
+            holder.courseDuration.setText(AudioTimeUtil.secToTime(duration * 1000));
+            Glide.with(context)
+                    .load(YLBaseUrl.BASE_URL_HEAD + "course/" + id + "/cover" + "$c240w180h")
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(holder.itemImg);
+        }
+        final Intent intent = new Intent(context, YLAudioActivity.class);
+        Bundle objectJS = new Bundle();
+        AudioDataBean demo = new AudioDataBean();
+        demo.setCourseId(id);
+        objectJS.putParcelable("AudioDataBean", demo);
+        intent.putExtra("AudioDataBean", objectJS);
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                context.startActivity(intent);
+            }
+        });
+
+
+    }
+
+    @Override
+    public int getItemCount() {
+        return courseList.size();
+    }
+
+    public void setCourseList(ArrayList<CourseListBean> courseList, String keyword) {
+        this.courseList = courseList;
+        this.keyword = keyword;
+        notifyDataSetChanged();
+    }
+
+
+    public class ViewHolder extends RecyclerView.ViewHolder {
+
+        @BindView(R.id.item_img)
+        ImageView itemImg;
+        @BindView(R.id.teacher_name)
+        TextView teacherName;
+        @BindView(R.id.course_name)
+        TextView courseName;
+        @BindView(R.id.album_name)
+        TextView albumName;
+        @BindView(R.id.course_duration)
+        TextView courseDuration;
+
+        public ViewHolder(View itemView) {
+            super(itemView);
+            AutoUtils.autoSize(itemView);
+            ButterKnife.bind(this, itemView);
+
+        }
+
+    }
+
+    /**
+     * 设置搜索关键字高亮
+     *
+     * @param content 原文本内容
+     * @param keyword 关键字
+     */
+    private SpannableString setKeyWordColor(String content, String keyword) {
+        SpannableString s = new SpannableString(content);
+
+        ArrayList<StringBean> string = getString(keyword);
+        for (StringBean stringBean : string) {
+            String newKeyword = stringBean.getString();
+            if (stringBean.isChinese()) {
+                for (int i = 0; i < newKeyword.length(); i++) {
+                    String substring = newKeyword.substring(i, i + 1);
+                    Pattern p = Pattern.compile(substring);
+                    Matcher m = p.matcher(s);
+                    while (m.find()) {
+                        int start = m.start();
+                        int end = m.end();
+                        s.setSpan(new ForegroundColorSpan(Color.parseColor("#B41930")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    }
+                }
+            } else {
+                Pattern p = Pattern.compile(newKeyword, Pattern.CASE_INSENSITIVE);
+                Matcher mc = p.matcher(s);
+                while (mc.find()) {
+                    int start = mc.start();
+                    int end = mc.end();
+                    s.setSpan(new ForegroundColorSpan(Color.parseColor("#B41930")), start, end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            }
+        }
+        return s;
+    }
+
+
+    public ArrayList<StringBean> getString(String s) {
+        Pattern p = Pattern.compile("[\\u4e00-\\u9fa5]+|\\d+|[A-Za-z]+");
+        Matcher m = p.matcher(s);
+        ArrayList<StringBean> strings = new ArrayList<>();
+
+        while (m.find()) {
+            StringBean stringBean = new StringBean();
+            String group = m.group();
+            stringBean.setString(group);
+            Pattern chinesePattern = Pattern.compile("[\\u4e00-\\u9fa5]");
+            Matcher matcher = chinesePattern.matcher(group);
+            if (matcher.find(0)) {
+                stringBean.setChinese(true);
+            } else {
+                stringBean.setChinese(false);
+            }
+            strings.add(stringBean);
+        }
+
+        return strings;
+
+    }
+
+    private class StringBean {
+        String string;
+        boolean isChinese;
+
+        public String getString() {
+            return string;
+        }
+
+        public void setString(String string) {
+            this.string = string;
+        }
+
+        public boolean isChinese() {
+            return isChinese;
+        }
+
+        public void setChinese(boolean chinese) {
+            isChinese = chinese;
+        }
+    }
+
+}

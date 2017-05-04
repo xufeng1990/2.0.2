@@ -1,0 +1,61 @@
+package com.reactutils.controller;
+
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import com.facebook.react.bridge.Promise;
+
+/**
+ * Created by xyb on 2017/3/23.
+ */
+
+public  class ReacBean implements Parcelable {
+    private Promise promise;
+    private String from;
+
+
+    public ReacBean() {
+    }
+
+    public Promise getPromise() {
+        return promise;
+    }
+
+    public void setPromise(Promise promise) {
+        this.promise = promise;
+    }
+
+    public String getFrom() {
+        return from;
+    }
+
+    public void setFrom(String from) {
+        this.from = from;
+    }
+
+    protected ReacBean(Parcel in) {
+        from = in.readString();
+    }
+
+    public static final Creator<ReacBean> CREATOR = new Creator<ReacBean>() {
+        @Override
+        public ReacBean createFromParcel(Parcel in) {
+            return new ReacBean(in);
+        }
+
+        @Override
+        public ReacBean[] newArray(int size) {
+            return new ReacBean[size];
+        }
+    };
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(from);
+    }
+}

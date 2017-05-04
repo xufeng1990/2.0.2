@@ -1,0 +1,362 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical">
+
+    <!--<include-->
+    <!--android:id="@+id/include"-->
+    <!--layout="@layout/include_title"/>-->
+
+
+    <!--<Button-->
+    <!--android:layout_width="wrap_content"-->
+    <!--android:layout_height="wrap_content"-->
+    <!--android:layout_centerHorizontal="true"-->
+    <!--android:onClick="SkinButton" />-->
+
+    <!--<RelativeLayout-->
+    <!--android:id="@+id/include"-->
+    <!--android:layout_width="match_parent"-->
+    <!--android:layout_height="40px"-->
+    <!--android:background="#fff">-->
+
+    <!--<ImageView-->
+    <!--android:id="@+id/back_img"-->
+    <!--android:layout_width="wrap_content"-->
+    <!--android:layout_height="match_parent"-->
+    <!--android:layout_centerVertical="true"-->
+    <!--android:paddingBottom="10px"-->
+    <!--android:paddingLeft="20px"-->
+    <!--android:paddingRight="10px"-->
+    <!--android:paddingTop="10px"-->
+    <!--android:src="@mipmap/title_back_img" />-->
+
+    <!--<ImageView-->
+    <!--android:id="@+id/play_download"-->
+    <!--android:layout_width="19px"-->
+    <!--android:layout_height="19px"-->
+    <!--android:layout_alignParentRight="true"-->
+    <!--android:layout_centerVertical="true"-->
+    <!--android:layout_marginRight="13px"-->
+    <!--android:src="@mipmap/play_icon_download"-->
+    <!--android:visibility="gone" />-->
+    <!--</RelativeLayout>-->
+
+    <RelativeLayout
+        android:id="@+id/include"
+        android:layout_width="match_parent"
+        android:layout_height="40px"
+        android:background="#fff"
+        android:tag="skin:title_bg:background">
+
+        <ImageView
+            android:id="@+id/back_img"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_centerVertical="true"
+            android:paddingBottom="10dp"
+            android:paddingLeft="20dp"
+            android:paddingRight="10dp"
+            android:paddingTop="10dp"
+            android:src="@mipmap/title_back_img"
+            android:tag="skin:title_back_img:imgSrc" />
+
+        <com.zhuomogroup.ylyk.views.ScrollTextView
+            android:id="@+id/title_center_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:layout_marginRight="40dp"
+            android:layout_toRightOf="@+id/back_img"
+            android:ellipsize="marquee"
+            android:focusable="true"
+            android:focusableInTouchMode="true"
+            android:gravity="center"
+            android:singleLine="true"
+            android:text="正在加载中....."
+            android:textColor="@color/textColor"
+            android:textSize="16sp"
+            android:visibility="gone" />
+
+
+        <ImageView
+            android:id="@+id/play_download"
+            android:layout_width="19px"
+
+            android:layout_height="19px"
+            android:layout_alignParentRight="true"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="13px"
+            android:src="@drawable/play_icon_download"
+            android:tag="skin:play_icon_download:src" />
+
+
+        <ImageView
+            android:id="@+id/play_setting"
+            android:layout_width="19px"
+
+            android:layout_height="19px"
+            android:layout_centerVertical="true"
+            android:layout_marginRight="35px"
+            android:layout_toLeftOf="@+id/play_download"
+            android:src="@mipmap/audio_set"
+            android:tag="skin:audio_set:imgSrc"
+
+            />
+
+
+    </RelativeLayout>
+
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/play_lay"
+        android:layout_below="@+id/include"
+        android:animateLayoutChanges="true"
+        android:orientation="vertical"
+
+        android:tag="skin:title_bg:background">
+
+        <android.support.v4.view.ViewPager
+            android:id="@+id/viewPager"
+            android:layout_width="match_parent"
+            android:layout_height="180px"
+            android:layout_marginTop="14px"
+            android:clipToPadding="false"
+            android:paddingLeft="28px"
+            android:paddingRight="28px"
+            android:visibility="gone">
+
+        </android.support.v4.view.ViewPager>
+
+
+        <RelativeLayout
+            android:id="@+id/img_change_re"
+            android:layout_width="match_parent"
+            android:layout_height="35px"
+            android:background="#fff"
+            android:tag="skin:title_bg:background">
+
+            <ImageView
+                android:id="@+id/img_change"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_marginTop="5px"
+                android:scaleType="center"
+                android:src="@mipmap/viewpager_visible" />
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:animateLayoutChanges="true"
+            android:background="#f8fafa"
+            android:tag="skin:webView_bg:background">
+
+
+            <com.zhuomogroup.ylyk.views.OnScrollWebView
+                android:id="@+id/webview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_alignParentLeft="true"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentTop="true"
+                android:background="#00000000"
+                android:layerType="software"
+                android:paddingLeft="10px"
+                android:paddingRight="10px" />
+
+
+        </RelativeLayout>
+
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/write_tips"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/play_lay"
+        android:layout_alignParentRight="true"
+        android:layout_marginBottom="122px"
+
+        android:layout_marginRight="20px"
+        android:src="@mipmap/write_tips"
+        android:tag="skin:write_tips:imgSrc" />
+
+    <View
+        android:id="@+id/view_bg"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#995a5a5a"
+        android:visibility="gone" />
+
+    <com.zhy.autolayout.AutoFrameLayout
+        android:id="@+id/play_lay"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="#fff"
+
+        android:tag="skin:play_controller_bg:background">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+
+            <RelativeLayout
+                android:id="@+id/play_rela"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <RelativeLayout
+                    android:id="@+id/rel_seek"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="20px">
+
+                    <TextView
+                        android:id="@+id/all_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignRight="@+id/play_seek"
+                        android:layout_below="@+id/play_seek"
+                        android:layout_centerVertical="true"
+                        android:layout_marginTop="4px"
+                        android:tag="skin:textColor:textColor"
+                        android:text="00:00"
+                        android:textColor="@color/textColor"
+                        android:textSize="11px" />
+
+                    <TextView
+                        android:id="@+id/now_time"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_alignLeft="@+id/play_seek"
+                        android:layout_below="@+id/play_seek"
+                        android:layout_marginTop="4px"
+                        android:tag="skin:textColor:textColor"
+
+                        android:text="00:00"
+                        android:textColor="@color/textColor"
+                        android:textSize="11px" />
+
+                    <SeekBar
+                        android:id="@+id/play_seek"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginLeft="25px"
+                        android:layout_marginRight="25px"
+                        android:maxHeight="3dp"
+                        android:minHeight="3dp"
+                        android:paddingLeft="0dp"
+                        android:paddingRight="0dp"
+                        android:progressDrawable="@drawable/po_seekbar"
+                        android:tag="skin:po_seekbar:progress|skin:seekbar_thumb:thumb"
+                        android:thumb="@drawable/seekbar_thumb"
+                        android:thumbOffset="0dp" />
+                </RelativeLayout>
+
+
+                <RelativeLayout
+                    android:id="@+id/play_conchar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_below="@+id/rel_seek"
+                    android:layout_marginBottom="20px"
+                    android:layout_marginTop="5px">
+
+
+                    <ImageView
+                        android:id="@+id/play_list"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_centerVertical="true"
+                        android:layout_marginLeft="23px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_playlist"
+                        android:tag="skin:play_playlist:imgSrc" />
+
+                    <ImageView
+                        android:id="@+id/play_back_15"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_centerVertical="true"
+                        android:layout_marginLeft="91px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_button_back"
+
+                        android:tag="skin:play_button_back:imgSrc" />
+
+                    <ImageView
+                        android:id="@+id/play_type"
+                        android:layout_width="49px"
+                        android:layout_height="49px"
+                        android:layout_centerInParent="true"
+                        android:src="@drawable/play_icon_play"
+                        android:tag="skin:play_icon_play:src" />
+
+                    <ImageView
+                        android:id="@+id/play_forward_15"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_alignParentRight="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginRight="91px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_button_forward"
+                        android:tag="skin:play_button_forward:imgSrc" />
+
+                    <ImageView
+                        android:id="@+id/play_more"
+                        android:layout_width="29px"
+                        android:layout_height="29px"
+                        android:layout_alignParentRight="true"
+                        android:layout_centerVertical="true"
+                        android:layout_marginRight="23px"
+                        android:scaleType="centerInside"
+                        android:src="@mipmap/play_icon_more"
+                        android:tag="skin:play_icon_more:imgSrc" />
+                </RelativeLayout>
+
+            </RelativeLayout>
+
+            <include
+                android:id="@+id/push_tips_card"
+                layout="@layout/include_pushtips"
+                android:visibility="gone" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1px"
+                android:background="@drawable/cardview_bg" />
+
+        </RelativeLayout>
+    </com.zhy.autolayout.AutoFrameLayout>
+
+    <RelativeLayout
+        android:id="@+id/loading_re"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true"
+        android:layout_below="@+id/view_bg">
+
+        <com.reactmodules.loadingview.LoadingFrameLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true">
+
+        </com.reactmodules.loadingview.LoadingFrameLayout>
+
+
+    </RelativeLayout>
+
+
+</RelativeLayout>

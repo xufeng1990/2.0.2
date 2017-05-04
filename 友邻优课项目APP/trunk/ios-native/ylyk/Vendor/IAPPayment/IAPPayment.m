@@ -1,0 +1,151 @@
+//
+//  IAPPayment.m
+//  YLYK-App
+//
+//  Created by 友邻优课 on 2016/12/22.
+//  Copyright © 2016年 Beijing Zhuomo Culture Media Co., Ltd. All rights reserved.
+//
+
+#import "IAPPayment.h"
+#import "CBLProgressHUD.h"
+@interface IAPPayment() <SKProductsRequestDelegate, SKPaymentTransactionObserver> {
+    SKProduct *myProduct;
+}
+@end
+
+@implementation IAPPayment
+
+#pragma mark -Singleton
+
++ (instancetype)sharedManager
+{
+    static IAPPayment *iapPayment = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        iapPayment = [IAPPayment new];
+    });
+    return iapPayment;
+}
+
+#pragma mark -Public Methods
+/**请求商品*/
+- (BOOL)requestProductWithId:(NSString *)productId
+{
+//
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [CBLProgressHUD showLoadingHUDInView:[UIApplication sharedApplication].keyWindow];
+    });
+    if (productId.length > 0) {
+        XXZQLog(@"请求商品: %@", productId);
+        SKProductsRequest *productRequest = [[SKProductsRequest alloc] initWithProductIdentifiers: [NSSet setWithObject:productId]];
+        productRequest.delegate = self;
+        [productRequest start];
+        return YES;
+    } else {
+        XXZQLog(@"商品ID为空");
+        return NO;
+    }
+}
+
+/**购买商品*/
+- (BOOL)purchaseProduct:(SKProduct *)skProduct
+{
+    if (skProduct != nil) {
+        if ([SKPaymentQueue canMakePayments]) {
+            SKPayment *payment = [SKPayment paymentWithProduct:skProduct];
+            [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+            [[SKPaymentQueue defaultQueue] addPayment:payment];
+            return YES;
+        } else {
+            XXZQLog(@"失败，用户禁止应用内付费购买.");
+            return NO;
+        }
+    } else {
+        return NO;
+    }
+}
+
+/**非消耗品恢复*/
+- (BOOL)restorePurchase {
+    if ([SKPaymentQueue canMakePayments]) {
+        [[SKPaymentQueue defaultQueue] addTransactionObserver:self];
+        [[SKPaymentQueue defaultQueue]restoreCompletedTransactions];
+        return YES;
+    } else {
+        XXZQLog(@"失败,用户禁止应用内付费购买.");
+    }
+    return NO;
+}
+
+#pragma mark -SKProductsRequest Delegate
+//请求的结果
+- (void)productsRequest:(SKProductsRequest *)request didReceiveResponse:(SKProductsResponse *)response
+{
+    NSArray *myProductArray = response.products;
+    if (myProductArray.count > 0) {
+        myProduct = [myProductArray objectAtIndex:0];
+        [_delegate receiveProduct:myProduct];
+    } else {
+        XXZQLog(@"无法获取产品信息，购买失败。");
+        [_delegate receiveProduct:myProduct];
+    }
+}
+
+#pragma mark -SKPaymentTransactionObserver Delegate
+//监听交易的状态
+- (void)paymentQueue:(SKPaymentQueue *)queue updatedTransactions:(NSArray<SKPaymentTransaction *> *)transactions
+{
+    for (SKPaymentTransaction *transaction in transactions) {
+        switch (transaction.transactionState) {
+            case SKPaymentTransactionStatePurchasing: // 商品添加进列表
+                XXZQLog(@"商品:%@被添加进购买列表",myProduct.localizedTitle);
+                dispatch_async(dispatch_get_main_queue(), ^{
+                   [CBLProgressHUD hideLoadingHUDInView:[UIApplication sharedApplication].keyWindow];
+                });
+                break;
+            case SKPaymentTransactionStatePurchased:  // 交易成功
+                [self completeTransaction:transaction];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                   [CBLProgressHUD showTextHUDInWindowWithText:@"购买成功"];
+                });
+                
+                break;
+            case SKPaymentTransactionStateFailed:     // 交易失败
+                [self failedTransaction:transaction];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [CBLProgressHUD showTextHUDInWindowWithText:@"交易失败"];
+                });
+
+                break;
+            case SKPaymentTransactionStateRestored:   // 已购买过该商品
+                break;
+            case SKPaymentTransactionStateDeferred:   // 交易延迟
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+#pragma mark -Private Methods
+//购买成功以后前去验证凭证
+- (void)completeTransaction:(SKPaymentTransaction *)transaction
+{
+    NSURL *receiptUrl = [[NSBundle mainBundle] appStoreReceiptURL];
+    NSData *receiptData = [NSData dataWithContentsOfURL:receiptUrl];
+    [_delegate successfulPurchaseOfId:transaction.payment.productIdentifier andReceipt:receiptData];
+    [[SKPaymentQueue defaultQueue] finishTransaction:transaction];
+}
+
+//购买失败的原因
+- (void)failedTransaction:(SKPaymentTransaction *)transaction
+{
+    if (transaction.error.code != SKErrorPaymentCancelled && transaction.error.code != SKErrorUnknown) {
+        [_delegate failedPurchaseWithError:transaction.error.localizedDescription];
+    } else {
+        [_delegate failedPurchaseWithError:transaction.error.localizedDescription];
+    }
+    [[SKPaymentQueue defaultQueue] finishTransaction: transaction];
+}
+
+@end

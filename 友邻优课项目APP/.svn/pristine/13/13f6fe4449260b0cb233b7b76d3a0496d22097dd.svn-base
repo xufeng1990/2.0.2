@@ -1,0 +1,14 @@
+package com.zhuomogroup.ylyk.base;
+
+/**
+ * Created by xyb on 2017/4/19.
+ */
+
+public class YLHTTPCodeBase {
+    public static final int HTTP_CODE_401 = 401;
+    public static final int HTTP_CODE_408 = 408;
+    public static final int HTTP_CODE_404 = 404;
+    public static final int HTTP_CODE_500 = 500;
+    public static final int HTTP_CODE_200 = 200;
+    public static final int HTTP_CODE_300 = 300;
+}

@@ -1,0 +1,21 @@
+//
+//  ViewController.h
+//  TYDownloadManagerDemo
+//
+//  Created by tany on 16/6/12.
+//  Copyright © 2016年 tany. All rights reserved.
+//
+
+#import <UIKit/UIKit.h>
+#import <React/RCTBridgeModule.h>
+
+@interface DownloadSessionViewController : UIViewController <RCTBridgeModule>
+
+@property (nonatomic, copy) NSMutableArray * downloadArray;
+
+@property (nonatomic,copy) NSMutableArray * courseArray;
+
++ (DownloadSessionViewController *)sharedInstance;
+- (void)didRegistRemoteNotification:(NSString *)token;
+@end
+

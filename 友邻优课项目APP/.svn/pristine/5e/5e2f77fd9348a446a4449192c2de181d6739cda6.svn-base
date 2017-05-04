@@ -1,0 +1,215 @@
+package com.zhuomogroup.ylyk.activity;
+
+import android.content.Context;
+import android.content.Intent;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
+import android.view.View;
+import android.widget.Toast;
+
+import com.alipay.PayResult;
+import com.alipay.sdk.app.PayTask;
+import com.google.gson.Gson;
+import com.reactutils.callback.BaseStringCallback;
+import com.tencent.mm.sdk.modelpay.PayReq;
+import com.tencent.mm.sdk.openapi.IWXAPI;
+import com.zhuomogroup.ylyk.MainApplication;
+import com.zhuomogroup.ylyk.R;
+import com.zhuomogroup.ylyk.base.YLBaseActivity;
+import com.zhuomogroup.ylyk.base.YLBaseUrl;
+import com.zhuomogroup.ylyk.bean.RequestBean;
+import com.zhuomogroup.ylyk.network.Signature;
+import com.zhy.http.okhttp.OkHttpUtils;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
+
+import okhttp3.Call;
+import okhttp3.MediaType;
+
+/**
+ * Created by xyb on 2017/3/24.
+ */
+
+public class YLPayActivity extends YLBaseActivity {
+    private IWXAPI iwxapi;
+
+    private static final int SDK_PAY_FLAG = 1;
+    private static final int SDK_AUTH_FLAG = 2;
+    private String order_string;
+
+    @Override
+    public int bindLayout() {
+        return R.layout.activity_pay;
+    }
+
+    @Override
+    public void initView(View view) {
+        MainApplication application = (MainApplication) getApplication();
+        iwxapi = application.getIwxapi();
+    }
+
+    @Override
+    public void doBusiness(Context mContext) {
+
+    }
+
+    @Override
+    public void resume() {
+
+    }
+
+    @Override
+    public void destroy() {
+
+    }
+
+    public void myButton(View view) {
+        JSONObject object = new JSONObject();
+        try {
+            object.put("goods_id", 46);
+            object.put("channel", "WX_APP");
+            object.put("count", 1);
+            OkHttpUtils.postString()
+                    .headers(Signature.UrlHeaders(this))
+                    .url(YLBaseUrl.BASE_URL_HEAD + "order" + Signature.UrlSignature())
+                    .content(object.toString())
+                    .mediaType(MediaType.parse("application/json; charset=utf-8"))
+                    .build().execute(new BaseStringCallback() {
+                @Override
+                public void onError(Call call, Exception e, int id) {
+
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+                    Log.e("YLPayActivity", response);
+                    try {
+                        Gson gson = new Gson();
+                        RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                        if (requestBean.isResult()) {
+                            response = requestBean.getResponse();
+                            JSONObject object1 = new JSONObject(response);
+                            JSONObject aPackage = object1.getJSONObject("package");
+                            JSONObject payment = aPackage.getJSONObject("payment");
+                            Log.e("YLPayActivity", payment.toString() + "....");
+                            sendMsg(payment);
+                        }
+
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+
+    public void sendMsg(JSONObject json) throws JSONException {
+        PayReq req = new PayReq();
+        //req.appId = "wxf8b4f85f3a794e77";  // 测试用appId
+        req.appId = json.getString("app_id");
+        req.partnerId = json.getString("partner_id");
+        req.prepayId = json.getString("prepay_id");
+        req.nonceStr = json.getString("nonce_str");
+        req.timeStamp = json.getString("timestamp");
+        req.packageValue = json.getString("package");
+        req.sign = json.getString("sign");
+        req.extData = "app data"; // optional
+        Toast.makeText(this, "正常调起支付", Toast.LENGTH_SHORT).show();
+        // 在支付之前，如果应用没有注册到微信，应该先调用IWXMsg.registerApp将应用注册到微信
+        iwxapi.sendReq(req);
+    }
+
+
+    public void login(View view) {
+        Intent intent = new Intent(this, YLLoginActivity.class);
+        startActivity(intent);
+    }
+
+    public void payAli(View view) {
+
+
+        JSONObject object = new JSONObject();
+        try {
+            object.put("goods_id", 46);
+            object.put("channel", "ALI_APP");
+            object.put("count", 1);
+            OkHttpUtils.postString()
+                    .headers(Signature.UrlHeaders(this))
+                    .url(YLBaseUrl.BASE_URL_HEAD + "order" + Signature.UrlSignature())
+                    .content(object.toString())
+                    .mediaType(MediaType.parse("application/json; charset=utf-8"))
+                    .build().execute(new BaseStringCallback() {
+                @Override
+                public void onError(Call call, Exception e, int id) {
+
+                }
+
+                @Override
+                public void onResponse(String response, int id) {
+                    try {
+                        Gson gson = new Gson();
+                        RequestBean requestBean = gson.fromJson(response, RequestBean.class);
+                        if (requestBean.isResult()) {
+                            response = requestBean.getResponse();
+                            JSONObject object1 = new JSONObject(response);
+                            JSONObject aPackage = object1.getJSONObject("package");
+                            JSONObject payment = aPackage.getJSONObject("payment");
+                            Log.e("YLPayActivity", payment.toString() + "....");
+                            order_string = payment.getString("order_string");
+                        }
+                        AliPayThread aliPayThread = new AliPayThread();
+                        aliPayThread.start();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+        } catch (Exception e) {
+
+        }
+    }
+
+
+    /**
+     * 支付宝支付异步任务
+     *
+     * @author Simon
+     */
+    private class AliPayThread extends Thread {
+
+
+        @Override
+        public void run() {
+            PayTask alipay = new PayTask(YLPayActivity.this);
+            Map<String, String> result = alipay.payV2(order_string, true);
+            HashMap hashMap = (HashMap) result;
+            Log.e("AliPayThread", hashMap.toString());
+            Message msg = new Message();
+            msg.what = SDK_PAY_FLAG;
+            msg.obj = result;
+            mHandler.sendMessage(msg);
+
+
+        }
+    }
+
+    private Handler mHandler = new Handler() {
+        public void handleMessage(Message msg) {
+            PayResult result = new PayResult((Map<String, String>) msg.obj);
+            Toast.makeText(YLPayActivity.this, result.getResult(),
+                    Toast.LENGTH_LONG).show();
+        }
+
+        ;
+    };
+}

@@ -1,0 +1,188 @@
+//  "NewClass"
+//  功能: TODO 该类的作用
+//  Created by 刘云强 on  2016-10-20
+//  Copyright © 2017年  琢磨科技.
+
+'use strict';
+import React, { Component,PropTypes} from 'react';
+import {
+  Text,
+  View,
+  Image,
+  TextInput,
+  ScrollView,
+  ListView,
+  StyleSheet,
+  TouchableOpacity,
+  TouchableHighlight,
+  TouchableWithoutFeedback,
+  Alert,
+  Platform,
+  NativeModules,
+  DeviceEventEmitter,
+  NativeEventEmitter,
+} from 'react-native';
+import g_AppValue from '../../configs/AppGlobal.js';
+import *as RnNativeModules from '../../configs/RnNativeModules.js';
+import util from '../../common/util.js';
+import Pay from '../../pages/Pay/pay.js';
+import Util from '../../common/util.js';
+// 类
+//
+//登陆监听
+var LoginEvents = NativeModules.LoginEvent;
+const myLoginEvent = new NativeEventEmitter(LoginEvents);
+var loginSubscription;
+//退出登录成功
+var LogoutEvents = NativeModules.LogoutEvent;
+const myLogoutEvent = new NativeEventEmitter(LogoutEvents);
+var logoutSubscription;
+export default class NavigationView extends Component {
+  // 构造函数
+  constructor(props) {
+    super(props);
+    this.state = {
+      noLogin:false,
+      hideNoVip1:false,
+  
+    };
+  }
+  static propTypes = {
+    leftItemTitle: PropTypes.string,   // 左按钮title
+    leftItemFunc: PropTypes.func,      // 左Item事件
+    rightImageSource: PropTypes.number,  // 右Item图片(source)
+    rightItemFunc: PropTypes.func,     // 右Item事件
+  };
+  // 加载完成
+  componentDidMount(){
+    //
+  }
+
+  // view卸载
+  componentWillUnmount(){
+  this.loginSubscription && this.loginSubscription.remove();
+  this.logoutSubscription && this.logoutSubscription.remove();
+  }
+  componentWillMount(){
+    this._getUserID();
+    //登陆成功监听
+    this.loginSubscription = myLoginEvent.addListener('LoginSuccess',(reminder)=>{
+          this._getUserID();
+
+        });
+
+      this.logoutSubscription = myLogoutEvent.addListener('LogoutSuccess',(reminder)=>{
+          console.log('新注销成功' + reminder.LogoutSuccess )
+              if (reminder.LogoutSuccess) {
+                    this._getUserID();
+              }
+            })
+
+  }
+
+  goToQiView(){
+      RnNativeModules.goToQiYu();
+  }
+
+  goToPayView(){
+    RnNativeModules.hideTabBar('hide');
+    this.props.navigator.push({
+      component: Pay,
+    })
+  }
+
+  _alertHome(){
+    Util.alertDialog({
+      msg:'成为友邻学员即可收听此课程',
+      oneBtn:'立即入学',
+      okBtn:'咨询阿树老师',
+      cancelBtn:'取消',
+      okFun:()=>{this.goToQiView()},
+      oneFun:()=>{this.goToPayView()},
+    })
+  }
+  _getUserID() {
+
+    RnNativeModules.getUserInfo().then((data) => {
+      var resultData = JSON.parse(data);
+        if (data == 0 || data == '0' ) {
+            this.setState({
+                noLogin:false,
+            })
+        }else {
+          this.setState({  noLogin:true,})
+              let isVip = Util.isVip(resultData)
+              if (isVip == false) {
+                this.setState({
+
+                    hideNoVip1:false,
+                })
+              }else {
+                this.setState({
+
+                    hideNoVip1:true,
+                })
+              }
+
+        }
+    }).catch((err) => {
+        console.log('albunShow获取userID失败' + err)
+    })
+
+
+  }
+  _noLoginView(){
+    Util.AppToast('请先登录');
+  }
+
+  // render
+  render(){
+    return (
+
+      <View style={styles.container} >
+        <View style={styles.itemView}>
+          <TouchableOpacity activeOpacity ={1}  onPress={this.props.leftItemFunc}>
+
+          <Text style={styles.leftItemTitle}>{this.props.leftItemTitle}</Text>
+            </TouchableOpacity>
+          <TouchableOpacity activeOpacity ={1}  onPress={this.state.noLogin == false ? ()=>{this._noLoginView()} : this.state.hideNoVip1 == false ? ()=>{this._alertHome()} :this.props.rightItemFunc}>
+          <Image style={styles.rightImageSource} source={this.props.rightImageSource}/>
+            </TouchableOpacity>
+        </View>
+
+      </View>
+    );
+  }
+
+  // 自定义方法区域
+  // your method
+
+}
+
+var styles = StyleSheet.create({
+  container:{
+    width:g_AppValue.screenWidth,
+    height:Platform.OS === 'ios' ? 64 *g_AppValue.precent :  44 *g_AppValue.precent ,
+    backgroundColor:'#ffffff',
+  },
+  itemView:{
+    marginTop:Platform.OS === 'ios' ? 19.5*g_AppValue.precent : 0 *g_AppValue.precent,
+    width:g_AppValue.screenWidth,
+    height:44 *g_AppValue.precent,
+    //backgroundColor:'green',
+    flexDirection:'row',
+    alignItems:'center',
+    justifyContent:'space-between',
+  },
+  leftItemTitle:{
+    marginLeft:12*g_AppValue.precent,
+    fontSize:18*g_AppValue.precent,
+    fontFamily:'iconfont',
+  },
+  rightImageSource:{
+    width:18 *g_AppValue.precent,
+    height:18 *g_AppValue.precent,
+  //  backgroundColor:'black',
+    marginRight:12*g_AppValue.precent,
+  }
+})
